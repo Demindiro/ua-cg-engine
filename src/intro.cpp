@@ -76,10 +76,10 @@ namespace intro {
 
 	static inline void lines_part(img::EasyImage &img, img::Color fg, uint n, uint ox, uint oy, uint w, uint h, bool flip_x, bool flip_y) {
 		for (uint i = 0; i < n; i++) {
-			uint x = i * (w - 1) / (n - 1);
-			uint y = i * (h - 1) / (n - 1);
+			uint x = std::round((double)i * (w - 1) / (n - 1));
+			uint y = std::round((double)i * (h - 1) / (n - 1));
 			if (flip_x != flip_y)
-				y = h - y - 1;
+				y = h - 1 - y;
 			line(img, ox + x, oy + (flip_y ? 0 : h - 1), ox + (flip_x ? w - 1 : 0), oy + y, fg);
 		}
 	}
@@ -89,7 +89,6 @@ namespace intro {
 	}
 
 	static void lines_diamond(img::EasyImage &img, img::Color fg, uint n) {
-		// TODO isn't very symmetric. May be an issue with the line function.
 		uint x = img.get_width() / 2, y = img.get_height() / 2;
 		lines_part(img, fg, n, 0, 0, x, y, true, false);
 		// -1 to avoid 2px wide horizontal & vertical lines
