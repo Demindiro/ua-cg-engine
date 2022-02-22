@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <iostream>
 #include <math.h>
+#include <cstring>
 
 #ifndef le32toh
 #define le32toh(x) (x)
@@ -208,7 +209,6 @@ std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
 	bmpfile_magic magic;
 	bmpfile_header file_header;
 	bmp_header header;
-	uint8_t padding[] = {0, 0, 0, 0};
 	// calculate the total size of the pixel data
 	unsigned int line_width = image.get_width() * 3; // 3 bytes per pixel
 	unsigned int line_padding = 0;
@@ -248,6 +248,11 @@ std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
 
 	// okay let's write the pixels themselves:
 	// they are arranged left->right, bottom->top, b,g,r
+
+	// Manual buffering since ostream is horribly slow. (~50ms -> ~10ms = ~5x!)
+	char buf[1 << 20]; // 1 MiB
+	size_t buf_i = 0;
+
 	for (unsigned int i = 0; i < image.get_height(); i++) {
 		// loop over all lines
 		for (unsigned int j = 0; j < image.get_width(); j++) {
@@ -255,11 +260,21 @@ std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
 			// we cast &color to char*. since the color fields are ordered
 			// blue,green,red they should be written automatically in the right
 			// order
-			out.write((char *)&image(j, i), 3 * sizeof(uint8_t));
+			if (buf_i >= sizeof(buf) - 4) {
+				out.write(buf, buf_i);
+				buf_i = 0;
+			}
+			memcpy(buf + buf_i, (char *)&image(j, i), 3 * sizeof(uint8_t));
+			buf_i += 3 * sizeof(uint8_t);
 		}
-		if (line_padding > 0)
-			out.write((char *)padding, line_padding);
+		if (buf_i >= sizeof(buf) - line_padding) {
+			out.write(buf, buf_i);
+			buf_i = 0;
+		}
+		memset(buf + buf_i, 0, line_padding);
 	}
+	out.write(buf, buf_i);
+
 	// okay we should be done
 	return out;
 }
