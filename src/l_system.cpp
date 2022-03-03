@@ -11,6 +11,8 @@
 #include "l_parser.h"
 #include "lines.h"
 
+#define MAX_CURSOR_COUNT 2048
+
 using namespace std;
 
 namespace l_system {
@@ -27,7 +29,8 @@ namespace l_system {
 		Lines2D lines;
 		Cursor c { 0, 0, 0, 0 };
 		Mat2D rot;
-		vector<Cursor> saved;
+		Cursor saved[MAX_CURSOR_COUNT];
+		int saved_i = 0;
 		LParser::LSystem2D sys;
 		Color color;
 	};
@@ -60,11 +63,10 @@ namespace l_system {
 				mat2d_rot_rev(s.rot, s.c.dx, s.c.dy);
 				break;
 			case '(':
-				s.saved.push_back({ s.c.x, s.c.y, s.c.dx, s.c.dy });
+				s.saved[s.saved_i++] = s.c;
 				break;
 			case ')':
-				s.c = s.saved.back();
-				s.saved.pop_back();
+				s.c = s.saved[--s.saved_i];
 				break;
 			default:
 				if (depth > 0) {
@@ -86,22 +88,21 @@ namespace l_system {
 		auto file = conf["2DLSystem"]["inputfile"].as_string_or_die();
 		draw_sys.color = tup_to_color(conf["2DLSystem"]["color"].as_double_tuple_or_die());
 
-		LParser::LSystem2D sys;
 		{
 			std::ifstream f(file);
-			f >> sys;
+			f >> draw_sys.sys;
 		}
 
-		draw_sys.sys = sys;
-		auto d = deg_to_mat2d(sys.get_starting_angle());
+		auto d = deg_to_mat2d(draw_sys.sys.get_starting_angle());
 		draw_sys.c.dx = d.x;
 		draw_sys.c.dy = d.y;
-		draw_sys.rot = deg_to_mat2d(sys.get_angle());
+		draw_sys.rot = deg_to_mat2d(draw_sys.sys.get_angle());
 
-		draw_sys_2d(draw_sys, sys.get_initiator(), sys.get_nr_iterations());
+		if (draw_sys.sys.get_nr_iterations() > MAX_CURSOR_COUNT) {
+			throw out_of_range("Iterations");
+		}
+		draw_sys_2d(draw_sys, draw_sys.sys.get_initiator(), draw_sys.sys.get_nr_iterations());
 
-		//draw_sys.lines = Lines2D();
-		//draw_sys.lines.add(Line2D(Point2D(-1,-1),Point2D(0,0),draw_sys.color));
 		return draw_sys.lines.draw(size, bg);
 	}
 }

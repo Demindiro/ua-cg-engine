@@ -12,34 +12,8 @@ static inline int signum_or_one(int x) {
 	return x < 0 ? -1 : 1;
 }
 
-// FIXME there are still very slight differences with the reference images.
-// Likely culprit is a difference in the implementation of this function.
 void Line2D::draw(img::EasyImage &img) const {
-	uint from_x = round(this->a.x);
-	uint from_y = round(this->a.y);
-	uint to_x   = round(this->b.x);
-	uint to_y   = round(this->b.y);
-	int dx = to_x - from_x, dy = to_y - from_y;
-	if (abs(dx) < abs(dy)) {
-		// Iterate over y
-		auto s = signum_or_one(dy);
-		auto f = (double)dx / dy * s;
-		double fdx = this->a.x;
-		for (unsigned int y = from_y; y != to_y; y += s) {
-			img(round(fdx), y) = color;
-			fdx += f;
-		}
-	} else {
-		// Iterate over x
-		auto s = signum_or_one(dx);
-		auto f = (double)dy / dx * s;
-		double fdy = this->a.y;
-		for (unsigned int x = from_x; x != to_x; x += s) {
-			img(x, round(fdy)) = color;
-			fdy += f;
-		}
-	}
-	img(to_x, to_y) = color;
+	img.draw_line(round(a.x), round(a.y), round(b.x), round(b.y), color);
 }
 
 void Lines2D::add(Line2D line) {
