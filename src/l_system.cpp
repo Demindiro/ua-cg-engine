@@ -82,7 +82,7 @@ namespace l_system {
 					if (sum == 0)
 						// Avoid UB as sum - 1 has to be >= 0
 						continue;
-					int rule = uniform_int_distribution<>(0, sum)(s.rng);
+					int rule = uniform_int_distribution<>(0, sum - 1)(s.rng);
 					draw_sys_2d(s, r.pick(rule), depth - 1);
 				} else if (s.sys.draw(c)) {
 					auto nx = s.c.x + s.c.dx, ny = s.c.y + s.c.dy;
