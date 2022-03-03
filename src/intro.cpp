@@ -57,30 +57,6 @@ namespace intro {
 		return img;
 	}
 
-	static void line(img::EasyImage &img, uint from_x, uint from_y, uint to_x, uint to_y, img::Color color) {
-		int dx = to_x - from_x, dy = to_y - from_y;
-		if (std::abs(dx) < std::abs(dy)) {
-			// Iterate over y
-			auto s = signum_or_one(dy);
-			auto f = (double)dx / dy * s;
-			double fdx = from_x;
-			for (unsigned int y = from_y; y != to_y; y += s) {
-				img(std::round(fdx), y) = color;
-				fdx += f;
-			}
-		} else {
-			// Iterate over x
-			auto s = signum_or_one(dx);
-			auto f = (double)dy / dx * s;
-			double fdy = from_y;
-			for (unsigned int x = from_x; x != to_x; x += s) {
-				img(x, std::round(fdy)) = color;
-				fdy += f;
-			}
-		}
-		img(to_x, to_y) = color;
-	}
-
 	static inline void lines_part(img::EasyImage &img, img::Color fg, uint n, uint ox, uint oy, uint w, uint h, bool flip_x, bool flip_y) {
 		for (uint i = 0; i < n; i++) {
 			// Multiply by two to represent halves (0.0, 0.5, 1.0, 1.5 ...)
@@ -92,7 +68,9 @@ namespace intro {
 			y = ((y + 1) & ~1) / 2;
 			if (flip_x != flip_y)
 				y = h - 1 - y;
-			line(img, ox + x, oy + (flip_y ? 0 : h - 1), ox + (flip_x ? w - 1 : 0), oy + y, fg);
+			Point2D a(ox + x, oy + (flip_y ? 0 : h - 1));
+			Point2D b(ox + (flip_x ? w - 1 : 0), oy + y);
+			Line2D(a, b, fg).draw(img);
 		}
 	}
 
