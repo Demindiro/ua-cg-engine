@@ -3,6 +3,7 @@
 #include "l_system.h"
 #include <cmath>
 #include <fstream>
+#include <random>
 #include <string>
 #include <vector>
 #include "easy_image.h"
@@ -33,6 +34,12 @@ namespace l_system {
 		int saved_i = 0;
 		LParser::LSystem2D sys;
 		Color color;
+		mt19937 rng;
+
+		DrawSystem2D() {
+			random_device rd;
+			rng = mt19937(rd());
+		}
 	};
 
 	static Mat2D deg_to_mat2d(double a) {
@@ -70,7 +77,13 @@ namespace l_system {
 				break;
 			default:
 				if (depth > 0) {
-					draw_sys_2d(s, s.sys.get_replacement(c), depth - 1);
+					auto r = s.sys.get_replacement(c);
+					auto sum = r.get_weights_sum();
+					if (sum == 0)
+						// Avoid UB as sum - 1 has to be >= 0
+						continue;
+					int rule = uniform_int_distribution<>(0, sum)(s.rng);
+					draw_sys_2d(s, r.pick(rule), depth - 1);
 				} else if (s.sys.draw(c)) {
 					auto nx = s.c.x + s.c.dx, ny = s.c.y + s.c.dy;
 					s.lines.add(Line2D(Point2D(s.c.x, s.c.y), Point2D(nx, ny), s.color));
