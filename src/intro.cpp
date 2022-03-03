@@ -57,39 +57,36 @@ namespace intro {
 		return img;
 	}
 
-	static inline void lines_part(img::EasyImage &img, img::Color fg, uint n, uint ox, uint oy, uint w, uint h, bool flip_x, bool flip_y) {
+	static inline void lines_part(img::EasyImage &img, img::Color fg, uint n, double ox, double oy, double dx, double dy) {
+		dx /= n - 1;
+		dy /= n - 1;
 		for (uint i = 0; i < n; i++) {
-			// Multiply by two to represent halves (0.0, 0.5, 1.0, 1.5 ...)
-			// Using only integers should be somewhat faster than converting between double <-> int
-			uint x = i * (w - 1) * 2 / (n - 1);
-			uint y = i * (h - 1) * 2 / (n - 1);
-			// Round up & divide by 2 to get real values.
-			x = ((x + 1) & ~1) / 2;
-			y = ((y + 1) & ~1) / 2;
-			if (flip_x != flip_y)
-				y = h - 1 - y;
-			Point2D a(ox + x, oy + (flip_y ? 0 : h - 1));
-			Point2D b(ox + (flip_x ? w - 1 : 0), oy + y);
-			Line2D(a, b, fg).draw(img);
+			auto x = ox + dx * i;
+			auto y = oy + dy * (n - 1 - i);
+			Line2D(Point2D(x, oy), Point2D(ox, y), fg).draw(img);
 		}
 	}
 
 	static void lines_quartercircle(img::EasyImage &img, img::Color fg, uint n) {
-		lines_part(img, fg, n, 0, 0, img.get_width(), img.get_height(), false, false);
+		double x = img.get_width() - 1;
+		double y = img.get_height() - 1;
+		lines_part(img, fg, n, 0, y, x, -y);
 	}
 
 	static void lines_diamond(img::EasyImage &img, img::Color fg, uint n) {
-		uint x = img.get_width() / 2, y = img.get_height() / 2;
-		lines_part(img, fg, n, 0, 0, x, y, true, false);
-		// -1 to avoid 2px wide horizontal & vertical lines
-		lines_part(img, fg, n, x - 1, y - 1, x, y, false, true);
-		lines_part(img, fg, n, x - 1, 0, x, y, false, false);
-		lines_part(img, fg, n, 0, y - 1, x, y, true, true);
+		double x = (img.get_width() - 1) / 2.0;
+		double y = (img.get_height() - 1) / 2.0;
+		lines_part(img, fg, n, x, y, x, y);
+		lines_part(img, fg, n, x, y, -x, y);
+		lines_part(img, fg, n, x, y, x, -y);
+		lines_part(img, fg, n, x, y, -x, -y);
 	}
 
 	static void lines_eye(img::EasyImage &img, img::Color fg, uint n) {
-		lines_part(img, fg, n, 0, 0, img.get_width(), img.get_height(), false, false);
-		lines_part(img, fg, n, 0, 0, img.get_width(), img.get_height(), true, true);
+		double x = img.get_width() - 1;
+		double y = img.get_height() - 1;
+		lines_part(img, fg, n, 0, y, x, -y);
+		lines_part(img, fg, n, x, 0, -x, y);
 	}
 
 	img::EasyImage lines(const ini::Configuration &conf) {
