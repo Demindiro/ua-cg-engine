@@ -2,18 +2,14 @@
 #include <algorithm>
 #include <cmath>
 #include "easy_image.h"
+#include "engine.h"
 
 using namespace std;
 
 typedef unsigned int uint;
 
-// Returns -1 if lower than 0, otherwise 1.
-static inline int signum_or_one(int x) {
-	return x < 0 ? -1 : 1;
-}
-
 inline void Line2D::draw(img::EasyImage &img) const {
-	img.draw_line(round(a.x), round(a.y), round(b.x), round(b.y), color);
+	img.draw_line(round_up(a.x), round_up(a.y), round_up(b.x), round_up(b.y), color);
 }
 
 void Lines2D::add(Line2D line) {
@@ -51,7 +47,7 @@ img::EasyImage Lines2D::draw(uint size, Color background) const {
 	}
 
 	// Create image
-	img::EasyImage img(round(img_x), round(img_y));
+	img::EasyImage img(round_up(img_x), round_up(img_y));
 	img.clear(background);
 
 	// Transform & draw lines
