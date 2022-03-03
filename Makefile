@@ -1,12 +1,14 @@
 .PHONY: build build-debug
 
+CPUS := $(shell nproc)
+
 build:
 	cmake -DCMAKE_BUILD_TYPE=Release -B $@
-	cd $@ && make -j4
+	cd $@ && make -j$(CPUS)
 
 build-debug:
 	cmake -DCMAKE_BUILD_TYPE=Debug -B $@
-	cd $@ && make -j4
+	cd $@ && make -j$(CPUS)
 
 test: build-debug
 	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done

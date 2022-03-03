@@ -12,7 +12,7 @@ static inline int signum_or_one(int x) {
 	return x < 0 ? -1 : 1;
 }
 
-void Line2D::draw(img::EasyImage &img) const {
+inline void Line2D::draw(img::EasyImage &img) const {
 	img.draw_line(round(a.x), round(a.y), round(b.x), round(b.y), color);
 }
 

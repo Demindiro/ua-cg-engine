@@ -155,14 +155,14 @@ void img::EasyImage::clear(Color color) {
 img::Color &img::EasyImage::operator()(unsigned int x, unsigned int y) {
 	assert(x < this->width);
 	assert(y < this->height);
-	return bitmap.at(x * height + y);
+	return bitmap.at(x + y * width);
 }
 
 img::Color const &img::EasyImage::operator()(unsigned int x,
 											 unsigned int y) const {
 	assert(x < this->width);
 	assert(y < this->height);
-	return bitmap.at(x * height + y);
+	return bitmap.at(x + y * width);
 }
 
 void img::EasyImage::draw_line(unsigned int x0, unsigned int y0,
