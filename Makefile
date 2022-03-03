@@ -24,3 +24,8 @@ bench-batch: build
 	cd assets && ../$</engine *.ini
 	@echo Measure...
 	cd assets && perf stat ../$</engine *.ini
+
+archive.tar.gz: $(wildcard src/*) $(wildcard include/*) \
+	$(wildcard assets/stochastic_*.L2D) $(wildcard assets/stochastic_*.ini) \
+	CMakeLists.txt LICENSE
+	tar czvf $@ $^
