@@ -1,3 +1,6 @@
 build/
 build-debug/
 *.bmp
+perf.data
+perf.data.old
+flamegraph.svg
