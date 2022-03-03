@@ -272,6 +272,7 @@ std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
 			buf_i = 0;
 		}
 		memset(buf + buf_i, 0, line_padding);
+		buf_i += line_padding;
 	}
 	out.write(buf, buf_i);
 
