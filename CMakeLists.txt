@@ -21,6 +21,9 @@ set(engine_sources
 	src/easy_image.cpp
 	src/ini_configuration.cpp
 	src/intro.cpp
+	src/lines.cpp
+	src/l_parser.cpp
+	src/l_system.cpp
 )
 
 set(exe_name "engine")

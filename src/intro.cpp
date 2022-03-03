@@ -6,20 +6,21 @@
 #include "easy_image.h"
 #include "engine.h"
 #include "ini_configuration.h"
+#include "lines.h"
 
 typedef unsigned int uint;
 
 namespace intro {
-	static inline img::Color tup_to_color(std::vector<double> v) {
-		return img::Color(std::round(v.at(0) * 255), std::round(v.at(1) * 255), std::round(v.at(2) * 255));
+
+	static img::EasyImage img_from_conf(const ini::Configuration &conf) {
+		auto width  = conf["ImageProperties"]["width" ].as_int_or_die();
+		auto height = conf["ImageProperties"]["height"].as_int_or_die();
+		return img::EasyImage(width, height);
 	}
 
-	// Returns -1 if lower than 0, otherwise 1.
-	static inline int signum_or_one(int x) {
-		return x < 0 ? -1 : 1;
-	}
+	img::EasyImage color_rectangle(const ini::Configuration &conf) {
+		auto img = img_from_conf(conf);
 
-	void color_rectangle(img::EasyImage &img, const ini::Configuration &) {
 		for (uint x = 0; x < img.get_width(); x++) {
 			for (uint y = 0; y < img.get_height(); y++) {
 				auto r = x * 256 / img.get_width();
@@ -28,9 +29,13 @@ namespace intro {
 				img(x, y) = img::Color(r, g, b);
 			}
 		}
+
+		return img;
 	}
 
-	void blocks(img::EasyImage &img, const ini::Configuration &conf) {
+	img::EasyImage blocks(const ini::Configuration &conf) {
+		auto img = img_from_conf(conf);
+
 		auto props = conf["BlockProperties"];
 		auto color_a = tup_to_color(props["colorWhite"].as_double_tuple_or_die());
 		auto color_b = tup_to_color(props["colorBlack"].as_double_tuple_or_die());
@@ -48,6 +53,8 @@ namespace intro {
 				img(x, y) = (bx + by) % 2 == 0 ? color_a : color_b;
 			}
 		}
+
+		return img;
 	}
 
 	static void line(img::EasyImage &img, uint from_x, uint from_y, uint to_x, uint to_y, img::Color color) {
@@ -107,7 +114,9 @@ namespace intro {
 		lines_part(img, fg, n, 0, 0, img.get_width(), img.get_height(), true, true);
 	}
 
-	void lines(img::EasyImage &img, const ini::Configuration &conf) {
+	img::EasyImage lines(const ini::Configuration &conf) {
+		auto img = img_from_conf(conf);
+
 		auto props = conf["LineProperties"];
 		auto type = props["figure"].as_string_or_die();
 		auto bg = tup_to_color(props["backgroundcolor"].as_double_tuple_or_die());
@@ -123,7 +132,9 @@ namespace intro {
 		} else if (type == "Eye") {
 			lines_eye(img, fg, n);
 		} else {
-			throw new TypeException(type);
+			throw TypeException(type);
 		}
+
+		return img;
 	}
 }

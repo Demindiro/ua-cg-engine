@@ -4,7 +4,7 @@
 #include "ini_configuration.h"
 
 namespace intro {
-	void color_rectangle(img::EasyImage &, const ini::Configuration &);
-	void blocks(img::EasyImage &, const ini::Configuration &);
-	void lines(img::EasyImage &, const ini::Configuration &);
+	img::EasyImage color_rectangle(const ini::Configuration &);
+	img::EasyImage blocks(const ini::Configuration &);
+	img::EasyImage lines(const ini::Configuration &);
 }

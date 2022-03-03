@@ -2,6 +2,7 @@
 #include "engine.h"
 #include "ini_configuration.h"
 #include "intro.h"
+#include "l_system.h"
 
 #include <fstream>
 #include <iostream>
@@ -15,23 +16,19 @@ const char *TypeException::what() const throw() {
 };
 
 img::EasyImage generate_image(const ini::Configuration &conf) {
-	auto width  = conf["ImageProperties"]["width" ].as_int_or_die();
-	auto height = conf["ImageProperties"]["height"].as_int_or_die();
-	img::EasyImage img(width, height);
-
 	auto type = conf["General"]["type"].as_string_or_die();
 
 	if (type == "IntroColorRectangle") {
-		intro::color_rectangle(img, conf);
+		return intro::color_rectangle(conf);
 	} else if (type == "IntroBlocks") {
-		intro::blocks(img, conf);
+		return intro::blocks(conf);
 	} else if (type == "IntroLines") {
-		intro::lines(img, conf);
+		return intro::lines(conf);
+	} else if (type == "2DLSystem") {
+		return l_system::l_2d(conf);
 	} else {
 		throw TypeException(type);
 	}
-
-	return img;
 }
 
 int main(int argc, char const *argv[]) {
