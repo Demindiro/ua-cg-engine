@@ -18,10 +18,10 @@
 
 #include "l_parser.h"
 
-#include <assert.h>
 #include <iostream>
 #include <iomanip>
 #include <cctype>
+#include <cassert>
 #include <sstream>
 
 
@@ -203,46 +203,55 @@ namespace
 
 	void print_system(std::ostream&out, LParser::LSystem const& system)
 	{
-
-		if (system.get_alphabet().size() == 0)
+		// Alphabet
 		{
-			out << "Alphabet = {}" << std::endl;
-			out << "Draw = {}" << std::endl;
-			out << "Rules = {}" << std::endl;
-		}
-		else if (system.get_alphabet().size() == 1)
-		{
-			//case with 1 element is special
-			out << "Alphabet = {" << *system.get_alphabet().begin() << "}" << std::endl;
-			out << "Draw = {" << *system.get_alphabet().begin() << " -> " << (system.draw(*system.get_alphabet().begin()) ? 1 : 0) << "}" << std::endl;
-			out << "Rules = {" << *system.get_alphabet().begin() << " -> \"" << system.get_replacement(*system.get_alphabet().begin()) << "\"}" << std::endl;
-		}
-		else
-		{
-			out << "Alphabet = {" << *system.get_alphabet().begin();
-			for (std::set<char>::const_iterator i = ++system.get_alphabet().begin(); i != system.get_alphabet().end(); i++)
-			{
-				out << ", " << *i;
+			auto sep = false;
+			out << "Alphabet = {";
+			for (auto c : system.get_alphabet()) {
+				if (sep) out << ", ";
+				sep = true;
+				out << c;
 			}
 			out << "}" << std::endl;
+		}
 
-			out << "Draw = {" << *system.get_alphabet().begin() << "-> " << (system.draw(*system.get_alphabet().begin()) ? 1 : 0) << "";
-			for (std::set<char>::const_iterator i = ++system.get_alphabet().begin(); i != system.get_alphabet().end(); i++)
-			{
-				out << "," << std::endl << "\t" << *i << " -> " << (system.draw(*i) ? 1 : 0);
+		// Draw
+		{
+			auto sep = false;
+			out << "Draw = {" ;
+			for (auto c : system.get_alphabet()) {
+				if (sep) out << ", ";
+				sep = true;
+				out << c << " -> " << (int)system.draw(c);
 			}
-			out << std::endl << "}" << std::endl;
+			out << "}" << std::endl;
+		}
 
-			out << "Rules = {" << *system.get_alphabet().begin() << "-> \"" << system.get_replacement(*system.get_alphabet().begin()) << "\"";
-			for (std::set<char>::const_iterator i = ++system.get_alphabet().begin(); i != system.get_alphabet().end(); i++)
-			{
-				out << "," << std::endl << "\t" << *i << " -> \"" << system.get_replacement(*i) << "\"";
+		// Rules
+		{
+			auto sep = false;
+			out << "Rules = {" << std::endl;
+			for (auto c : system.get_alphabet()) {
+				if (sep) out << "," << std::endl;
+				sep = true;
+				out << "\t" << c << " -> {";
+				auto sep2 = false;
+				auto prev_weight = 0;
+				for (auto &r : system.get_replacement(c).replacements) {
+					if (sep2) out << ", ";
+					sep2 = true;
+					out << r.cum_weight - prev_weight << " -> \"" << r.string << '"';
+					prev_weight = r.cum_weight;
+				}
+				out << "}";
 			}
 			out << std::endl << "}" << std::endl;
 		}
+
 		out << "Initiator = \"" << system.get_initiator() << "\"" << std::endl;
 		out << "Angle = " << system.get_angle() << std::endl;
 	}
+
 	void parse_alphabet(std::set<char>& alphabet, stream_parser& parser)
 	{
 		parser.skip_comments_and_whitespace();
@@ -342,7 +351,7 @@ namespace
 		}
 		return num_parenthesis == 0;
 	}
-	void parse_rules(std::set<char> const& alphabet, std::map<char, std::string>& rules, stream_parser& parser, bool parse2D)
+	void parse_rules(std::set<char> const& alphabet, std::map<char, LParser::Replacements>& rules, stream_parser& parser, bool parse2D)
 	{
 		parser.skip_comments_and_whitespace();
 		parser.assertChars("Rules");
@@ -352,9 +361,12 @@ namespace
 		parser.assertChars("{");
 		parser.skip_comments_and_whitespace();
 		rules.clear();
-		char c = parser.getChar();
+
 		while (true)
 		{
+			parser.skip_comments_and_whitespace();
+			char c = parser.getChar();
+
 			if (!std::isalpha(c))
 				throw LParser::ParserException("Invalid Alphabet character", parser.getLine(), parser.getCol());
 			if (alphabet.find(c) == alphabet.end())
@@ -365,18 +377,52 @@ namespace
 			parser.skip_comments_and_whitespace();
 			parser.assertChars("->");
 			parser.skip_comments_and_whitespace();
-			std::string rule = parser.readQuotedString();
-			if (!isValidRule(alphabet, rule, parse2D))
-				throw LParser::ParserException(std::string("Invalid rule specification for entry '") + alphabet_char + "' in rule specification", parser.getLine(), parser.getCol());
-			rules[alphabet_char] = rule;
-			parser.skip_comments_and_whitespace();
-			c = parser.getChar();
-			if (c == '}')
-				break;
-			else if (c != ',')
+
+			auto &replacement = rules[alphabet_char];
+			auto check_rule = [&](auto rule) {
+				if (!isValidRule(alphabet, rule, parse2D))
+					throw LParser::ParserException(std::string("Invalid rule specification for entry '") + alphabet_char + "' in rule specification", parser.getLine(), parser.getCol());
+			};
+			auto check_end = [&]() {
+				parser.skip_comments_and_whitespace();
+				auto c = parser.getChar();
+				if (c == '}')
+					return true;
+				else if (c == ',')
+					return false;
 				throw LParser::ParserException("Expected ','", parser.getLine(), parser.getCol());
-			parser.skip_comments_and_whitespace();
-			c = parser.getChar();
+			};
+
+			if (parser.peekChar() == '"') {
+				// Single rule
+				auto s = parser.readQuotedString();
+				check_rule(s);
+				replacement.add(s, 1);
+			} else {
+				// Multiple weighted rules
+				parser.assertChars("{");
+				while (true) {
+					parser.skip_comments_and_whitespace();
+					auto weight = parser.readInt();
+					if (weight <= 0)
+						throw LParser::ParserException("Rule weights must be greater than 0", parser.getLine(), parser.getCol());
+
+					parser.skip_comments_and_whitespace();
+					parser.assertChars("->");
+
+					parser.skip_comments_and_whitespace();
+					auto s = parser.readQuotedString();
+					check_rule(s);
+					replacement.add(s, 1);
+
+					parser.skip_comments_and_whitespace();
+					if (check_end())
+						break;
+				}
+			}
+
+			if (check_end())
+				break;
 		}
 	}
 	std::string parse_initiator(std::set<char> const& alphabet, stream_parser& parser, bool parse2D)
@@ -448,6 +494,20 @@ const char* LParser::ParserException::what() const throw ()
 	return message.c_str();
 }
 
+const std::string &LParser::Replacements::pick(int weight) const {
+	assert(!replacements.empty() && "no replacements");
+	assert(weight < get_weights_sum() && "weight out of range");
+	// Linear search is O(n) but still faster for small vectors since the constant factor is lower
+	// than e.g. binary search.
+	for (auto &r : replacements) {
+		if (weight < r.cum_weight) {
+			return r.string;
+		}
+	}
+	// Return something so we don't cause UB.
+	return replacements.back().string;
+}
+
 LParser::LSystem::LSystem() :
 	alphabet(), drawfunction(), initiator(""), angle(0.0), replacementrules(), nrIterations(0)
 {
@@ -483,7 +543,7 @@ bool LParser::LSystem::draw(char c) const
 	assert(get_alphabet().find(c) != get_alphabet().end());
 	return drawfunction.find(c)->second;
 }
-std::string const& LParser::LSystem::get_replacement(char c) const
+LParser::Replacements const& LParser::LSystem::get_replacement(char c) const
 {
 	assert(get_alphabet().find(c) != get_alphabet().end());
 	return replacementrules.find(c)->second;

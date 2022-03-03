@@ -19,11 +19,12 @@
 #ifndef L_PARSER_INCLUDED
 #define L_PARSER_INCLUDED
 
+#include <cassert>
 #include <map>
 #include <string>
 #include <set>
 #include <exception>
-
+#include <vector>
 
 
 /**
@@ -80,6 +81,40 @@ namespace LParser
 			virtual const char *what() const throw ();
 	};
 
+	// A replacement string with a *cumulative* weight.
+	class Replacement {
+		// TODO make private
+	public:
+		friend class Replacements;
+		friend class LSystem;
+		std::string string;
+		int cum_weight;
+	};
+
+	// List of replacement strings with weights
+	class Replacements {
+		// TODO make private
+	public:
+		friend class LSystem;
+		std::vector<Replacement> replacements;
+
+	public:
+		// Get the sum of all the weights.
+		inline int get_weights_sum() const {
+			return replacements.empty() ? 0 : replacements.back().cum_weight;
+		}
+
+		// Add a replacement string
+		inline void add(std::string str, int weight) {
+			replacements.push_back({ str, weight + get_weights_sum() });
+		}
+
+		// Pick a replacement string based on the given weight.
+		//
+		// For proper distribution the weight should be in the range [0; weights_sum).
+		const std::string &pick(int weight) const;
+	};
+
 	/**
 	 * \brief This is the Base Class used by LParser2D and LParser3D
 	 */
@@ -133,9 +168,9 @@ namespace LParser
 			 *
 			 * \param c 	the character of the alphabet
 			 *
-			 * \return	replacement string
+			 * \return	list of replacement strings
 			 */
-			std::string const& get_replacement(char c) const;
+			Replacements const& get_replacement(char c) const;
 
 			/**
 			 * \brief Returns the angle of the L-System.
@@ -182,7 +217,7 @@ namespace LParser
 		        /**
 		         * \brief the replacement rules of the l-system
 		         */
-			std::map<char, std::string> replacementrules;
+			std::map<char, Replacements> replacementrules;
 
 		        /**
 		         * \brief the number of replacements of the l-system
