@@ -24,6 +24,8 @@ set(engine_sources
 	src/lines.cpp
 	src/l_parser.cpp
 	src/l_system.cpp
+	src/vector3d.cpp
+	src/wireframe.cpp
 )
 
 set(exe_name "engine")

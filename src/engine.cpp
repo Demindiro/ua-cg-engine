@@ -3,6 +3,7 @@
 #include "ini_configuration.h"
 #include "intro.h"
 #include "l_system.h"
+#include "wireframe.h"
 
 #include <fstream>
 #include <iostream>
@@ -26,6 +27,8 @@ img::EasyImage generate_image(const ini::Configuration &conf) {
 		return intro::lines(conf);
 	} else if (type == "2DLSystem") {
 		return l_system::l_2d(conf);
+	} else if (type == "Wireframe") {
+		return wireframe::wireframe(conf);
 	} else {
 		throw TypeException(type);
 	}

@@ -24,6 +24,9 @@ class Lines2D {
 	std::vector<Line2D> lines;
 
 public:
+	Lines2D() {}
+	Lines2D(std::vector<Line2D> lines) : lines(lines) {}
+
 	void add(Line2D);
 	
 	img::EasyImage draw(unsigned int size, Color background) const;

@@ -13,6 +13,9 @@ build-debug:
 test: build-debug
 	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-line-drawings: build-debug
+	cd assets && for f in line_*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 bench-sep: build
 	@echo Warmup...
 	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f"; done

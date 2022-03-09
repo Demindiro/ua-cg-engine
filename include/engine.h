@@ -3,6 +3,7 @@
 #include <cmath>
 #include <vector>
 #include "easy_image.h"
+#include "vector3d.h"
 
 class TypeException : public std::exception {
 	std::string type;
@@ -28,4 +29,11 @@ static inline double round_up(double x) {
 
 static inline img::Color tup_to_color(std::vector<double> v) {
 	return img::Color(round_up(v.at(0) * 255), round_up(v.at(1) * 255), round_up(v.at(2) * 255));
+}
+
+static inline Vector3D tup_to_point3d(std::vector<double> v) {
+	// Call v.at(2) first since it allows us to elide checks for the
+	// other positions.
+	auto z = v.at(2), y = v[1], x = v[0];
+	return Vector3D::point(x, y, z);
 }

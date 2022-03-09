@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include "easy_image.h"
 #include "ini_configuration.h"
 
