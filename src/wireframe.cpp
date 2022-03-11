@@ -35,7 +35,7 @@ namespace wireframe {
 
 		mat_rot_y(1, 1) = mat_rot_y(3, 3) = cos(rot_y);
 		mat_rot_y(1, 3) = -sin(rot_y);
-		mat_rot_y(3, 1) = mat_rot_y(1, 3);
+		mat_rot_y(3, 1) = -mat_rot_y(1, 3);
 
 		mat_rot_z(1, 1) = mat_rot_z(2, 2) = cos(rot_z);
 		mat_rot_z(1, 2) = sin(rot_z);
