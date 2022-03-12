@@ -37,3 +37,40 @@ static inline Vector3D tup_to_point3d(std::vector<double> v) {
 	auto z = v.at(2), y = v[1], x = v[0];
 	return Vector3D::point(x, y, z);
 }
+
+struct Rotation {
+	double u, v;
+
+	constexpr Rotation() : u(1), v(0) {}
+	constexpr Rotation(double a) : u(std::cos(a)), v(std::sin(a)) {}
+	constexpr Rotation(double u, double v) : u(u), v(v) {}
+
+	constexpr Rotation inv() const {
+		return { u, -v };
+	}
+
+	// TODO make matrix constructor & accessors constexpr
+	Matrix x() const {
+		Matrix m;
+		m(2, 2) = m(3, 3) = u;
+		m(2, 3) = v;
+		m(3, 2) = -m(2, 3);
+		return m;
+	}
+
+	Matrix y() const {
+		Matrix m;
+		m(1, 1) = m(3, 3) = u;
+		m(1, 3) = -v;
+		m(3, 1) = -m(1, 3);
+		return m;
+	}
+
+	Matrix z() const {
+		Matrix m;
+		m(1, 1) = m(2, 2) = u;
+		m(1, 2) = v;
+		m(2, 1) = -m(1, 2);
+		return m;
+	}
+};
