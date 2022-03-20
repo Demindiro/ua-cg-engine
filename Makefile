@@ -3,6 +3,10 @@ INI   := $(patsubst assets/%,%,$(wildcard assets/*.ini))
 
 .PHONY: build build-debug $(INI) test
 
+ARCHIVE := s0215648
+
+CPUS := $(shell nproc)
+
 build:
 	cmake -DCMAKE_BUILD_TYPE=Release -B $@
 	cd $@ && make -j$(CPUS)
@@ -38,7 +42,7 @@ gen-%: build
 _gen-%:
 	cd assets && ../build/engine $(patsubst _gen-%,%,$@)
 
-archive.tar.gz: $(wildcard src/*) $(wildcard include/*) \
+$(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
 	$(wildcard assets/stochastic_*.L2D) $(wildcard assets/stochastic_*.ini) \
-	CMakeLists.txt LICENSE
+		CMakeLists.txt LICENSE README.md
 	tar czvf $@ $^

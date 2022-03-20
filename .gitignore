@@ -4,4 +4,4 @@ build-debug/
 perf.data
 perf.data.old
 flamegraph.svg
-archive.tar.gz
+*.tar.gz
