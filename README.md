@@ -8,17 +8,17 @@ X: Niet werkend of niet geïmplementeerd
 
 |   | Functionaliteit      | Status |
 |---|---------------------------|---|
-| 1 | 2D L-systemen             |   |
-|   | Met haakjes               |   |
-|   | Stochastisch              |   |
-| 2 | Transformaties            |   |
-|   | Eye-point                 |   |
-|   | Projectie                 |   |
-| 3 | Platonische Lichamen      |   |
-|   | Kegel en cylinder         |   |
-|   | Bol                       |   |
-|   | Torus                     |   |
-|   | 3D L-systemen             |   |
+| 1 | 2D L-systemen             | V |
+|   | Met haakjes               | V |
+|   | Stochastisch              | V |
+| 2 | Transformaties            | V |
+|   | Eye-point                 | V |
+|   | Projectie                 | V |
+| 3 | Platonische Lichamen      | V |
+|   | Kegel en cylinder         | V |
+|   | Bol                       | V |
+|   | Torus                     | V |
+|   | 3D L-systemen             | V |
 | 4 | Z-buffering (lijnen)      |   |
 | 5 | Triangulatie              |   |
 |   | Z-buffering (driehoeken)  |   |
@@ -36,13 +36,16 @@ X: Niet werkend of niet geïmplementeerd
 |   | UV-coordinaten            |   |
 |   | Cube mapping              |   |
 
-Geïmplementeerde vorm van texture mapping: ...
+Geïmplementeerde vorm van texture mapping: N/A
 
 ## Gekende problemen 
-...
+
+Geen
+
 ## Niet-gequoteerde functionaliteit
-...
+
+- Inleiding / Intro
 
 ## Extra functionaliteit, niet in de opgaves beschreven
-...
 
+Geen
