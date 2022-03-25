@@ -581,13 +581,13 @@ namespace wireframe {
 		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
 	}
 
-	static void torus(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	static void torus(ini::Section &conf, vector<Vector3D> &points, int &n, int &m) {
 		auto mr = conf["R"].as_double_or_die();
 		auto sr = conf["r"].as_double_or_die();
-		auto n = conf["n"].as_int_or_die();
-		auto m = conf["m"].as_int_or_die();
+		n = conf["n"].as_int_or_die();
+		m = conf["m"].as_int_or_die();
 
-		vector<Vector3D> points(m * n);
+		points = vector<Vector3D>(m * n);
 
 		double d = 2 * M_PI / m;
 		for (int i = 0; i < m; i++) {
@@ -604,16 +604,36 @@ namespace wireframe {
 			}
 		}
 
-		vector<Edge> edges;
+	}
 
+	static void torus(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points;
+		int n, m;
+		torus(conf, points, n, m);
+		vector<Edge> edges;
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < m; j++) {
 				edges.push_back({ i * m + j, i * m + (j + 1) % m });
 				edges.push_back({ i * m + j, (i + 1) % n * m + j });
 			}
 		}
-
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
+	}
+
+	static void torus(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points;
+		int n, m;
+		torus(conf, points, n, m);
+		vector<Face> faces;
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < m; j++) {
+				int k = (i + 1) % n;
+				int l = (j + 1) % m;
+				faces.push_back({ i * m + j, k * m + j, i * m + l });
+				faces.push_back({ k * m + l, k * m + j, i * m + l });
+			}
+		}
+		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
 	}
 
 	struct Cursor3D {
@@ -802,15 +822,10 @@ namespace wireframe {
 				cone(fig, mat_eye, triangles);
 			} else if (type == "Sphere") {
 				sphere(fig, mat_eye, triangles);
-				/*
 			} else if (type == "Torus") {
-				torus(fig, mat_eye, lines);
-			} else if (type == "3DLSystem") {
-				l_system(fig, mat_eye, lines);
-				*/
+				torus(fig, mat_eye, triangles);
 			} else {
-				// TODO
-				//throw TypeException(type);
+				throw TypeException(type);
 			}
 		}
 
