@@ -278,8 +278,8 @@ namespace wireframe {
 
 		vector<Vector3D> points;
 		points.reserve(n * 2);
-		circle(points, n, -height / 2);
-		circle(points, n,  height / 2);
+		circle(points, n, 0);
+		circle(points, n, height);
 
 		vector<Edge> edges(n * 3);
 		for (int i = 0; i < n; i++) {
@@ -297,8 +297,8 @@ namespace wireframe {
 
 		vector<Vector3D> points;
 		points.reserve(n + 1);
-		circle(points, n, -height / 2);
-		points.push_back(Vector3D::point(0, 0, height / 2));
+		circle(points, n, 0);
+		points.push_back(Vector3D::point(0, 0, height));
 
 		vector<Edge> edges(n * 2);
 		for (int i = 0; i < n; i++) {
