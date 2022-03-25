@@ -546,11 +546,11 @@ namespace wireframe {
 		faces = new_faces;
 	}
 
-	static void sphere(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	static void sphere(ini::Section &conf, vector<Vector3D> &points, vector<Edge> &edges, vector<Face> &faces) {
 		auto n = conf["n"].as_int_or_die();
-		vector<Vector3D> points(12);
-		vector<Edge> edges(30);
-		vector<Face> faces(20);
+		points = vector<Vector3D>(12);
+		edges = vector<Edge>(30);
+		faces = vector<Face>(20);
 
 		icosahedron(points.data());
 		icosahedron(edges.data());
@@ -563,8 +563,22 @@ namespace wireframe {
 		for (auto &p : points) {
 			p.normalise();
 		}
+	}
 
+	static void sphere(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points;
+		vector<Edge> edges;
+		vector<Face> faces;
+		sphere(conf, points, edges, faces);
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
+	}
+
+	static void sphere(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points;
+		vector<Edge> edges;
+		vector<Face> faces;
+		sphere(conf, points, edges, faces);
+		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
 	}
 
 	static void torus(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
@@ -786,9 +800,9 @@ namespace wireframe {
 				cylinder(fig, mat_eye, triangles);
 			} else if (type == "Cone") {
 				cone(fig, mat_eye, triangles);
-				/*
 			} else if (type == "Sphere") {
-				sphere(fig, mat_eye, lines);
+				sphere(fig, mat_eye, triangles);
+				/*
 			} else if (type == "Torus") {
 				torus(fig, mat_eye, lines);
 			} else if (type == "3DLSystem") {
