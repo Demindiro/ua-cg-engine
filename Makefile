@@ -21,6 +21,9 @@ build-debug:
 test-line-drawings: build-debug
 	cd assets && for f in line_*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-zbuffering: build-debug
+	cd assets && for f in z_buffering*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 test: $(INI)
 
 $(INI): build-debug
@@ -46,3 +49,6 @@ $(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
 	$(wildcard assets/stochastic_*.L2D) $(wildcard assets/stochastic_*.ini) \
 		CMakeLists.txt LICENSE README.md
 	tar czvf $@ $^
+
+clean::
+	rm -f $(ARCHIVE) assets/*.bmp

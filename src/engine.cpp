@@ -31,6 +31,8 @@ img::EasyImage generate_image(const ini::Configuration &conf) {
 		return wireframe::wireframe(conf, false);
 	} else if (type == "ZBufferedWireframe") {
 		return wireframe::wireframe(conf, true);
+	} else if (type == "ZBuffering") {
+		return wireframe::triangles(conf);
 	} else {
 		throw TypeException(type);
 	}

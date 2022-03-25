@@ -446,6 +446,10 @@ class Vector3D
                 static Vector3D cross(Vector3D        lhs,
                                       const Vector3D &rhs);
 
+                Vector3D cross(const Vector3D &rhs) {
+					return Vector3D::cross(*this, rhs);
+				}
+
                 /**
                  * \brief Normalises a vector.
                  *
