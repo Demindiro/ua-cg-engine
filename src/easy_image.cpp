@@ -22,6 +22,7 @@
 #include <math.h>
 #include <cstring>
 #include "engine.h"
+#include "zbuffer.h"
 
 #ifndef le32toh
 #define le32toh(x) (x)
@@ -202,6 +203,64 @@ void img::EasyImage::draw_line(unsigned int x0, unsigned int y0,
 		}
 	}
 }
+
+void img::EasyImage::draw_zbuf_line(
+	ZBuffer &zbuffer,
+	unsigned int x0, unsigned int y0, double z0,
+	unsigned int x1, unsigned int y1, double z1,
+	Color color
+) {
+	assert(x0 < this->width && y0 < this->height);
+	assert(x1 < this->width && y1 < this->height);
+	double inv_z0 = 1 / z0, inv_z1 = 1 / z1;
+	double a = NAN;
+	auto set = [&](unsigned int x, unsigned int y, unsigned int i) {
+		double p = i / a;
+		// We always start from p0
+		double inv_z = p * inv_z0 + (1 - p) * inv_z1;
+		if (zbuffer.replace(x, y, inv_z)) {
+			(*this)(x, y) = color;
+		}
+	};
+
+	if (x0 == x1) {
+		// special case for x0 == x1
+		a = std::max(y0, y1);
+		for (unsigned int i = std::min(y0, y1); i <= std::max(y0, y1); i++) {
+			set(x0, i, i);
+		}
+	} else if (y0 == y1) {
+		// special case for y0 == y1
+		a = std::max(x0, x1);
+		for (unsigned int i = std::min(x0, x1); i <= std::max(x0, x1); i++) {
+			set(i, y0, i);
+		}
+	} else {
+		if (x0 > x1) {
+			// flip points if x1>x0: we want x0 to have the lowest value
+			std::swap(x0, x1);
+			std::swap(y0, y1);
+		}
+		double m = ((double)y1 - (double)y0) / ((double)x1 - (double)x0);
+		if (-1.0 <= m && m <= 1.0) {
+			a = x1 - x0;
+			for (unsigned int i = 0; i <= (x1 - x0); i++) {
+				set(x0 + i, (unsigned int)round_up(y0 + m * i), i);
+			}
+		} else if (m > 1.0) {
+			a = y1 - y0;
+			for (unsigned int i = 0; i <= (y1 - y0); i++) {
+				set((unsigned int)round_up(x0 + (i / m)), y0 + i, i);
+			}
+		} else if (m < -1.0) {
+			a = y0 - y1;
+			for (unsigned int i = 0; i <= (y0 - y1); i++) {
+				set((unsigned int)round_up(x0 - (i / m)), y0 - i, i);
+			}
+		}
+	}
+}
+
 std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
 
 	// temporaryily enable exceptions on output stream

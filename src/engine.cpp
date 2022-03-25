@@ -28,7 +28,9 @@ img::EasyImage generate_image(const ini::Configuration &conf) {
 	} else if (type == "2DLSystem") {
 		return l_system::l_2d(conf);
 	} else if (type == "Wireframe") {
-		return wireframe::wireframe(conf);
+		return wireframe::wireframe(conf, false);
+	} else if (type == "ZBufferedWireframe") {
+		return wireframe::wireframe(conf, true);
 	} else {
 		throw TypeException(type);
 	}

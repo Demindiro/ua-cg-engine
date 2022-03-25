@@ -51,7 +51,7 @@ namespace wireframe {
 		return Vector3D::point(r_sin_phi * cos(theta), r_sin_phi * sin(theta), r * cos(phi));
 	}
 
-	static void line_drawing(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void line_drawing(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		// Read transformation & color
 		auto mat = transform_from_conf(conf, mat_project);
 		auto color = color_from_conf(conf);
@@ -71,7 +71,7 @@ namespace wireframe {
 		for (int i = 0; i < lines_n; i++) {
 			auto line = conf[string("line") + to_string(i)].as_int_tuple_or_die();
 			auto b = points.at(line.at(1)), a = points.at(line.at(0));
-			lines.push_back({{a.x, a.y}, {b.x, b.y}, color});
+			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color});
 		}
 	}
 
@@ -89,7 +89,7 @@ namespace wireframe {
 		int a, b, c;
 	};
 
-	static void platonic(ini::Section &conf, Matrix &project, vector<Line2D> &lines, Vector3D *points, int points_len, Edge *edges, int edges_len) {
+	static void platonic(ini::Section &conf, Matrix &project, vector<Line3D> &lines, Vector3D *points, int points_len, Edge *edges, int edges_len) {
 		auto mat = transform_from_conf(conf, project);
 		auto color = color_from_conf(conf);
 
@@ -102,11 +102,11 @@ namespace wireframe {
 			assert(c->b < points_len);
 			auto a = points[c->a];
 			auto b = points[c->b];
-			lines.push_back({{a.x, a.y}, {b.x, b.y}, color});
+			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color});
 		}
 	}
 	
-	static void cube(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		Vector3D points[8] = {
 			Vector3D::point( 1,  1,  1),
 			Vector3D::point( 1,  1, -1),
@@ -137,7 +137,7 @@ namespace wireframe {
 		platonic(conf, mat_project, lines, points, 8, edges, 12);
 	}
 
-	static void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		Vector3D points[6] = {
 			Vector3D::point( 1, -1, -1),
 			Vector3D::point(-1,  1, -1),
@@ -155,7 +155,7 @@ namespace wireframe {
 		platonic(conf, mat_project, lines, points, 4, edges, 6);
 	}
 
-	static void octahedron(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void octahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		Vector3D points[6] = {
 			Vector3D::point( 1,  0,  0),
 			Vector3D::point(-1,  0,  0),
@@ -227,7 +227,7 @@ namespace wireframe {
 		}
 	}
 
-	static void icosahedron(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void icosahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		Vector3D points[12];
 		Edge edges[30];
 		icosahedron_points(points);
@@ -235,7 +235,7 @@ namespace wireframe {
 		platonic(conf, mat_project, lines, points, 12, edges, 30);
 	}
 
-	static void dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		Vector3D points[20];
 		Edge edges[30];
 		Vector3D ico[12];
@@ -272,7 +272,7 @@ namespace wireframe {
 		}
 	}
 
-	static void cylinder(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void cylinder(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		auto n = conf["n"].as_int_or_die();
 		auto height = conf["height"].as_double_or_die();
 
@@ -291,7 +291,7 @@ namespace wireframe {
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	static void cone(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void cone(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		auto n = conf["n"].as_int_or_die();
 		auto height = conf["height"].as_double_or_die();
 
@@ -346,7 +346,7 @@ namespace wireframe {
 		faces = new_faces;
 	}
 
-	static void sphere(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void sphere(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		auto n = conf["n"].as_int_or_die();
 		vector<Vector3D> points(12);
 		vector<Edge> edges(30);
@@ -367,7 +367,7 @@ namespace wireframe {
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	static void torus(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void torus(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		auto mr = conf["R"].as_double_or_die();
 		auto sr = conf["r"].as_double_or_die();
 		auto n = conf["n"].as_int_or_die();
@@ -413,11 +413,11 @@ namespace wireframe {
 		Rotation drot;
 		Cursor3D current;
 		Cursor3D *saved;
-		vector<Line2D> &lines;
+		vector<Line3D> &lines;
 		mt19937 rng;
 		img::Color color;
 
-		DrawSystem3D(vector<Line2D> &lines) : lines(lines) {
+		DrawSystem3D(vector<Line3D> &lines) : lines(lines) {
 			random_device rd;
 			rng = mt19937(rd());
 		}
@@ -467,13 +467,13 @@ namespace wireframe {
 					auto p = s.current.pos * s.project;
 					s.current.pos += Vector3D::point(1, 0, 0) * s.current.rot;
 					auto q = s.current.pos * s.project;
-					s.lines.push_back({{p.x, p.y}, {q.x, q.y}, s.color});
+					s.lines.push_back({{p.x, p.y, p.z}, {q.x, q.y, q.z}, s.color});
 				}
 			}
 		}
 	}
 
-	static void l_system(ini::Section &conf, Matrix &mat_project, vector<Line2D> &lines) {
+	static void l_system(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		DrawSystem3D s(lines);
 		Cursor3D saved[2048];
 		{
@@ -488,7 +488,7 @@ namespace wireframe {
 		draw_sys(s, s.sys.get_initiator(), s.sys.get_nr_iterations());
 	}
 
-	img::EasyImage wireframe(const ini::Configuration &conf) {
+	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		auto bg = tup_to_color(conf["General"]["backgroundcolor"].as_double_tuple_or_die());
 		auto size = conf["General"]["size"].as_int_or_die();
 		auto eye = tup_to_point3d(conf["General"]["eye"].as_double_tuple_or_die());
@@ -522,7 +522,7 @@ namespace wireframe {
 		}
 
 		// Parse figures
-		vector<Line2D> lines;
+		vector<Line3D> lines;
 		for (int i = 0; i < nr_fig; i++) {
 			auto fig = conf[string("Figure") + to_string(i)];
 			auto type = fig["type"].as_string_or_die();
@@ -554,6 +554,6 @@ namespace wireframe {
 		}
 
 		// Draw
-		return Lines2D(lines).draw(size, bg);
+		return Lines3D(lines).draw(size, bg, with_z);
 	}
 }
