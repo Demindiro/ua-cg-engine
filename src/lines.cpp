@@ -1,6 +1,7 @@
 #include "lines.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include "easy_image.h"
 #include "engine.h"
 #include "zbuffer.h"
@@ -126,12 +127,14 @@ img::EasyImage Triangles3D::draw(uint size, Color background) const {
 
 	// Determine bounds
 	auto p = triangles[0].a;
-	double min_x = p.x, min_y = p.y, max_x = p.x, max_y = p.y;
+	double min_x, max_x, min_y, max_y;
+	min_x = min_y = +numeric_limits<double>::infinity();
+	max_x = max_y = -numeric_limits<double>::infinity();
 	for (auto &t : triangles) {
-		min_x = min(min(min_x, t.a.x), min(t.b.x, t.c.x));
-		min_y = min(min(min_y, t.a.y), min(t.b.y, t.c.y));
-		max_x = max(max(max_x, t.a.x), max(t.b.x, t.c.x));
-		max_y = max(max(max_y, t.a.y), max(t.b.y, t.c.y));
+		min_x = min(min(min_x, t.a.x / -t.a.z), min(t.b.x / -t.b.z, t.c.x / -t.c.z));
+		min_y = min(min(min_y, t.a.y / -t.a.z), min(t.b.y / -t.b.z, t.c.y / -t.c.z));
+		max_x = max(max(max_x, t.a.x / -t.a.z), max(t.b.x / -t.b.z, t.c.x / -t.c.z));
+		max_y = max(max(max_y, t.a.y / -t.a.z), max(t.b.y / -t.b.z, t.c.y / -t.c.z));
 	}
 
 	auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);

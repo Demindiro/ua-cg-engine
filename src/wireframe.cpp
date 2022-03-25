@@ -168,9 +168,9 @@ namespace wireframe {
 		faces[7] = { 7, 3, 6 };
 		// Z
 		faces[ 8] = { 0, 2, 4 };
-		faces[ 9] = { 6, 2, 4 };
+		faces[ 9] = { 2, 6, 4 };
 		faces[10] = { 1, 3, 5 };
-		faces[11] = { 7, 3, 5 };
+		faces[11] = { 3, 7, 5 };
 	}
 
 	static void cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {

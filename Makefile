@@ -21,6 +21,9 @@ build-debug:
 test-line-drawings: build-debug
 	cd assets && for f in line_*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-zbuffering: build-debug
+	cd assets && for f in z_buffering*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 test: $(INI)
 
 $(INI): build-debug

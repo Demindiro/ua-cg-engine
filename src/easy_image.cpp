@@ -270,11 +270,29 @@ void img::EasyImage::draw_zbuf_triag(
 	Color color
 ) {
 	using namespace std;
+
+	// Find repricoral Z-values first, which require unprojected points
+	// Optimized version of 1 / (3 * a.z) + 1 / (3 * b.z) + 1 / (3 * c.z)
+	// The former will emit 3 div instructions even with -Ofast
+	double inv_g_z = (b.z * c.z + a.z * c.z + a.z * b.z) / (3 * a.z * b.z * c.z);
+	double dzdx, dzdy;
+	{
+		auto u = Vector3D::vector(b.x - a.x, b.y - a.y, b.z - a.z);
+		auto v = Vector3D::vector(c.x - a.x, c.y - a.y, c.z - a.z);
+		auto w = u.cross(v);
+		auto dk = d * w.dot(Vector3D::point(a.x, a.y, a.z));
+		dzdx = -w.x / dk;
+		dzdy = -w.y / dk;
+	}
 	
 	// Project
-	a.x = a.x * d + dx, a.y = a.y * d + dy;
-	b.x = b.x * d + dx, b.y = b.y * d + dy;
-	c.x = c.x * d + dx, c.y = c.y * d + dy;
+	a.x = a.x * d / -a.z + dx, a.y = a.y * d / -a.z + dy;
+	b.x = b.x * d / -b.z + dx, b.y = b.y * d / -b.z + dy;
+	c.x = c.x * d / -c.z + dx, c.y = c.y * d / -c.z + dy;
+
+	// These center coordaintes must be projected.
+	double g_x = (a.x + b.x + c.x) / 3;
+	double g_y = (a.y + b.y + c.y) / 3;
 
 #if __cplusplus < 201703L
 	auto clamp = [](double v, double min_v, double max_v) {
@@ -287,8 +305,6 @@ void img::EasyImage::draw_zbuf_triag(
 	double y_max = max(max(a.y, b.y), c.y);
 	unsigned int from_y = round_up(y_min + 0.5);
 	unsigned int to_y   = round_up(y_max - 0.5);
-	from_y = clamp(from_y, 0, get_height() - 1);
-	to_y   = clamp(to_y  , 0, get_height() - 1);
 
 	for (unsigned int y = from_y; y <= to_y; y++) {
 		// Find intersections
@@ -308,11 +324,12 @@ void img::EasyImage::draw_zbuf_triag(
 		double x_max = max(xl, xr);
 		unsigned int from_x = round_up(x_min + 0.5);
 		unsigned int to_x   = round_up(x_max - 0.5);
-		from_x = clamp(from_x, 0, get_width() - 1);
-		to_x   = clamp(to_x  , 0, get_width() - 1);
 
 		for (unsigned int x = from_x; x <= to_x; x++) {
-			(*this)(x, y) = color;
+			auto inv_z = 1.0001 * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
+			if (zbuffer.replace(x, y, inv_z)) {
+				(*this)(x, y) = color;
+			}
 		}
 	}
 }
