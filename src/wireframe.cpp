@@ -425,6 +425,12 @@ namespace wireframe {
 		}
 	}
 
+	static void circle(vector<Face> &faces, int n, int offt) {
+		for (int i = 0; i < n - 2; i++) {
+			faces.push_back({ offt, offt + i + 1, offt + i + 2 });
+		}
+	}
+
 	static void cylinder(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		auto n = conf["n"].as_int_or_die();
 		auto height = conf["height"].as_double_or_die();
@@ -442,6 +448,28 @@ namespace wireframe {
 		}
 
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
+	}
+
+	static void cylinder(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		auto n = conf["n"].as_int_or_die();
+		auto height = conf["height"].as_double_or_die();
+
+		vector<Vector3D> points;
+		vector<Face> faces;
+		points.reserve(n * 2);
+		faces.reserve(n * 2);
+		circle(points, n, 0);
+		circle(points, n, height);
+		circle(faces, n, 0);
+		circle(faces, n, n);
+
+		for (int i = 0; i < n; i++) {
+			int j = (i + 1) % n;
+			faces.push_back({ i, j, n + i });
+			faces.push_back({ j, n + i, n + j });
+		}
+
+		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
 	}
 
 	static void cone(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
@@ -735,9 +763,9 @@ namespace wireframe {
 				icosahedron(fig, mat_eye, triangles);
 			} else if (type == "Dodecahedron") {
 				dodecahedron(fig, mat_eye, triangles);
-				/*
 			} else if (type == "Cylinder") {
-				cylinder(fig, mat_eye, lines);
+				cylinder(fig, mat_eye, triangles);
+				/*
 			} else if (type == "Cone") {
 				cone(fig, mat_eye, lines);
 			} else if (type == "Sphere") {
