@@ -4,5 +4,5 @@
 #include "ini_configuration.h"
 
 namespace wireframe {
-	img::EasyImage wireframe(const ini::Configuration &);
+	img::EasyImage wireframe(const ini::Configuration &, bool with_z);
 }
