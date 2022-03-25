@@ -284,7 +284,7 @@ namespace wireframe {
 		platonic(conf, mat_project, lines, points, 6, faces, 8);
 	}
 
-	static void icosahedron_points(Vector3D points[12]) {
+	static void icosahedron(Vector3D points[12]) {
 		auto p = sqrtl(5) / 2;
 		points[0] = Vector3D::point(0, 0,  p);
 		points[1] = Vector3D::point(0, 0, -p);
@@ -300,7 +300,7 @@ namespace wireframe {
 		}
 	}
 
-	static void icosahedron_edges(Edge edges[30]) {
+	static void icosahedron(Edge edges[30]) {
 		for (int i = 0; i < 5; i++) {
 			// Top & bottom "hat"
 			edges[0 + i] = { 0, 2 + i };
@@ -314,7 +314,7 @@ namespace wireframe {
 		}
 	}
 
-	static void icosahedron_faces(Face faces[20]) {
+	static void icosahedron(Face faces[20]) {
 		for (int i = 0; i < 5; i++) {
 			// TODO double check order of vertices
 			int j = (i + 1) % 5;
@@ -330,16 +330,24 @@ namespace wireframe {
 	static void icosahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		Vector3D points[12];
 		Edge edges[30];
-		icosahedron_points(points);
-		icosahedron_edges(edges);
+		icosahedron(points);
+		icosahedron(edges);
 		platonic(conf, mat_project, lines, points, 12, edges, 30);
+	}
+
+	static void icosahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		Vector3D points[12];
+		Face faces[20];
+		icosahedron(points);
+		icosahedron(faces);
+		platonic(conf, mat_project, triangles, points, 12, faces, 20);
 	}
 
 	static void dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		Vector3D points[20];
 		Edge edges[30];
 		Vector3D ico[12];
-		icosahedron_points(ico);
+		icosahedron(ico);
 		for (int i = 0; i < 5; i++) {
 			int j = (i + 1) % 5;
 
@@ -452,9 +460,9 @@ namespace wireframe {
 		vector<Edge> edges(30);
 		vector<Face> faces(20);
 
-		icosahedron_points(points.data());
-		icosahedron_edges(edges.data());
-		icosahedron_faces(faces.data());
+		icosahedron(points.data());
+		icosahedron(edges.data());
+		icosahedron(faces.data());
 
 		for (int i = 0; i < n; i++) {
 			bisect(points, edges, faces);
@@ -678,9 +686,9 @@ namespace wireframe {
 				tetrahedron(fig, mat_eye, triangles);
 			} else if (type == "Octahedron") {
 				octahedron(fig, mat_eye, triangles);
-				/*
 			} else if (type == "Icosahedron") {
-				icosahedron(fig, mat_eye, lines);
+				icosahedron(fig, mat_eye, triangles);
+				/*
 			} else if (type == "Dodecahedron") {
 				dodecahedron(fig, mat_eye, lines);
 			} else if (type == "Cylinder") {
