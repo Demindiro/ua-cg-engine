@@ -9,6 +9,36 @@ using namespace std;
 
 typedef unsigned int uint;
 
+static img::EasyImage create_img(
+	double min_x, double min_y,
+	double max_x, double max_y,
+	uint size,
+	Color background,
+	double &d,
+	double &offset_x, double &offset_y
+) {
+	// Determine size, scale & offset
+	double size_x = max_x - min_x, size_y = max_y - min_y;
+
+	// Don't bother if the width or height is 0
+	if (size_x == 0 || size_y == 0) {
+		return img::EasyImage(0, 0);
+	}
+
+	double img_s = size / max(size_x, size_y);
+	double img_x = size_x * img_s, img_y = size_y * img_s;
+
+	d = img_x / size_x * 0.95;
+	offset_x = (img_x - d * (min_x + max_x)) / 2;
+	offset_y = (img_y - d * (min_y + max_y)) / 2;
+
+	// Create image
+	img::EasyImage img(round_up(img_x), round_up(img_y));
+	img.clear(background);
+
+	return img;
+}
+
 template<class T>
 static img::EasyImage create_img(T &lines, uint size, Color background, double &d, double &offset_x, double &offset_y) {
 	if (lines.empty()) {
@@ -25,26 +55,7 @@ static img::EasyImage create_img(T &lines, uint size, Color background, double &
 		max_y = max(max(max_y, l.a.y), l.b.y);
 	}
 
-	// Determine size, scale & offset
-	double size_x = max_x - min_x, size_y = max_y - min_y;
-
-	double img_s = size / max(size_x, size_y);
-	double img_x = size_x * img_s, img_y = size_y * img_s;
-
-	d = img_x / size_x * 0.95;
-	offset_x = (img_x - d * (min_x + max_x)) / 2;
-	offset_y = (img_y - d * (min_y + max_y)) / 2;
-
-	// Don't bother if the width or height is 0
-	if (size_x == 0 || size_y == 0) {
-		return img::EasyImage(0, 0);
-	}
-
-	// Create image
-	img::EasyImage img(round_up(img_x), round_up(img_y));
-	img.clear(background);
-
-	return img;
+	return create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
 }
 
 inline void Line2D::draw(img::EasyImage &img) const {
@@ -96,6 +107,39 @@ img::EasyImage Lines3D::draw(uint size, Color background, bool with_z) const {
 			Point2D b(l.b.x * d + offset_x, l.b.y * d + offset_y);
 			Line2D(a, b, l.color).draw(img);
 		}
+	}
+
+	return img;
+}
+
+void Triangles3D::add(Triangle3D triangle) {
+	triangles.push_back(triangle);
+}
+
+img::EasyImage Triangles3D::draw(uint size, Color background) const {
+	// TODO wdym "unitialized", GCC?
+	double d = NAN, offset_x = NAN, offset_y = NAN;
+
+	if (triangles.empty()) {
+		return img::EasyImage(0, 0);
+	}
+
+	// Determine bounds
+	auto p = triangles[0].a;
+	double min_x = p.x, min_y = p.y, max_x = p.x, max_y = p.y;
+	for (auto &t : triangles) {
+		min_x = min(min(min_x, t.a.x), min(t.b.x, t.c.x));
+		min_y = min(min(min_y, t.a.y), min(t.b.y, t.c.y));
+		max_x = max(max(max_x, t.a.x), max(t.b.x, t.c.x));
+		max_y = max(max(max_y, t.a.y), max(t.b.y, t.c.y));
+	}
+
+	auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
+
+	// Transform & draw triangles
+	ZBuffer z(img.get_width(), img.get_height());
+	for (auto &t : triangles) {
+		img.draw_zbuf_triag(z, t.a, t.b, t.c, d, offset_x, offset_y, t.color);
 	}
 
 	return img;

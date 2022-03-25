@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "easy_image.h"
+#include "point3d.h"
 #include "zbuffer.h"
 
 using Color = img::Color;
@@ -33,12 +34,6 @@ public:
 	img::EasyImage draw(unsigned int size, Color background) const;
 };
 
-struct Point3D {
-	double x, y, z;
-
-	Point3D(double x, double y, double z) : x(x), y(y), z(z) {}
-};
-
 struct Line3D {
 	Point3D a, b;
 	Color color;
@@ -58,4 +53,23 @@ public:
 	void add(Line3D);
 	
 	img::EasyImage draw(unsigned int size, Color background, bool with_z) const;
+};
+
+struct Triangle3D {
+	Point3D a, b, c;
+	Color color;
+
+	Triangle3D(Point3D a, Point3D b, Point3D c, Color color) : a(a), b(b), c(c), color(color) {}
+};
+
+class Triangles3D {
+	std::vector<Triangle3D> triangles;
+
+public:
+	Triangles3D() {}
+	Triangles3D(std::vector<Triangle3D> triangles) : triangles(triangles) {}
+
+	void add(Triangle3D);
+
+	img::EasyImage draw(unsigned int size, Color background) const;
 };

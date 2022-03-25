@@ -22,6 +22,7 @@
 #include <math.h>
 #include <cstring>
 #include "engine.h"
+#include "point3d.h"
 #include "zbuffer.h"
 
 #ifndef le32toh
@@ -257,6 +258,61 @@ void img::EasyImage::draw_zbuf_line(
 			for (unsigned int i = 0; i <= (y0 - y1); i++) {
 				set((unsigned int)round_up(x0 - (i / m)), y0 - i, i);
 			}
+		}
+	}
+}
+
+void img::EasyImage::draw_zbuf_triag(
+	ZBuffer &zbuffer,
+	Point3D a, Point3D b, Point3D c,
+	double d,
+	double dx, double dy,
+	Color color
+) {
+	using namespace std;
+	
+	// Project
+	a.x = a.x * d + dx, a.y = a.y * d + dy;
+	b.x = b.x * d + dx, b.y = b.y * d + dy;
+	c.x = c.x * d + dx, c.y = c.y * d + dy;
+
+#if __cplusplus < 201703L
+	auto clamp = [](double v, double min_v, double max_v) {
+		return max(min_v, min(v, max_v));
+	};
+#endif
+
+	// Y bounds
+	double y_min = min(min(a.y, b.y), c.y);
+	double y_max = max(max(a.y, b.y), c.y);
+	unsigned int from_y = round_up(y_min + 0.5);
+	unsigned int to_y   = round_up(y_max - 0.5);
+	from_y = clamp(from_y, 0, get_height() - 1);
+	to_y   = clamp(to_y  , 0, get_height() - 1);
+
+	for (unsigned int y = from_y; y <= to_y; y++) {
+		// Find intersections
+		auto f = [y](Point3D &p, Point3D &q, double def = INFINITY) {
+			return (y - p.y) * (y - q.y) <= 0
+				? q.x + (p.x - q.x) * (y - q.y) / (p.y - q.y)
+				: def;
+		};
+		auto g = [f](Point3D &p, Point3D &q) {
+			return f(p, q, -INFINITY);
+		};
+		double xl = min(min(f(a, b), f(b, c)), f(c, a));
+		double xr = max(max(g(a, b), g(b, c)), g(c, a));
+
+		// X bounds
+		double x_min = min(xl, xr);
+		double x_max = max(xl, xr);
+		unsigned int from_x = round_up(x_min + 0.5);
+		unsigned int to_x   = round_up(x_max - 0.5);
+		from_x = clamp(from_x, 0, get_width() - 1);
+		to_x   = clamp(to_x  , 0, get_width() - 1);
+
+		for (unsigned int x = from_x; x <= to_x; x++) {
+			(*this)(x, y) = color;
 		}
 	}
 }

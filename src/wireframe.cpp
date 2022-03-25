@@ -105,36 +105,88 @@ namespace wireframe {
 			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color});
 		}
 	}
+
+	static void platonic(ini::Section &conf, Matrix &project, vector<Triangle3D> &triangles, Vector3D *points, int points_len, Face *faces, int faces_len) {
+		auto mat = transform_from_conf(conf, project);
+		auto color = color_from_conf(conf);
+
+		for (auto p = points; p != points + points_len; p++) {
+			*p *= mat;
+		}
+		triangles.reserve(triangles.size() + faces_len);
+		for (auto f = faces; f != faces + faces_len; f++) {
+			assert(f->a < points_len);
+			assert(f->b < points_len);
+			assert(f->c < points_len);
+			auto a = points[f->a];
+			auto b = points[f->b];
+			auto c = points[f->c];
+			triangles.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, {c.x, c.y, c.z}, color});
+		}
+	}
 	
+	static void cube(Vector3D points[8]) {
+		points[0] = Vector3D::point( 1,  1,  1);
+		points[1] = Vector3D::point( 1,  1, -1);
+		points[2] = Vector3D::point( 1, -1,  1);
+		points[3] = Vector3D::point( 1, -1, -1);
+		points[4] = Vector3D::point(-1,  1,  1);
+		points[5] = Vector3D::point(-1,  1, -1);
+		points[6] = Vector3D::point(-1, -1,  1);
+		points[7] = Vector3D::point(-1, -1, -1);
+	}
+
+	static void cube(Edge edges[12]) {
+		// X
+		edges[0] = { 0, 4 };
+		edges[1] = { 1, 5 };
+		edges[2] = { 2, 6 };
+		edges[3] = { 3, 7 };
+		// Y
+		edges[4] = { 0, 2 };
+		edges[5] = { 1, 3 };
+		edges[6] = { 4, 6 };
+		edges[7] = { 5, 7 };
+		// Z
+		edges[ 8] = { 0, 1 };
+		edges[ 9] = { 2, 3 };
+		edges[10] = { 4, 5 };
+		edges[11] = { 6, 7 };
+	}
+
+	static void cube(Face faces[12]) {
+		// TODO fix order of vertices so culling works properly
+		// X
+		faces[0] = { 0, 1, 2 };
+		faces[1] = { 3, 1, 2 };
+		faces[2] = { 4, 5, 6 };
+		faces[3] = { 7, 5, 6 };
+		// Y
+		faces[4] = { 0, 1, 4 };
+		faces[5] = { 5, 1, 4 };
+		faces[6] = { 2, 3, 6 };
+		faces[7] = { 7, 3, 6 };
+		// Z
+		faces[ 8] = { 0, 2, 4 };
+		faces[ 9] = { 6, 2, 4 };
+		faces[10] = { 1, 3, 5 };
+		faces[11] = { 7, 3, 5 };
+	}
+
 	static void cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[8] = {
-			Vector3D::point( 1,  1,  1),
-			Vector3D::point( 1,  1, -1),
-			Vector3D::point( 1, -1,  1),
-			Vector3D::point( 1, -1, -1),
-			Vector3D::point(-1,  1,  1),
-			Vector3D::point(-1,  1, -1),
-			Vector3D::point(-1, -1,  1),
-			Vector3D::point(-1, -1, -1),
-		};
-		Edge edges[12] = {
-			// X
-			{ 0, 4 },
-			{ 1, 5 },
-			{ 2, 6 },
-			{ 3, 7 },
-			// Y
-			{ 0, 2 },
-			{ 1, 3 },
-			{ 4, 6 },
-			{ 5, 7 },
-			// Z
-			{ 0, 1 },
-			{ 2, 3 },
-			{ 4, 5 },
-			{ 6, 7 },
-		};
+		Vector3D points[8];
+		Edge edges[12];
+		cube(points);
+		cube(edges);
 		platonic(conf, mat_project, lines, points, 8, edges, 12);
+	}
+
+	static void cube(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		Vector3D points[8];
+		Face faces[12];
+		cube(points);
+		cube(faces);
+		platonic(conf, mat_project, triangles, points, 8, faces, 12);
 	}
 
 	static void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
@@ -488,38 +540,42 @@ namespace wireframe {
 		draw_sys(s, s.sys.get_initiator(), s.sys.get_nr_iterations());
 	}
 
-	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
-		auto bg = tup_to_color(conf["General"]["backgroundcolor"].as_double_tuple_or_die());
-		auto size = conf["General"]["size"].as_int_or_die();
+	static void common_conf(const ini::Configuration &conf, Color &background, int &size, Matrix &mat_eye, int &nr_fig) {
+		background = tup_to_color(conf["General"]["backgroundcolor"].as_double_tuple_or_die());
+		size = conf["General"]["size"].as_int_or_die();
 		auto eye = tup_to_point3d(conf["General"]["eye"].as_double_tuple_or_die());
-		auto nr_fig = conf["General"]["nrFigures"].as_int_or_die();
+		nr_fig = conf["General"]["nrFigures"].as_int_or_die();
 
 		// Create projection matrix
+		auto r = eye.length();
+		auto theta = atan2(eye.y, eye.x);
+		auto phi = acos(eye.z / r);
+
+		auto theta_sin = sin(theta);
+		auto theta_cos = cos(theta);
+
+		auto phi_sin = sin(phi);
+		auto phi_cos = cos(phi);
+
+		mat_eye(1, 1) = -theta_sin;
+		mat_eye(1, 2) = -theta_cos * phi_cos;
+		mat_eye(1, 3) = theta_cos * phi_sin;
+
+		mat_eye(2, 1) = theta_cos;
+		mat_eye(2, 2) = -theta_sin * phi_cos;
+		mat_eye(2, 3) = theta_sin * phi_sin;
+
+		mat_eye(3, 2) = phi_sin;
+		mat_eye(3, 3) = phi_cos;
+
+		mat_eye(4, 3) = -r;
+	}
+
+	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
+		Color bg;
+		int size, nr_fig;
 		Matrix mat_eye;
-		{
-			auto r = eye.length();
-			auto theta = atan2(eye.y, eye.x);
-			auto phi = acos(eye.z / r);
-
-			auto theta_sin = sin(theta);
-			auto theta_cos = cos(theta);
-
-			auto phi_sin = sin(phi);
-			auto phi_cos = cos(phi);
-
-			mat_eye(1, 1) = -theta_sin;
-			mat_eye(1, 2) = -theta_cos * phi_cos;
-			mat_eye(1, 3) = theta_cos * phi_sin;
-
-			mat_eye(2, 1) = theta_cos;
-			mat_eye(2, 2) = -theta_sin * phi_cos;
-			mat_eye(2, 3) = theta_sin * phi_sin;
-
-			mat_eye(3, 2) = phi_sin;
-			mat_eye(3, 3) = phi_cos;
-
-			mat_eye(4, 3) = -r;
-		}
+		common_conf(conf, bg, size, mat_eye, nr_fig);
 
 		// Parse figures
 		vector<Line3D> lines;
@@ -555,5 +611,48 @@ namespace wireframe {
 
 		// Draw
 		return Lines3D(lines).draw(size, bg, with_z);
+	}
+
+	img::EasyImage triangles(const ini::Configuration &conf) {
+		Color bg;
+		int size, nr_fig;
+		Matrix mat_eye;
+		common_conf(conf, bg, size, mat_eye, nr_fig);
+
+		// Parse figures
+		vector<Triangle3D> triangles;
+		for (int i = 0; i < nr_fig; i++) {
+			auto fig = conf[string("Figure") + to_string(i)];
+			auto type = fig["type"].as_string_or_die();
+			if (type == "Cube") {
+				cube(fig, mat_eye, triangles);
+				/*
+			} else if (type == "Tetrahedron") {
+				tetrahedron(fig, mat_eye, lines);
+			} else if (type == "Octahedron") {
+				octahedron(fig, mat_eye, lines);
+			} else if (type == "Icosahedron") {
+				icosahedron(fig, mat_eye, lines);
+			} else if (type == "Dodecahedron") {
+				dodecahedron(fig, mat_eye, lines);
+			} else if (type == "Cylinder") {
+				cylinder(fig, mat_eye, lines);
+			} else if (type == "Cone") {
+				cone(fig, mat_eye, lines);
+			} else if (type == "Sphere") {
+				sphere(fig, mat_eye, lines);
+			} else if (type == "Torus") {
+				torus(fig, mat_eye, lines);
+			} else if (type == "3DLSystem") {
+				l_system(fig, mat_eye, lines);
+				*/
+			} else {
+				// TODO
+				//throw TypeException(type);
+			}
+		}
+
+		// Draw
+		return Triangles3D(triangles).draw(size, bg);
 	}
 }

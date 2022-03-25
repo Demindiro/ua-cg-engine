@@ -5,4 +5,5 @@
 
 namespace wireframe {
 	img::EasyImage wireframe(const ini::Configuration &, bool with_z);
+	img::EasyImage triangles(const ini::Configuration &);
 }

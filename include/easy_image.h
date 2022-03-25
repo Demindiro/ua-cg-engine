@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <vector>
 #include <iostream>
+#include "point3d.h"
 #include "zbuffer.h"
 /**
  * \brief The namespace of the EasyImage class
@@ -221,11 +222,34 @@ namespace img
 			 */
 			void draw_line(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, Color color);
 
+			/**
+			 * \brief Draw a line accounting for depth
+			 */
 			void draw_zbuf_line(
 				ZBuffer &,
 				unsigned int x0, unsigned int y0, double z0,
 				unsigned int x1, unsigned int y1, double z1,
 				Color
+			);
+
+			/**
+			 * \brief Draw a triangle accounting for depth
+			 *
+			 * \param zbuffer The Z-buffer storing the depth
+			 * \param a       An *unprojected* corner of the triangle
+			 * \param b       An *unprojected* corner of the triangle
+			 * \param c       An *unprojected* corner of the triangle
+			 * \param d       The distance to the projection surface
+			 * \param dx      The offset of the pixels along the X axis
+			 * \param dy      The offset of the pixels along the Y axis
+			 * \param color   The color of the triangle
+			 */
+			void draw_zbuf_triag(
+				ZBuffer &zbuffer,
+				Point3D a, Point3D b, Point3D c,
+				double d,
+				double dx, double dy,
+				Color color
 			);
 
 		private:

@@ -46,3 +46,6 @@ $(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
 	$(wildcard assets/stochastic_*.L2D) $(wildcard assets/stochastic_*.ini) \
 		CMakeLists.txt LICENSE README.md
 	tar czvf $@ $^
+
+clean::
+	rm -f $(ARCHIVE) assets/*.bmp
