@@ -189,22 +189,43 @@ namespace wireframe {
 		platonic(conf, mat_project, triangles, points, 8, faces, 12);
 	}
 
+	static void tetrahedron(Vector3D points[4]) {
+		points[0] = Vector3D::point( 1, -1, -1);
+		points[1] = Vector3D::point(-1,  1, -1);
+		points[2] = Vector3D::point( 1,  1,  1);
+		points[3] = Vector3D::point(-1, -1,  1);
+	}
+
+	static void tetrahedron(Edge edges[6]) {
+		edges[0] = { 0, 1 };
+		edges[1] = { 0, 2 };
+		edges[2] = { 0, 3 };
+		edges[3] = { 1, 2 };
+		edges[4] = { 1, 3 };
+		edges[5] = { 2, 3 };
+	}
+
+	static void tetrahedron(Face faces[4]) {
+		faces[0] = { 0, 1, 2 };
+		faces[1] = { 0, 1, 3 };
+		faces[2] = { 0, 2, 3 };
+		faces[3] = { 1, 2, 3 };
+	}
+
 	static void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[6] = {
-			Vector3D::point( 1, -1, -1),
-			Vector3D::point(-1,  1, -1),
-			Vector3D::point( 1,  1,  1),
-			Vector3D::point(-1, -1,  1),
-		};
-		Edge edges[6] = {
-			{ 0, 1 },
-			{ 0, 2 },
-			{ 0, 3 },
-			{ 1, 2 },
-			{ 1, 3 },
-			{ 2, 3 },
-		};
+		Vector3D points[4];
+		Edge edges[6];
+		tetrahedron(points);
+		tetrahedron(edges);
 		platonic(conf, mat_project, lines, points, 4, edges, 6);
+	}
+
+	static void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		Vector3D points[4];
+		Face faces[6];
+		tetrahedron(points);
+		tetrahedron(faces);
+		platonic(conf, mat_project, triangles, points, 4, faces, 4);
 	}
 
 	static void octahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
@@ -626,9 +647,9 @@ namespace wireframe {
 			auto type = fig["type"].as_string_or_die();
 			if (type == "Cube") {
 				cube(fig, mat_eye, triangles);
-				/*
 			} else if (type == "Tetrahedron") {
-				tetrahedron(fig, mat_eye, lines);
+				tetrahedron(fig, mat_eye, triangles);
+				/*
 			} else if (type == "Octahedron") {
 				octahedron(fig, mat_eye, lines);
 			} else if (type == "Icosahedron") {
