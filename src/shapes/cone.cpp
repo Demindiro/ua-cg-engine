@@ -7,7 +7,7 @@
 using namespace std;
 
 void shapes::cone(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-	auto n = conf["n"].as_int_or_die();
+	auto n = (unsigned int)conf["n"].as_int_or_die();
 	auto height = conf["height"].as_double_or_die();
 
 	vector<Vector3D> points;
@@ -16,7 +16,7 @@ void shapes::cone(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines
 	points.push_back(Vector3D::point(0, 0, height));
 
 	vector<Edge> edges(n * 2);
-	for (int i = 0; i < n; i++) {
+	for (unsigned int i = 0; i < n; i++) {
 		edges[0 * n + i] = { 0 * n + i, 0 * n + (i + 1) % n };
 		edges[1 * n + i] = { 0 * n + i, n };
 	}
@@ -25,7 +25,7 @@ void shapes::cone(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines
 }
 
 void shapes::cone(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-	auto n = conf["n"].as_int_or_die();
+	auto n = (unsigned int)conf["n"].as_int_or_die();
 	auto height = conf["height"].as_double_or_die();
 
 	vector<Vector3D> points;
@@ -36,7 +36,7 @@ void shapes::cone(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &t
 	circle(faces, n, 0);
 	points.push_back(Vector3D::point(0, 0, height));
 
-	for (int i = 0; i < n; i++) {
+	for (unsigned int i = 0; i < n; i++) {
 		faces.push_back({ n, i, (i + 1) % n });
 	}
 

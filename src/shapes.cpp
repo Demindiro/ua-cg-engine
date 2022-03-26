@@ -48,7 +48,7 @@ namespace shapes {
 		return tup_to_color(conf["color"].as_double_tuple_or_die());
 	}
 
-	void platonic(ini::Section &conf, Matrix &project, vector<Line3D> &lines, Vector3D *points, int points_len, Edge *edges, int edges_len) {
+	void platonic(ini::Section &conf, Matrix &project, vector<Line3D> &lines, Vector3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len) {
 		auto mat = transform_from_conf(conf, project);
 		auto color = color_from_conf(conf);
 
@@ -65,7 +65,7 @@ namespace shapes {
 		}
 	}
 
-	void platonic(ini::Section &conf, Matrix &project, vector<Triangle3D> &triangles, Vector3D *points, int points_len, Face *faces, int faces_len) {
+	void platonic(ini::Section &conf, Matrix &project, vector<Triangle3D> &triangles, Vector3D *points, unsigned int points_len, Face *faces, unsigned int faces_len) {
 		auto mat = transform_from_conf(conf, project);
 		auto color = color_from_conf(conf);
 

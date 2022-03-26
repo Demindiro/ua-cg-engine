@@ -7,7 +7,7 @@ using namespace std;
 
 namespace shapes {
 	void cylinder(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		auto n = conf["n"].as_int_or_die();
+		auto n = (unsigned int)conf["n"].as_int_or_die();
 		auto height = conf["height"].as_double_or_die();
 
 		vector<Vector3D> points;
@@ -16,7 +16,7 @@ namespace shapes {
 		circle(points, n, height);
 
 		vector<Edge> edges(n * 3);
-		for (int i = 0; i < n; i++) {
+		for (unsigned int i = 0; i < n; i++) {
 			edges[0 * n + i] = { 0 * n + i, 0 * n + (i + 1) % n };
 			edges[1 * n + i] = { 1 * n + i, 1 * n + (i + 1) % n };
 			edges[2 * n + i] = { 0 * n + i, 1 * n + i };
@@ -26,7 +26,7 @@ namespace shapes {
 	}
 
 	void cylinder(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		auto n = conf["n"].as_int_or_die();
+		auto n = (unsigned int)conf["n"].as_int_or_die();
 		auto height = conf["height"].as_double_or_die();
 
 		vector<Vector3D> points;
@@ -38,8 +38,8 @@ namespace shapes {
 		circle(faces, n, 0);
 		circle(faces, n, n);
 
-		for (int i = 0; i < n; i++) {
-			int j = (i + 1) % n;
+		for (unsigned int i = 0; i < n; i++) {
+			unsigned int j = (i + 1) % n;
 			faces.push_back({ i, j, n + i });
 			faces.push_back({ j, n + i, n + j });
 		}

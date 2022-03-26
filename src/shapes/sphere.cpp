@@ -13,11 +13,11 @@ namespace shapes {
 		new_edges.reserve(edges.size() * 2);
 		new_faces.reserve(faces.size() * 4);
 
-		map<Edge, int> edge_to_new_point;
+		map<Edge, unsigned int> edge_to_new_point;
 
 		// Use edges to add points & determine new edges
 		for (auto e : edges) {
-			int i = points.size();
+			unsigned int i = points.size();
 			points.push_back((points[e.a] + points[e.b]) / 2);
 			new_edges.push_back({e.a, i});
 			new_edges.push_back({i, e.b});
@@ -45,7 +45,7 @@ namespace shapes {
 	}
 
 	static void sphere(ini::Section &conf, vector<Vector3D> &points, vector<Edge> &edges, vector<Face> &faces) {
-		auto n = conf["n"].as_int_or_die();
+		auto n = (unsigned int)conf["n"].as_int_or_die();
 		points = vector<Vector3D>(12);
 		edges = vector<Edge>(30);
 		faces = vector<Face>(20);
@@ -54,7 +54,7 @@ namespace shapes {
 		icosahedron(edges.data());
 		icosahedron(faces.data());
 
-		for (int i = 0; i < n; i++) {
+		for (unsigned int i = 0; i < n; i++) {
 			bisect(points, edges, faces);
 		}
 

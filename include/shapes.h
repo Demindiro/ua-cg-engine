@@ -7,7 +7,7 @@
 
 namespace shapes {
 	struct Edge {
-		int a, b;
+		unsigned int a, b;
 
 		bool operator<(const Edge &rhs) const {
 			auto ll = std::min(a, b), lh = std::max(a, b);
@@ -17,16 +17,16 @@ namespace shapes {
 	};
 
 	struct Face {
-		int a, b, c;
+		unsigned int a, b, c;
 	};
 
 	Matrix transform_from_conf(ini::Section &conf, Matrix &projection);
 
 	img::Color color_from_conf(ini::Section &conf);
 
-	void platonic(ini::Section &conf, Matrix &project, std::vector<Line3D> &lines, Vector3D *points, int points_len, Edge *edges, int edges_len);
+	void platonic(ini::Section &conf, Matrix &project, std::vector<Line3D> &lines, Vector3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len);
 
-	void platonic(ini::Section &conf, Matrix &project, std::vector<Triangle3D> &triangles, Vector3D *points, int points_len, Face *faces, int faces_len);
+	void platonic(ini::Section &conf, Matrix &project, std::vector<Triangle3D> &triangles, Vector3D *points, unsigned int points_len, Face *faces, unsigned int faces_len);
 
 	img::EasyImage wireframe(const ini::Configuration &, bool with_z);
 
