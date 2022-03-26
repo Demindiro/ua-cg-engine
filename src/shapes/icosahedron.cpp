@@ -2,15 +2,18 @@
 #include <vector>
 #include "lines.h"
 #include "shapes.h"
+#include "shapes/fractal.h"
 
 using namespace std;
 
 namespace shapes {
 	void icosahedron(Vector3D points[12]) {
 		auto p = sqrtl(5) / 2;
+		auto inv_p = 2 / sqrtl(5);
 		points[0] = Vector3D::point(0, 0,  p);
 		points[1] = Vector3D::point(0, 0, -p);
-		for (unsigned int i = 0; i < 5; i++) {
+		// Beware, i has to be signed so i - 2 works properly
+		for (int i = 0; i < 5; i++) {
 			auto a = (i - 2) * 2 * M_PI / 5;
 			auto b = a - M_PI / 5;
 			points[2 + i] = Vector3D::point(cos(a), sin(a),  0.5);
@@ -18,7 +21,7 @@ namespace shapes {
 		}
 		for (unsigned int i = 0; i < 12; i++) {
 			// Normalize
-			points[i] /= p;
+			points[i] *= inv_p;
 		}
 	}
 
