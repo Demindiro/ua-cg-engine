@@ -52,3 +52,6 @@ $(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
 
 clean::
 	rm -f $(ARCHIVE) assets/*.bmp
+
+loop::
+	while true; do make build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done
