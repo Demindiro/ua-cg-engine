@@ -40,7 +40,7 @@ static img::EasyImage create_img(
 	return img;
 }
 
-inline void Line2D::draw(img::EasyImage &img) const {
+void Line2D::draw(img::EasyImage &img) const {
 	img.draw_line(round_up(a.x), round_up(a.y), round_up(b.x), round_up(b.y), color);
 }
 
@@ -77,7 +77,7 @@ img::EasyImage Lines2D::draw(uint size, Color background) const {
 	return img;
 }
 
-inline void Line3D::draw(img::EasyImage &img, ZBuffer &z) const {
+void Line3D::draw(img::EasyImage &img, ZBuffer &z) const {
 	img.draw_zbuf_line(z, round_up(a.x), round_up(a.y), a.z, round_up(b.x), round_up(b.y), b.z, color);
 }
 

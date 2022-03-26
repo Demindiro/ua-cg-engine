@@ -24,6 +24,17 @@ set(engine_sources
 	src/lines.cpp
 	src/l_parser.cpp
 	src/l_system.cpp
+	src/shapes.cpp
+	src/shapes/cone.cpp
+	src/shapes/circle.cpp
+	src/shapes/cube.cpp
+	src/shapes/cylinder.cpp
+	src/shapes/dodecahedron.cpp
+	src/shapes/icosahedron.cpp
+	src/shapes/tetrahedron.cpp
+	src/shapes/octahedron.cpp
+	src/shapes/sphere.cpp
+	src/shapes/torus.cpp
 	src/vector3d.cpp
 	src/wireframe.cpp
 )

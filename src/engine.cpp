@@ -3,7 +3,7 @@
 #include "ini_configuration.h"
 #include "intro.h"
 #include "l_system.h"
-#include "wireframe.h"
+#include "shapes.h"
 
 #include <fstream>
 #include <iostream>
@@ -28,11 +28,11 @@ img::EasyImage generate_image(const ini::Configuration &conf) {
 	} else if (type == "2DLSystem") {
 		return l_system::l_2d(conf);
 	} else if (type == "Wireframe") {
-		return wireframe::wireframe(conf, false);
+		return shapes::wireframe(conf, false);
 	} else if (type == "ZBufferedWireframe") {
-		return wireframe::wireframe(conf, true);
+		return shapes::wireframe(conf, true);
 	} else if (type == "ZBuffering") {
-		return wireframe::triangles(conf);
+		return shapes::triangles(conf);
 	} else {
 		throw TypeException(type);
 	}
