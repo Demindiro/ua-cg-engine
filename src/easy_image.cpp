@@ -327,6 +327,8 @@ void img::EasyImage::draw_zbuf_triag(
 
 		for (unsigned int x = from_x; x <= to_x; x++) {
 			auto inv_z = 1.0001 * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
+			if (x >= get_width() || y >= get_height())
+				continue; // TODO temporary
 			if (zbuffer.replace(x, y, inv_z)) {
 				(*this)(x, y) = color;
 			}

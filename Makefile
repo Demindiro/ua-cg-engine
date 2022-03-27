@@ -27,6 +27,9 @@ test-zbuffering: build-debug
 test-fractals: build-debug
 	cd assets && for f in 3d_fractals*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-clipping: build-debug
+	cd assets && for f in clipping*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 test: $(INI)
 
 $(INI): build-debug

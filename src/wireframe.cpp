@@ -19,11 +19,6 @@ using namespace shapes;
 
 namespace wireframe {
 
-	static Vector3D polar_to_cartesian(double theta, double phi, double r) {
-		auto r_sin_phi = r * sin(phi);
-		return Vector3D::point(r_sin_phi * cos(theta), r_sin_phi * sin(theta), r * cos(phi));
-	}
-
 	void line_drawing(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		// Read transformation & color
 		auto mat = transform_from_conf(conf, mat_project);

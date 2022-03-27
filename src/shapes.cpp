@@ -91,29 +91,33 @@ namespace shapes {
 		auto eye = tup_to_point3d(conf["General"]["eye"].as_double_tuple_or_die());
 		nr_fig = conf["General"]["nrFigures"].as_int_or_die();
 
+		auto clipping = conf["General"]["clipping"].as_bool_or_default(false);
+
 		// Create projection matrix
+		Vector3D dir;
+		if (clipping) {
+			dir = tup_to_vector3d(conf["General"]["viewDirection"].as_double_tuple_or_die());
+			auto near = conf["General"]["dNear"].as_double_or_die();
+			auto far = conf["General"]["dFar"].as_double_or_die();
+			auto fov = conf["General"]["hfov"].as_double_or_die();
+			auto aspect = conf["General"]["aspectRatio"].as_double_or_die();
+		} else {
+			dir = -eye;
+		}
+
 		auto r = eye.length();
-		auto theta = atan2(eye.y, eye.x);
-		auto phi = acos(eye.z / r);
+		auto theta = atan2(-dir.y, -dir.x);
+		auto phi = acos(-dir.z / r);
 
-		auto theta_sin = sin(theta);
-		auto theta_cos = cos(theta);
+		Matrix mat_tr, mat_rot_z, mat_rot_x;
 
-		auto phi_sin = sin(phi);
-		auto phi_cos = cos(phi);
+		mat_tr(4, 1) = -eye.x;
+		mat_tr(4, 2) = -eye.y;
+		mat_tr(4, 3) = -eye.z;
+		mat_rot_z = Rotation(-(theta + M_PI / 2)).z();
+		mat_rot_x = Rotation(-phi).x();
 
-		mat_eye(1, 1) = -theta_sin;
-		mat_eye(1, 2) = -theta_cos * phi_cos;
-		mat_eye(1, 3) = theta_cos * phi_sin;
-
-		mat_eye(2, 1) = theta_cos;
-		mat_eye(2, 2) = -theta_sin * phi_cos;
-		mat_eye(2, 3) = theta_sin * phi_sin;
-
-		mat_eye(3, 2) = phi_sin;
-		mat_eye(3, 3) = phi_cos;
-
-		mat_eye(4, 3) = -r;
+		mat_eye = mat_tr * mat_rot_z * mat_rot_x;
 	}
 
 	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
