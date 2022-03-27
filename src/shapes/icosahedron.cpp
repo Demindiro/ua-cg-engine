@@ -67,4 +67,22 @@ namespace shapes {
 		icosahedron(faces);
 		platonic(conf, mat_project, triangles, points, 12, faces, 20);
 	}
+
+	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points(12);
+		vector<Edge> edges(30);
+		icosahedron(points.data());
+		icosahedron(edges.data());
+		fractal(conf, points, edges);
+		platonic(conf, mat_project, lines, points, edges);
+	}
+
+	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points(12);
+		vector<Face> faces(20);
+		icosahedron(points.data());
+		icosahedron(faces.data());
+		fractal(conf, points, faces);
+		platonic(conf, mat_project, triangles, points, faces);
+	}
 }

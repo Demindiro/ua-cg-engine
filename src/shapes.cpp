@@ -3,6 +3,7 @@
 #include "engine.h"
 #include "ini_configuration.h"
 #include "vector3d.h"
+#include "shapes/buckyball.h"
 #include "shapes/circle.h"
 #include "shapes/cone.h"
 #include "shapes/cube.h"
@@ -146,8 +147,24 @@ namespace shapes {
 				sphere(fig, mat_eye, lines);
 			} else if (type == "Torus") {
 				torus(fig, mat_eye, lines);
+			} else if (type == "BuckyBall") {
+				buckyball(fig, mat_eye, lines);
 			} else if (type == "3DLSystem") {
 				wireframe::l_system(fig, mat_eye, lines);
+			} else if (type == "FractalCube") {
+				fractal_cube(fig, mat_eye, lines);
+			} else if (type == "FractalOctahedron") {
+				fractal_octahedron(fig, mat_eye, lines);
+			} else if (type == "FractalTetrahedron") {
+				fractal_tetrahedron(fig, mat_eye, lines);
+			} else if (type == "FractalIcosahedron") {
+				fractal_icosahedron(fig, mat_eye, lines);
+			} else if (type == "FractalDodecahedron") {
+				fractal_dodecahedron(fig, mat_eye, lines);
+			} else if (type == "FractalBuckyBall") {
+				fractal_buckyball(fig, mat_eye, lines);
+			} else if (type == "MengerSponge") {
+				puts("TODO MengerSponge lines");
 			} else {
 				throw TypeException(type);
 			}
@@ -186,6 +203,22 @@ namespace shapes {
 				sphere(fig, mat_eye, triangles);
 			} else if (type == "Torus") {
 				torus(fig, mat_eye, triangles);
+			} else if (type == "BuckyBall") {
+				puts("TODO BuckyBall triangles");
+			} else if (type == "FractalCube") {
+				fractal_cube(fig, mat_eye, triangles);
+			} else if (type == "FractalTetrahedron") {
+				fractal_tetrahedron(fig, mat_eye, triangles);
+			} else if (type == "FractalOctahedron") {
+				fractal_octahedron(fig, mat_eye, triangles);
+			} else if (type == "FractalIcosahedron") {
+				fractal_icosahedron(fig, mat_eye, triangles);
+			} else if (type == "FractalDodecahedron") {
+				fractal_dodecahedron(fig, mat_eye, triangles);
+			} else if (type == "FractalBuckyBall") {
+				puts("TODO FractalBuckyBall triangles");
+			} else if (type == "MengerSponge") {
+				puts("TODO MengerSponge triangles");
 			} else {
 				throw TypeException(type);
 			}

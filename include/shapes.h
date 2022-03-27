@@ -28,6 +28,14 @@ namespace shapes {
 
 	void platonic(ini::Section &conf, Matrix &project, std::vector<Triangle3D> &triangles, Vector3D *points, unsigned int points_len, Face *faces, unsigned int faces_len);
 
+	inline void platonic(ini::Section &conf, Matrix &project, std::vector<Line3D> &lines, std::vector<Vector3D> points, std::vector<Edge> edges) {
+		platonic(conf, project, lines, points.data(), points.size(), edges.data(), edges.size());
+	}
+
+	inline void platonic(ini::Section &conf, Matrix &project, std::vector<Triangle3D> &triangles, std::vector<Vector3D> points, std::vector<Face> faces) {
+		platonic(conf, project, triangles, points.data(), points.size(), faces.data(), faces.size());
+	}
+
 	img::EasyImage wireframe(const ini::Configuration &, bool with_z);
 
 	img::EasyImage triangles(const ini::Configuration &);

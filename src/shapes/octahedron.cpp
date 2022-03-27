@@ -1,5 +1,7 @@
 #include "shapes/octahedron.h"
+#include <vector>
 #include "shapes.h"
+#include "shapes/fractal.h"
 
 using namespace std;
 
@@ -58,5 +60,23 @@ namespace shapes {
 		octahedron(points);
 		octahedron(faces);
 		platonic(conf, mat_project, lines, points, 6, faces, 8);
+	}
+
+	void fractal_octahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points(6);
+		vector<Edge> edges(12);
+		octahedron(points.data());
+		octahedron(edges.data());
+		fractal(conf, points, edges);
+		platonic(conf, mat_project, lines, points, edges);
+	}
+
+	void fractal_octahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points(6);
+		vector<Face> faces(8);
+		octahedron(points.data());
+		octahedron(faces.data());
+		fractal(conf, points, faces);
+		platonic(conf, mat_project, triangles, points, faces);
 	}
 }

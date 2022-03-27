@@ -1,5 +1,6 @@
-#include "shapes.h"
 #include "shapes/tetrahedron.h"
+#include "shapes.h"
+#include "shapes/fractal.h"
 
 using namespace std;
 
@@ -37,9 +38,27 @@ namespace shapes {
 
 	void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
 		Vector3D points[4];
-		Face faces[6];
+		Face faces[4];
 		tetrahedron(points);
 		tetrahedron(faces);
 		platonic(conf, mat_project, triangles, points, 4, faces, 4);
+	}
+
+	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points(4);
+		vector<Edge> edges(6);
+		tetrahedron(points.data());
+		tetrahedron(edges.data());
+		fractal(conf, points, edges);
+		platonic(conf, mat_project, lines, points, edges);
+	}
+
+	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points(4);
+		vector<Face> faces(4);
+		tetrahedron(points.data());
+		tetrahedron(faces.data());
+		fractal(conf, points, faces);
+		platonic(conf, mat_project, triangles, points, faces);
 	}
 }

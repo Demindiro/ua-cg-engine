@@ -10,7 +10,7 @@ namespace shapes {
 	static void bisect(vector<Vector3D> &points, vector<Edge> &edges, vector<Face> &faces) {
 		vector<Edge> new_edges;
 		vector<Face> new_faces;
-		new_edges.reserve(edges.size() * 2);
+		new_edges.reserve(edges.size() * 3);
 		new_faces.reserve(faces.size() * 4);
 
 		map<Edge, unsigned int> edge_to_new_point;

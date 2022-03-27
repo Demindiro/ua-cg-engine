@@ -1,6 +1,7 @@
 #include "shapes/dodecahedron.h"
 #include <vector>
 #include "shapes.h"
+#include "shapes/fractal.h"
 #include "shapes/icosahedron.h"
 
 using namespace std;
@@ -77,5 +78,23 @@ namespace shapes {
 		dodecahedron(points);
 		dodecahedron(faces);
 		platonic(conf, mat_project, triangles, points, 20, faces, 36);
+	}
+
+	void fractal_dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points(20);
+		vector<Edge> edges(30);
+		dodecahedron(points.data());
+		dodecahedron(edges.data());
+		fractal(conf, points, edges);
+		platonic(conf, mat_project, lines, points, edges);
+	}
+
+	void fractal_dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points(20);
+		vector<Face> faces(36);
+		dodecahedron(points.data());
+		dodecahedron(faces.data());
+		fractal(conf, points, faces);
+		platonic(conf, mat_project, triangles, points, faces);
 	}
 }
