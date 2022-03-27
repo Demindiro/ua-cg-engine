@@ -77,13 +77,13 @@ namespace shapes {
 	}
 
 	void fractal(ini::Section &conf, vector<Vector3D> &points, vector<Edge> &edges) {
-		auto scale = (unsigned int)conf["fractalScale"].as_double_or_die();
+		auto scale = conf["fractalScale"].as_double_or_die();
 		auto iterations = (unsigned int)conf["nrIterations"].as_int_or_die();
 		fractal(points, edges, scale, iterations);
 	}
 
 	void fractal(ini::Section &conf, vector<Vector3D> &points, vector<Face> &faces) {
-		auto scale = (unsigned int)conf["fractalScale"].as_double_or_die();
+		auto scale = conf["fractalScale"].as_double_or_die();
 		auto iterations = (unsigned int)conf["nrIterations"].as_int_or_die();
 		fractal(points, faces, scale, iterations);
 	}
