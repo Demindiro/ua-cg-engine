@@ -26,13 +26,13 @@ class ZBuffer {
 	std::vector<u_int32_t> triangle_ids;
 	unsigned int width, height;
 
-	double operator()(unsigned int x, unsigned int y) const {
+	double &operator()(unsigned int x, unsigned int y) {
 		assert(x < width);
 		assert(y < height);
 		return buffer.at(x + y * width);
 	}
 
-	double &operator()(unsigned int x, unsigned int y) {
+	double operator()(unsigned int x, unsigned int y) const {
 		assert(x < width);
 		assert(y < height);
 		return buffer.at(x + y * width);
@@ -42,6 +42,7 @@ public:
 	struct IdPair {
 		u_int16_t figure_id;
 		u_int32_t triangle_id;
+		double inv_z;
 
 		constexpr bool is_valid() const {
 			return figure_id != UINT16_MAX && triangle_id != UINT32_MAX;
@@ -60,10 +61,10 @@ public:
 	/**
 	 * \brief Set a figure & triangle ID at a pixel if the given 1/Z value is smaller.
 	 */
-	void set(unsigned int x, unsigned int y, double inv_z, IdPair pair) {
-		bool lower = (*this)(x, y) > inv_z;
+	void set(unsigned int x, unsigned int y, IdPair pair) {
+		bool lower = (*this)(x, y) > pair.inv_z;
 		if (lower) {
-			(*this)(x, y) = inv_z;
+			(*this)(x, y) = pair.inv_z;
 			// Should be fine since the lengths of all buffers are equal
 			figure_ids[x + y * width] = pair.figure_id;
 			triangle_ids[x + y * width] = pair.triangle_id;
@@ -76,7 +77,7 @@ public:
 	IdPair get(unsigned int x, unsigned int y) {
 		assert(x < width);
 		assert(y < height);
-		return { figure_ids.at(x + y * width), triangle_ids[x + y * width] };
+		return { figure_ids.at(x + y * width), triangle_ids[x + y * width], buffer[x + y * width] };
 	}
 
 	/**
@@ -88,7 +89,7 @@ public:
 	 * \param d Scale factor.
 	 * \param dx Offset along X axis.
 	 * \param dy Offset along Y axis.
-	 * \param pair Pair of figure-triangle IDs.
+	 * \param pair Pair of figure-triangle IDs. It's inv_z value is ignored.
 	 */
 	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair);
 

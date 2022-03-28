@@ -411,16 +411,27 @@ namespace shapes {
 			int nr_light = conf["General"]["nrLights"];
 			for (int i = 0; i < nr_light; i++) {
 				auto section = conf[string("Light") + to_string(i)];
-				vector<double> color;
 				lights.ambient += color_from_conf(section["ambientLight"]);
-				if (section["infinity"].as_bool_or_default(false)) {
-					auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
-					d.normalise();
-					d *= mat_eye;
-					lights.directional.push_back({
-						d,
-						color_from_conf(section["diffuseLight"]),
-					});
+				vector<double> color;
+				if (section["diffuseLight"].as_double_tuple_if_exists(color)) {
+					if (section["infinity"].as_bool_or_default(false)) {
+						auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
+						d.normalise();
+						d *= mat_eye;
+						lights.directional.push_back({
+							d,
+							color_from_conf(color),
+						});
+					} else {
+						auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
+						auto a = deg2rad(section["spotAngle"].as_double_or_default(90)); // 91 to ensure >= 1.0 works
+						d *= mat_eye;
+						lights.point.push_back({
+							d,
+							color_from_conf(color),
+							cos(a),
+						});
+					}
 				}
 			}
 		} else {
@@ -577,7 +588,7 @@ namespace shapes {
 			for (u_int32_t k = 0; k < f.faces.size(); k++) {
 				auto &t = f.faces[k];
 				f2p(f, t);
-				zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k});
+				zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k, NAN});
 			}
 		}
 
@@ -623,6 +634,23 @@ namespace shapes {
 					// TODO this assumes face normals
 					color += (f.diffuse * d.diffuse) * max(f.normals[pair.triangle_id].dot(-d.direction), 0.0);
 				}
+				for (auto &p : lights.point) {
+					// Invert perspective projection
+					// Given: x', y', 1/z, dx, dy
+					// x' = x / -z * d + dx => x = (x' - dx) * -z / d, ditto for y
+					Point3D point(
+						(x - offset_x) / (d * -pair.inv_z),
+						(y - offset_y) / (d * -pair.inv_z),
+						1 / pair.inv_z
+					);
+					auto direction = point - p.point;
+					direction.normalise();
+					assert(f.faces.size() == f.normals.size() && "No normals");
+					auto dot = f.normals[pair.triangle_id].dot(-direction);
+					auto s = 1 - (1 - dot) / (1 - p.spot_angle_cos);
+					color += (f.diffuse * p.diffuse) * max(s, 0.0);
+				}
+
 				assert(color.r >= 0 && "Colors can't be negative");
 				assert(color.g >= 0 && "Colors can't be negative");
 				assert(color.b >= 0 && "Colors can't be negative");

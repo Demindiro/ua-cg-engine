@@ -87,9 +87,16 @@ namespace shapes {
 		Color diffuse;
 	};
 
+	struct PointLight {
+		Point3D point;
+		Color diffuse;
+		double spot_angle_cos;
+	};
+
 	struct Lights {
 		Color ambient;
 		std::vector<DirectionalLight> directional;
+		std::vector<PointLight> point;
 #if GRAPHICS_DEBUG > 0
 		// TODO find a clean way to pass this without adding more parameters
 		Matrix eye;

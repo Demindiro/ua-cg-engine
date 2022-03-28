@@ -34,8 +34,11 @@ $(INI): build-debug
 	@echo $@
 	@cd assets && ../$</engine $@ > /dev/null || echo $@ failed with code $$? || exit 1
 
-bench-sep: build
-	cd assets && for f in *.ini; do echo "$$f"; perf stat ../$</engine "$$f"; done
+bench-sep: $(patsubst %.ini,bench-sep-%,$(INI))
+	perf stat make -C . $^
+
+bench-sep-%: build
+	cd assets && ../$</engine "$(patsubst bench-sep-%,%.ini,$@)"
 
 bench-batch: build
 	cd assets && perf stat ../$</engine *.ini
