@@ -40,17 +40,16 @@ namespace shapes {
 	}
 
 	static void cube(Face faces[12]) {
-		// TODO fix order of vertices so culling works properly
 		// X
 		faces[0] = { 1, 0, 2 };
 		faces[1] = { 3, 1, 2 };
-		faces[2] = { 5, 4, 6 };
-		faces[3] = { 7, 5, 6 };
+		faces[2] = { 4, 5, 6 };
+		faces[3] = { 7, 6, 5 };
 		// Y
 		faces[4] = { 0, 1, 4 };
 		faces[5] = { 1, 5, 4 };
-		faces[6] = { 2, 3, 6 };
-		faces[7] = { 3, 7, 6 };
+		faces[6] = { 3, 2, 6 };
+		faces[7] = { 3, 6, 7 };
 		// Z
 		faces[ 8] = { 2, 0, 4 };
 		faces[ 9] = { 6, 2, 4 };
