@@ -47,8 +47,12 @@ namespace shapes {
 		return mat_scale * mat_rot_x * mat_rot_y * mat_rot_z * mat_translate * projection;
 	}
 
-	img::Color color_from_conf(ini::Section &conf) {
-		return tup_to_color(conf["color"].as_double_tuple_or_die());
+	Color color_from_conf(ini::Section &conf) {
+		auto c = conf["color"].as_double_tuple_or_die();
+		double b = c.at(2);
+		double g = c.at(1);
+		double r = c.at(0);
+		return { r, g, b };
 	}
 
 	void platonic(ini::Section &conf, Matrix &project, vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len) {
@@ -64,7 +68,7 @@ namespace shapes {
 			assert(c->b < points_len);
 			auto a = points[c->a];
 			auto b = points[c->b];
-			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color});
+			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color.to_img_color()});
 		}
 	}
 
@@ -91,7 +95,7 @@ namespace shapes {
 
 	static void common_conf(
 		const ini::Configuration &conf,
-		Color &background,
+		img::Color &background,
 		int &size,
 		Matrix &mat_eye,
 		int &nr_fig,
@@ -134,7 +138,7 @@ namespace shapes {
 	}
 
 	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
-		Color bg;
+		img::Color bg;
 		int size, nr_fig;
 		Matrix mat_eye;
 		Frustum frustum;
@@ -276,13 +280,13 @@ namespace shapes {
 				swap_remove(i--);
 				break;
 			default:
-				assert(!"unreachable");
+				UNREACHABLE;
 			}
 		}
 	}
 
 	img::EasyImage triangles(const ini::Configuration &conf) {
-		Color bg;
+		img::Color bg;
 		int size, nr_fig;
 		Matrix mat_eye;
 		Frustum frustum;
@@ -435,7 +439,7 @@ namespace shapes {
 		return draw(figures, size, bg);
 	}
 
-	img::EasyImage draw(const std::vector<TriangleFigure> &figures, unsigned int size, Color background) {
+	img::EasyImage draw(const std::vector<TriangleFigure> &figures, unsigned int size, img::Color background) {
 		// TODO wdym "unitialized", GCC?
 		double d = NAN, offset_x = NAN, offset_y = NAN;
 
@@ -506,7 +510,7 @@ namespace shapes {
 				auto color = colors_pool[color_i++];
 				color_i %= sizeof(colors_pool) / sizeof(*colors_pool);
 #else
-				auto color = f.ambient;
+				auto color = f.ambient.to_img_color();
 #endif
 				img.draw_zbuf_triag(z, a, b, c, d, offset_x, offset_y, color);
 			}
