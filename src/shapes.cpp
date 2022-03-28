@@ -120,6 +120,7 @@ namespace shapes {
 			fig.ambient = try_color_from_conf(conf.section["ambientReflection"]);
 			fig.diffuse = try_color_from_conf(conf.section["diffuseReflection"]);
 			fig.specular = try_color_from_conf(conf.section["specularReflection"]);
+			fig.reflection = conf.section["reflectionCoefficient"].as_double_or_default(0);
 		} else {
 			fig.ambient = color_from_conf(conf.section);
 		}
@@ -412,15 +413,17 @@ namespace shapes {
 			for (int i = 0; i < nr_light; i++) {
 				auto section = conf[string("Light") + to_string(i)];
 				lights.ambient += color_from_conf(section["ambientLight"]);
-				vector<double> color;
-				if (section["diffuseLight"].as_double_tuple_if_exists(color)) {
+				vector<double> diffuse, specular;
+				if (section["diffuseLight"].as_double_tuple_if_exists(diffuse)
+					| section["specularLight"].as_double_tuple_if_exists(specular)) {
 					if (section["infinity"].as_bool_or_default(false)) {
 						auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
 						d.normalise();
 						d *= mat_eye;
 						lights.directional.push_back({
 							d,
-							color_from_conf(color),
+							color_from_conf(diffuse),
+							color_from_conf(specular),
 						});
 					} else {
 						auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
@@ -428,7 +431,8 @@ namespace shapes {
 						d *= mat_eye;
 						lights.point.push_back({
 							d,
-							color_from_conf(color),
+							color_from_conf(diffuse),
+							color_from_conf(specular),
 							cos(a),
 						});
 					}
@@ -629,10 +633,17 @@ namespace shapes {
 				f2p(f, t);
 
 				// Apply lights
+				// TODO this assumes face normals
 				for (auto &d : lights.directional) {
 					assert(f.faces.size() == f.normals.size() && "No normals");
-					// TODO this assumes face normals
-					color += (f.diffuse * d.diffuse) * max(f.normals[pair.triangle_id].dot(-d.direction), 0.0);
+					auto n = f.normals[pair.triangle_id];
+					auto dot = max(n.dot(-d.direction), 0.0);
+					// Diffuse
+					color += (f.diffuse * d.diffuse) * dot;
+					// Specular
+					auto r = 2 * dot * n + d.direction;
+					auto cam_dir = Vector3D::vector(0, 0, -1);
+					color += (f.specular * d.specular) * pow(r.dot(cam_dir), f.reflection);
 				}
 				for (auto &p : lights.point) {
 					// Invert perspective projection
@@ -646,9 +657,15 @@ namespace shapes {
 					auto direction = point - p.point;
 					direction.normalise();
 					assert(f.faces.size() == f.normals.size() && "No normals");
-					auto dot = f.normals[pair.triangle_id].dot(-direction);
-					auto s = 1 - (1 - dot) / (1 - p.spot_angle_cos);
-					color += (f.diffuse * p.diffuse) * max(s, 0.0);
+					auto n = f.normals[pair.triangle_id];
+					auto dot = n.dot(-direction);
+					// Diffuse
+					auto s = max(1 - (1 - dot) / (1 - p.spot_angle_cos), 0.0);
+					color += (f.diffuse * p.diffuse) * s;
+					// Specular
+					auto r = 2 * dot * n + direction;
+					auto cam_dir = Vector3D::vector(0, 0, -1);
+					color += (f.specular * p.specular) * pow(r.dot(cam_dir), f.reflection) * s;
 				}
 
 				assert(color.r >= 0 && "Colors can't be negative");
@@ -657,8 +674,7 @@ namespace shapes {
 				img(x, y) = color.to_img_color();
 
 #if GRAPHICS_DEBUG_FACES > 0
-				img(x, y) = colors_pool[color_i++];
-				color_i %= color_pool_size;
+				img(x, y) = colors_pool[pair.triangle_id % color_pool_size];
 #endif
 			}
 		}
@@ -676,7 +692,8 @@ namespace shapes {
 					Point3D tt(to.x / -to.z * d + offset_x, to.y / -to.z * d + offset_y, to.z);
 					auto clr = colors_pool[color_i++];
 					color_i %= color_pool_size;
-					Line3D(ft, tt, clr).draw_clip(img, z);
+					clr = Color(1,1,1).to_img_color();
+					Line3D(ft, tt, clr).draw_clip(img, zbuf);
 				}
 			} else {
 				assert(!"TODO vertex normals");
@@ -693,9 +710,9 @@ namespace shapes {
 				Point3D lc(c.x / -c.z * d + offset_x, c.y / -c.z * d + offset_y, c.z);
 				auto clr = f.ambient.to_img_color();
 				clr = img::Color(255 - clr.red, 255 - clr.green, 255 - clr.blue);
-				Line3D(la, lb, clr).draw(img, z);
-				Line3D(lb, lc, clr).draw(img, z);
-				Line3D(lc, la, clr).draw(img, z);
+				Line3D(la, lb, clr).draw(img, zbuf);
+				Line3D(lb, lc, clr).draw(img, zbuf);
+				Line3D(lc, la, clr).draw(img, zbuf);
 			}
 		}
 #endif
@@ -712,9 +729,9 @@ namespace shapes {
 			Point3D lox(ox.x / -ox.z * d + offset_x, ox.y / -ox.z * d + offset_y, ox.z);
 			Point3D loy(oy.x / -oy.z * d + offset_x, oy.y / -oy.z * d + offset_y, oy.z);
 			Point3D loz(oz.x / -oz.z * d + offset_x, oz.y / -oz.z * d + offset_y, oz.z);
-			Line3D(lo, lox, img::Color(255, 0, 0)).draw_clip(img, z);
-			Line3D(lo, loy, img::Color(0, 255, 0)).draw_clip(img, z);
-			Line3D(lo, loz, img::Color(0, 0, 255)).draw_clip(img, z);
+			Line3D(lo, lox, img::Color(255, 0, 0)).draw_clip(img, zbuf);
+			Line3D(lo, loy, img::Color(0, 255, 0)).draw_clip(img, zbuf);
+			Line3D(lo, loz, img::Color(0, 0, 255)).draw_clip(img, zbuf);
 		}
 #endif
 

@@ -84,12 +84,12 @@ namespace shapes {
 
 	struct DirectionalLight {
 		Vector3D direction;
-		Color diffuse;
+		Color diffuse, specular;
 	};
 
 	struct PointLight {
 		Point3D point;
-		Color diffuse;
+		Color diffuse, specular;
 		double spot_angle_cos;
 	};
 
