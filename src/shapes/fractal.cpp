@@ -76,15 +76,15 @@ namespace shapes {
 		}
 	}
 
-	void fractal(ini::Section &conf, vector<Point3D> &points, vector<Edge> &edges) {
-		auto scale = conf["fractalScale"].as_double_or_die();
-		auto iterations = (unsigned int)conf["nrIterations"].as_int_or_die();
+	void fractal(const FigureConfiguration &conf, vector<Point3D> &points, vector<Edge> &edges) {
+		auto scale = conf.section["fractalScale"].as_double_or_die();
+		auto iterations = (unsigned int)conf.section["nrIterations"].as_int_or_die();
 		fractal(points, edges, scale, iterations);
 	}
 
-	void fractal(ini::Section &conf, vector<Point3D> &points, vector<Face> &faces) {
-		auto scale = conf["fractalScale"].as_double_or_die();
-		auto iterations = (unsigned int)conf["nrIterations"].as_int_or_die();
+	void fractal(const FigureConfiguration &conf, vector<Point3D> &points, vector<Face> &faces) {
+		auto scale = conf.section["fractalScale"].as_double_or_die();
+		auto iterations = (unsigned int)conf.section["nrIterations"].as_int_or_die();
 		fractal(points, faces, scale, iterations);
 	}
 }

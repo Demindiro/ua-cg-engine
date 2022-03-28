@@ -58,37 +58,37 @@ namespace shapes {
 		faces[11] = { 3, 7, 5 };
 	}
 
-	void cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void cube(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		Point3D points[8];
 		Edge edges[12];
 		cube(points);
 		cube(edges);
-		platonic(conf, mat_project, lines, points, 8, edges, 12);
+		platonic(conf, lines, points, 8, edges, 12);
 	}
 
-	TriangleFigure cube(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure cube(const FigureConfiguration &conf) {
 		vector<Point3D> points(8);
 		vector<Face> faces(12);
 		cube(points.data());
 		cube(faces.data());
-		return platonic(conf, mat_project, points, faces);
+		return platonic(conf, points, faces);
 	}
 
-	void fractal_cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void fractal_cube(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		vector<Point3D> points(8);
 		vector<Edge> edges(12);
 		cube(points.data());
 		cube(edges.data());
 		fractal(conf, points, edges);
-		platonic(conf, mat_project, lines, points, edges);
+		platonic(conf, lines, points, edges);
 	}
 
-	TriangleFigure fractal_cube(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure fractal_cube(const FigureConfiguration &conf) {
 		vector<Point3D> points(8);
 		vector<Face> faces(12);
 		cube(points.data());
 		cube(faces.data());
 		fractal(conf, points, faces);
-		return platonic(conf, mat_project, points, faces);
+		return platonic(conf, points, faces);
 	}
 }

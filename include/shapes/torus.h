@@ -7,7 +7,7 @@
 #include "vector3d.h"
 
 namespace shapes {
-	void torus(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void torus(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure torus(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure torus(const FigureConfiguration &conf);
 }

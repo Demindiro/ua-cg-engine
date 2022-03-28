@@ -65,19 +65,19 @@ namespace shapes {
 		}
 	}
 
-	void sphere(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void sphere(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		vector<Point3D> points;
 		vector<Edge> edges;
 		vector<Face> faces;
-		sphere(conf, points, edges, faces);
-		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
+		sphere(conf.section, points, edges, faces);
+		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	TriangleFigure sphere(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure sphere(const FigureConfiguration &conf) {
 		vector<Point3D> points;
 		vector<Edge> edges;
 		vector<Face> faces;
-		sphere(conf, points, edges, faces);
-		return platonic(conf, mat_project, points, faces);
+		sphere(conf.section, points, edges, faces);
+		return platonic(conf, points, faces);
 	}
 }

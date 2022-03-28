@@ -7,11 +7,11 @@
 #include "vector3d.h"
 
 namespace shapes {
-	void cube(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void cube(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure cube(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure cube(const FigureConfiguration &conf);
 
-	void fractal_cube(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void fractal_cube(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure  fractal_cube(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure  fractal_cube(const FigureConfiguration &conf);
 }

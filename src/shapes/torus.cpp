@@ -31,10 +31,10 @@ namespace shapes {
 
 	}
 
-	void torus(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void torus(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		vector<Point3D> points;
 		unsigned int n, m;
-		torus(conf, points, n, m);
+		torus(conf.section, points, n, m);
 		vector<Edge> edges;
 		for (unsigned int i = 0; i < n; i++) {
 			for (unsigned int j = 0; j < m; j++) {
@@ -42,13 +42,13 @@ namespace shapes {
 				edges.push_back({ i * m + j, (i + 1) % n * m + j });
 			}
 		}
-		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
+		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	TriangleFigure torus(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure torus(const FigureConfiguration &conf) {
 		vector<Point3D> points;
 		unsigned int n, m;
-		torus(conf, points, n, m);
+		torus(conf.section, points, n, m);
 		vector<Face> faces;
 		for (unsigned int i = 0; i < n; i++) {
 			for (unsigned int j = 0; j < m; j++) {
@@ -58,6 +58,6 @@ namespace shapes {
 				faces.push_back({ k * m + l, k * m + j, i * m + l });
 			}
 		}
-		return platonic(conf, mat_project, points, faces);
+		return platonic(conf, points, faces);
 	}
 }

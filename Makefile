@@ -44,7 +44,7 @@ gen: build
 	make -C . $(patsubst %,_gen-%,$(INI))
 
 gen-%: build
-	make $(patsubst _%,%,$@)
+	make -C . $(patsubst _%,%,$@)
 
 _gen-%:
 	cd assets && ../build/engine $(patsubst _gen-%,%,$@)
@@ -61,4 +61,4 @@ clean-images::
 	rm -rf assets/*.bmp
 
 loop::
-	while true; do clear; make build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done
+	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done

@@ -7,7 +7,7 @@
 #include "vector3d.h"
 
 namespace shapes {
-	void cone(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void cone(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure cone(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure cone(const FigureConfiguration &conf);
 }

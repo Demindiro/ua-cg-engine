@@ -54,37 +54,37 @@ namespace shapes {
 		}
 	}
 
-	void icosahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void icosahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		Point3D points[12];
 		Edge edges[30];
 		icosahedron(points);
 		icosahedron(edges);
-		platonic(conf, mat_project, lines, points, 12, edges, 30);
+		platonic(conf, lines, points, 12, edges, 30);
 	}
 
-	TriangleFigure icosahedron(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure icosahedron(const FigureConfiguration &conf) {
 		vector<Point3D> points(12);
 		vector<Face> faces(20);
 		icosahedron(points.data());
 		icosahedron(faces.data());
-		return platonic(conf, mat_project, points, faces);
+		return platonic(conf, points, faces);
 	}
 
-	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void fractal_icosahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		vector<Point3D> points(12);
 		vector<Edge> edges(30);
 		icosahedron(points.data());
 		icosahedron(edges.data());
 		fractal(conf, points, edges);
-		platonic(conf, mat_project, lines, points, edges);
+		platonic(conf, lines, points, edges);
 	}
 
-	TriangleFigure fractal_icosahedron(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure fractal_icosahedron(const FigureConfiguration &conf) {
 		vector<Point3D> points(12);
 		vector<Face> faces(20);
 		icosahedron(points.data());
 		icosahedron(faces.data());
 		fractal(conf, points, faces);
-		return platonic(conf, mat_project, points, faces);
+		return platonic(conf, points, faces);
 	}
 }

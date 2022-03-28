@@ -7,7 +7,7 @@
 #include "vector3d.h"
 
 namespace shapes {
-	void cylinder(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void cylinder(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure cylinder(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure cylinder(const FigureConfiguration &conf);
 }

@@ -7,11 +7,11 @@
 #include "vector3d.h"
 
 namespace shapes {
-	void dodecahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void dodecahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure dodecahedron(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure dodecahedron(const FigureConfiguration &conf);
 
-	void fractal_dodecahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void fractal_dodecahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure fractal_dodecahedron(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure fractal_dodecahedron(const FigureConfiguration &conf);
 }

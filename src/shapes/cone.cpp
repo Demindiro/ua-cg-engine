@@ -6,9 +6,9 @@
 
 using namespace std;
 
-void shapes::cone(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-	auto n = (unsigned int)conf["n"].as_int_or_die();
-	auto height = conf["height"].as_double_or_die();
+void shapes::cone(const FigureConfiguration &conf, vector<Line3D> &lines) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
 
 	vector<Point3D> points;
 	points.reserve(n + 1);
@@ -21,12 +21,12 @@ void shapes::cone(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines
 		edges[1 * n + i] = { 0 * n + i, n };
 	}
 
-	platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
+	platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 }
 
-shapes::TriangleFigure shapes::cone(ini::Section &conf, Matrix &mat_project) {
-	auto n = (unsigned int)conf["n"].as_int_or_die();
-	auto height = conf["height"].as_double_or_die();
+shapes::TriangleFigure shapes::cone(const FigureConfiguration &conf) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
 
 	vector<Point3D> points;
 	vector<Face> faces;
@@ -40,6 +40,6 @@ shapes::TriangleFigure shapes::cone(ini::Section &conf, Matrix &mat_project) {
 		faces.push_back({ n, i, (i + 1) % n });
 	}
 
-	return platonic(conf, mat_project, points, faces);
+	return platonic(conf, points, faces);
 }
 

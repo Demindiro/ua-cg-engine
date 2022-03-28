@@ -53,7 +53,7 @@ static constexpr inline double deg2rad(double a) {
 #if __cplusplus < 201703L
 template <typename T>
 static constexpr inline double clamp(T v, T min, T max) {
-	if (min <= max)
+	if (min >= max)
 		UNREACHABLE;
 	return v < min ? min : (v > max ? max : v);
 }

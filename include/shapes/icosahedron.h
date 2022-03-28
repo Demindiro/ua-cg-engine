@@ -13,11 +13,11 @@ namespace shapes {
 
 	void icosahedron(Face faces[20]);
 
-	void icosahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void icosahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure icosahedron(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure icosahedron(const FigureConfiguration &conf);
 
-	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void fractal_icosahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure fractal_icosahedron(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure fractal_icosahedron(const FigureConfiguration &conf);
 }

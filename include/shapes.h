@@ -25,6 +25,25 @@ namespace shapes {
 	struct Color {
 		double r, g, b;
 
+		constexpr Color() : r(0), g(0), b(0) {}
+		constexpr Color(double r, double g, double b) : r(r), g(g), b(b) {}
+
+		constexpr Color operator +(Color rhs) const {
+			return Color { r + rhs.r, g + rhs.g, b + rhs.b };
+		}
+
+		constexpr Color operator *(Color rhs) const {
+			return Color { r * rhs.r, g * rhs.g, b * rhs.b };
+		}
+
+		constexpr void operator +=(Color rhs) {
+			*this = *this + rhs;
+		}
+
+		constexpr void operator *=(Color rhs) {
+			*this = *this * rhs;
+		}
+
 		constexpr Color clamp() const {
 			return { ::clamp(r, 0.0, 1.0), ::clamp(g, 0.0, 1.0), ::clamp(b, 0.0, 1.0) };
 		}
@@ -45,21 +64,31 @@ namespace shapes {
 		double reflection;
 	};
 
-	Matrix transform_from_conf(ini::Section &conf, Matrix &projection);
+	struct FigureConfiguration {
+		ini::Section &section;
+		Matrix eye;
+		bool with_lighting;
+	};
 
-	Color color_from_conf(ini::Section &conf);
+	struct Lights {
+		Color ambient;
+	};
 
-	void platonic(ini::Section &conf, Matrix &project, std::vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len);
+	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection);
 
-	inline void platonic(ini::Section &conf, Matrix &project, std::vector<Line3D> &lines, std::vector<Point3D> points, std::vector<Edge> edges) {
-		platonic(conf, project, lines, points.data(), points.size(), edges.data(), edges.size());
+	Color color_from_conf(const ini::Section &conf);
+
+	void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len);
+
+	inline void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, std::vector<Point3D> points, std::vector<Edge> edges) {
+		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	TriangleFigure platonic(ini::Section &conf, Matrix &project, std::vector<Point3D> points, std::vector<Face> faces);
+	TriangleFigure platonic(const FigureConfiguration &conf, std::vector<Point3D> points, std::vector<Face> faces);
 
 	img::EasyImage wireframe(const ini::Configuration &, bool with_z);
 
-	img::EasyImage triangles(const ini::Configuration &);
+	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
 
-	img::EasyImage draw(const std::vector<TriangleFigure> &figures, unsigned int size, img::Color background);
+	img::EasyImage draw(const std::vector<TriangleFigure> &figures, Lights *lights, unsigned int size, img::Color background);
 }

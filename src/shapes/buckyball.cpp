@@ -45,37 +45,37 @@ namespace shapes {
 	static void buckyball(Face faces[32], Point3D points[60]) {
 	}
 
-	void buckyball(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void buckyball(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		Point3D points[60];
 		Edge edges[90];
 		buckyball(points);
 		buckyball(edges, points);
-		platonic(conf, mat_project, lines, points, 60, edges, 90);
+		platonic(conf, lines, points, 60, edges, 90);
 	}
 
-	TriangleFigure buckyball(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure buckyball(const FigureConfiguration &conf) {
 		vector<Point3D> points(60);
 		vector<Face> faces(32);
 		buckyball(points.data());
 		buckyball(faces.data(), points.data());
-		return platonic(conf, mat_project, points, faces);
+		return platonic(conf, points, faces);
 	}
 
-	void fractal_buckyball(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void fractal_buckyball(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		vector<Point3D> points(60);
 		vector<Edge> edges(90);
 		buckyball(points.data());
 		buckyball(edges.data(), points.data());
 		fractal(conf, points, edges);
-		platonic(conf, mat_project, lines, points, edges);
+		platonic(conf, lines, points, edges);
 	}
 
-	TriangleFigure fractal_buckyball(ini::Section &conf, Matrix &mat_project) {
+	TriangleFigure fractal_buckyball(const FigureConfiguration &conf) {
 		vector<Point3D> points(60);
 		vector<Face> faces(32);
 		buckyball(points.data());
 		buckyball(faces.data(), points.data());
 		fractal(conf, points, faces);
-		return platonic(conf, mat_project, points, faces);
+		return platonic(conf, points, faces);
 	}
 }

@@ -7,7 +7,7 @@
 #include "vector3d.h"
 
 namespace shapes {
-	void sphere(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void sphere(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure sphere(ini::Section &conf, Matrix &mat_project);
+	TriangleFigure sphere(const FigureConfiguration &conf);
 }

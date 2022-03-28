@@ -22,7 +22,7 @@
 using namespace std;
 
 namespace shapes {
-	Matrix transform_from_conf(ini::Section &conf, Matrix &projection) {
+	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection) {
 		auto rot_x = conf["rotateX"].as_double_or_die() * M_PI / 180;
 		auto rot_y = conf["rotateY"].as_double_or_die() * M_PI / 180;
 		auto rot_z = conf["rotateZ"].as_double_or_die() * M_PI / 180;
@@ -47,17 +47,24 @@ namespace shapes {
 		return mat_scale * mat_rot_x * mat_rot_y * mat_rot_z * mat_translate * projection;
 	}
 
-	Color color_from_conf(ini::Section &conf) {
-		auto c = conf["color"].as_double_tuple_or_die();
+	static Color color_from_conf(const vector<double> &c) {
 		double b = c.at(2);
 		double g = c.at(1);
 		double r = c.at(0);
 		return { r, g, b };
 	}
 
-	void platonic(ini::Section &conf, Matrix &project, vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len) {
-		auto mat = transform_from_conf(conf, project);
-		auto color = color_from_conf(conf);
+	static Color color_from_conf(const ini::Entry &e) {
+		return color_from_conf(e.as_double_tuple_or_die());
+	}
+
+	Color color_from_conf(const ini::Section &conf) {
+		return color_from_conf(conf["color"]);
+	}
+
+	void platonic(const FigureConfiguration &conf, vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len) {
+		auto mat = transform_from_conf(conf.section, conf.eye);
+		auto color = color_from_conf(conf.section);
 
 		for (auto p = points; p != points + points_len; p++) {
 			*p *= mat;
@@ -72,18 +79,22 @@ namespace shapes {
 		}
 	}
 
-	TriangleFigure platonic(ini::Section &conf, Matrix &project, vector<Point3D> points, vector<Face> faces) {
-		auto mat = transform_from_conf(conf, project);
-		auto color = color_from_conf(conf);
-
-		for (auto &p : points) {
-			p *= mat;
-		}
-
+	TriangleFigure platonic(const FigureConfiguration &conf, vector<Point3D> points, vector<Face> faces) {
 		TriangleFigure fig;
 		fig.points = points;
 		fig.faces = faces;
-		fig.ambient = color;
+
+		auto mat = transform_from_conf(conf.section, conf.eye);
+		if (conf.with_lighting) {
+			fig.ambient = color_from_conf(conf.section["ambientReflection"]);
+		} else {
+			fig.ambient = color_from_conf(conf.section);
+		}
+
+		for (auto &p : fig.points) {
+			p *= mat;
+		}
+
 		return fig;
 	}
 
@@ -147,44 +158,49 @@ namespace shapes {
 		// Parse figures
 		vector<Line3D> lines;
 		for (int i = 0; i < nr_fig; i++) {
-			auto fig = conf[string("Figure") + to_string(i)];
-			auto type = fig["type"].as_string_or_die();
+			auto section = conf[string("Figure") + to_string(i)];
+			FigureConfiguration fconf {
+				section,
+				mat_eye,
+				false,
+			};
+			auto type = fconf.section["type"].as_string_or_die();
 			if (type == "LineDrawing") {
-				wireframe::line_drawing(fig, mat_eye, lines);
+				wireframe::line_drawing(fconf.section, fconf.eye, lines);
 			} else if (type == "Cube") {
-				cube(fig, mat_eye, lines);
+				cube(fconf, lines);
 			} else if (type == "Tetrahedron") {
-				tetrahedron(fig, mat_eye, lines);
+				tetrahedron(fconf, lines);
 			} else if (type == "Octahedron") {
-				octahedron(fig, mat_eye, lines);
+				octahedron(fconf, lines);
 			} else if (type == "Icosahedron") {
-				icosahedron(fig, mat_eye, lines);
+				icosahedron(fconf, lines);
 			} else if (type == "Dodecahedron") {
-				dodecahedron(fig, mat_eye, lines);
+				dodecahedron(fconf, lines);
 			} else if (type == "Cylinder") {
-				cylinder(fig, mat_eye, lines);
+				cylinder(fconf, lines);
 			} else if (type == "Cone") {
-				cone(fig, mat_eye, lines);
+				cone(fconf, lines);
 			} else if (type == "Sphere") {
-				sphere(fig, mat_eye, lines);
+				sphere(fconf, lines);
 			} else if (type == "Torus") {
-				torus(fig, mat_eye, lines);
+				torus(fconf, lines);
 			} else if (type == "BuckyBall") {
-				buckyball(fig, mat_eye, lines);
+				buckyball(fconf, lines);
 			} else if (type == "3DLSystem") {
-				wireframe::l_system(fig, mat_eye, lines);
+				wireframe::l_system(fconf.section, fconf.eye, lines);
 			} else if (type == "FractalCube") {
-				fractal_cube(fig, mat_eye, lines);
+				fractal_cube(fconf, lines);
 			} else if (type == "FractalOctahedron") {
-				fractal_octahedron(fig, mat_eye, lines);
+				fractal_octahedron(fconf, lines);
 			} else if (type == "FractalTetrahedron") {
-				fractal_tetrahedron(fig, mat_eye, lines);
+				fractal_tetrahedron(fconf, lines);
 			} else if (type == "FractalIcosahedron") {
-				fractal_icosahedron(fig, mat_eye, lines);
+				fractal_icosahedron(fconf, lines);
 			} else if (type == "FractalDodecahedron") {
-				fractal_dodecahedron(fig, mat_eye, lines);
+				fractal_dodecahedron(fconf, lines);
 			} else if (type == "FractalBuckyBall") {
-				fractal_buckyball(fig, mat_eye, lines);
+				fractal_buckyball(fconf, lines);
 			} else if (type == "MengerSponge") {
 				puts("TODO MengerSponge lines");
 			} else {
@@ -285,51 +301,58 @@ namespace shapes {
 		}
 	}
 
-	img::EasyImage triangles(const ini::Configuration &conf) {
+	img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		img::Color bg;
 		int size, nr_fig;
 		Matrix mat_eye;
 		Frustum frustum;
+		Lights lights;
+
 		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
 
 		// Parse figures
 		vector<TriangleFigure> figures;
 		figures.reserve(nr_fig);
 		for (int i = 0; i < nr_fig; i++) {
+			auto section = conf[string("Figure") + to_string(i)];
+			FigureConfiguration fconf {
+				section,
+				mat_eye,
+				with_lighting,
+			};
+			auto type = fconf.section["type"].as_string_or_die();
 			TriangleFigure fig;
-			auto sect = conf[string("Figure") + to_string(i)];
-			auto type = sect["type"].as_string_or_die();
 			if (type == "Cube") {
-				fig = cube(sect, mat_eye);
+				fig = cube(fconf);
 			} else if (type == "Tetrahedron") {
-				fig = tetrahedron(sect, mat_eye);
+				fig = tetrahedron(fconf);
 			} else if (type == "Octahedron") {
-				fig = octahedron(sect, mat_eye);
+				fig = octahedron(fconf);
 			} else if (type == "Icosahedron") {
-				fig = icosahedron(sect, mat_eye);
+				fig = icosahedron(fconf);
 			} else if (type == "Dodecahedron") {
-				fig = dodecahedron(sect, mat_eye);
+				fig = dodecahedron(fconf);
 			} else if (type == "Cylinder") {
-				fig = cylinder(sect, mat_eye);
+				fig = cylinder(fconf);
 			} else if (type == "Cone") {
-				fig = cone(sect, mat_eye);
+				fig = cone(fconf);
 			} else if (type == "Sphere") {
-				fig = sphere(sect, mat_eye);
+				fig = sphere(fconf);
 			} else if (type == "Torus") {
-				fig = torus(sect, mat_eye);
+				fig = torus(fconf);
 			} else if (type == "BuckyBall") {
 				puts("TODO BuckyBall triangles");
 				continue;
 			} else if (type == "FractalCube") {
-				fig = fractal_cube(sect, mat_eye);
+				fig = fractal_cube(fconf);
 			} else if (type == "FractalTetrahedron") {
-				fig = fractal_tetrahedron(sect, mat_eye);
+				fig = fractal_tetrahedron(fconf);
 			} else if (type == "FractalOctahedron") {
-				fig = fractal_octahedron(sect, mat_eye);
+				fig = fractal_octahedron(fconf);
 			} else if (type == "FractalIcosahedron") {
-				fig = fractal_icosahedron(sect, mat_eye);
+				fig = fractal_icosahedron(fconf);
 			} else if (type == "FractalDodecahedron") {
-				fig = fractal_dodecahedron(sect, mat_eye);
+				fig = fractal_dodecahedron(fconf);
 			} else if (type == "FractalBuckyBall") {
 				puts("TODO FractalBuckyBall triangles");
 				continue;
@@ -340,6 +363,19 @@ namespace shapes {
 				throw TypeException(type);
 			}
 			figures.push_back(fig);
+		}
+
+		if (with_lighting) {
+			int nr_light = conf["General"]["nrLights"];
+			for (int i = 0; i < nr_light; i++) {
+				auto section = conf[string("Light") + to_string(i)];
+				vector<double> color;
+				if (section["ambientLight"].as_double_tuple_if_exists(color)) {
+					lights.ambient += color_from_conf(color);
+				} else {
+					throw TypeException("light"); // TODO new exception type
+				}
+			}
 		}
 
 		// Clipping
@@ -436,10 +472,10 @@ namespace shapes {
 		}
 
 		// Draw
-		return draw(figures, size, bg);
+		return draw(figures, with_lighting ? &lights : NULL, size, bg);
 	}
 
-	img::EasyImage draw(const std::vector<TriangleFigure> &figures, unsigned int size, img::Color background) {
+	img::EasyImage draw(const std::vector<TriangleFigure> &figures, Lights *lights, unsigned int size, img::Color background) {
 		// TODO wdym "unitialized", GCC?
 		double d = NAN, offset_x = NAN, offset_y = NAN;
 
@@ -501,18 +537,22 @@ namespace shapes {
 		// Transform & draw triangles
 		ZBuffer z(img.get_width(), img.get_height());
 		for (auto &f : figures) {
+			auto color = f.ambient;
+			if (lights != NULL) {
+				color *= lights->ambient;
+			}
 #if GRAPHICS_DEBUG > 0
 			size_t color_i = 0;
 #endif
 			for (auto &t : f.faces) {
 				f2p(f, t);
 #if GRAPHICS_DEBUG > 0
-				auto color = colors_pool[color_i++];
+				auto clr = colors_pool[color_i++];
 				color_i %= sizeof(colors_pool) / sizeof(*colors_pool);
 #else
-				auto color = f.ambient.to_img_color();
+				auto clr = color.to_img_color();
 #endif
-				img.draw_zbuf_triag(z, a, b, c, d, offset_x, offset_y, color);
+				img.draw_zbuf_triag(z, a, b, c, d, offset_x, offset_y, clr);
 			}
 		}
 
@@ -523,10 +563,11 @@ namespace shapes {
 				Point3D la(a.x / -a.z * d + offset_x, a.y / -a.z * d + offset_y, a.z);
 				Point3D lb(b.x / -b.z * d + offset_x, b.y / -b.z * d + offset_y, b.z);
 				Point3D lc(c.x / -c.z * d + offset_x, c.y / -c.z * d + offset_y, c.z);
-				auto color = img::Color(255 - f.ambient.red, 255 - f.ambient.green, 255 - f.ambient.blue);
-				Line3D(la, lb, color).draw(img, z);
-				Line3D(lb, lc, color).draw(img, z);
-				Line3D(lc, la, color).draw(img, z);
+				auto clr = f.ambient.to_img_color();
+				clr = img::Color(255 - clr.red, 255 - clr.green, 255 - clr.blue);
+				Line3D(la, lb, clr).draw(img, z);
+				Line3D(lb, lc, clr).draw(img, z);
+				Line3D(lc, la, clr).draw(img, z);
 			}
 		}
 #endif
