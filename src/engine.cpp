@@ -54,6 +54,7 @@ int main(int argc, char const *argv[]) {
 		}
 		for (std::string fileName : args) {
 			ini::Configuration conf;
+			std::cout << "gen " << fileName << std::endl;
 			try {
 				std::ifstream fin(fileName);
 				fin >> conf;
