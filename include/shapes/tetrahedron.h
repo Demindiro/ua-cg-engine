@@ -9,4 +9,8 @@ namespace shapes {
 	void tetrahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
 
 	void tetrahedron(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+
+	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+
+	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
 }

@@ -38,6 +38,16 @@ static inline Vector3D tup_to_point3d(std::vector<double> v) {
 	return Vector3D::point(x, y, z);
 }
 
+static inline Vector3D tup_to_vector3d(std::vector<double> v) {
+	// Ditto
+	auto z = v.at(2), y = v[1], x = v[0];
+	return Vector3D::vector(x, y, z);
+}
+
+static inline double deg2rad(double a) {
+	return a / 180 * M_PI;
+}
+
 struct Rotation {
 	double u, v;
 

@@ -22,8 +22,8 @@ X: Niet werkend of niet geïmplementeerd
 | 4 | Z-buffering (lijnen)      | V |
 | 5 | Triangulatie              | V |
 |   | Z-buffering (driehoeken)  | V |
-| 6 | 3D fractalen              |   |
-|   | BuckyBall                 |   |
+| 6 | 3D fractalen              | V |
+|   | BuckyBall                 | - |
 |   | Mengerspons               |   |
 |   | View Frustum              |   |
 | 7 | Ambient licht             |   |
@@ -41,6 +41,7 @@ Geïmplementeerde vorm van texture mapping: N/A
 ## Gekende problemen 
 
 - Dodecahedron driehoeken zijn fout
+- BuckyBall faces zijn niet geïmplementeerd
 
 ## Niet-gequoteerde functionaliteit
 

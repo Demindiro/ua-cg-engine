@@ -5,7 +5,7 @@
 #include "shapes.h"
 
 namespace shapes {
-	void circle(std::vector<Vector3D> &points, int n, double z);
+	void circle(std::vector<Vector3D> &points, unsigned int n, double z);
 
-	void circle(std::vector<Face> &faces, int n, int offt);
+	void circle(std::vector<Face> &faces, unsigned int n, unsigned int offt);
 }

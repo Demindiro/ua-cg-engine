@@ -24,6 +24,12 @@ test-line-drawings: build-debug
 test-zbuffering: build-debug
 	cd assets && for f in z_buffering*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-fractals: build-debug
+	cd assets && for f in 3d_fractals*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
+test-clipping: build-debug
+	cd assets && for f in clipping*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 test: $(INI)
 
 $(INI): build-debug
@@ -50,8 +56,11 @@ $(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
 		CMakeLists.txt LICENSE README.md
 	tar czvf $@ $^
 
-clean::
-	rm -f $(ARCHIVE) assets/*.bmp
+clean:: clean-images
+	rm -rf $(ARCHIVE) build/ build-debug/
+
+clean-images::
+	rm -rf assets/*.bmp
 
 loop::
 	while true; do make build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done

@@ -2,28 +2,31 @@
 #include <vector>
 #include "lines.h"
 #include "shapes.h"
+#include "shapes/fractal.h"
 
 using namespace std;
 
 namespace shapes {
 	void icosahedron(Vector3D points[12]) {
 		auto p = sqrtl(5) / 2;
+		auto inv_p = 2 / sqrtl(5);
 		points[0] = Vector3D::point(0, 0,  p);
 		points[1] = Vector3D::point(0, 0, -p);
+		// Beware, i has to be signed so i - 2 works properly
 		for (int i = 0; i < 5; i++) {
 			auto a = (i - 2) * 2 * M_PI / 5;
 			auto b = a - M_PI / 5;
 			points[2 + i] = Vector3D::point(cos(a), sin(a),  0.5);
 			points[7 + i] = Vector3D::point(cos(b), sin(b), -0.5);
 		}
-		for (int i = 0; i < 12; i++) {
+		for (unsigned int i = 0; i < 12; i++) {
 			// Normalize
-			points[i] /= p;
+			points[i] *= inv_p;
 		}
 	}
 
 	void icosahedron(Edge edges[30]) {
-		for (int i = 0; i < 5; i++) {
+		for (unsigned int i = 0; i < 5; i++) {
 			// Top & bottom "hat"
 			edges[0 + i] = { 0, 2 + i };
 			edges[5 + i] = { 1, 7 + i };
@@ -37,9 +40,9 @@ namespace shapes {
 	}
 
 	void icosahedron(Face faces[20]) {
-		for (int i = 0; i < 5; i++) {
+		for (unsigned int i = 0; i < 5; i++) {
 			// TODO double check order of vertices
-			int j = (i + 1) % 5;
+			unsigned int j = (i + 1) % 5;
 			// Top & bottom "hat"
 			faces[0 + i] = { 0, 2 + i, 2 + j };
 			faces[5 + i] = { 1, 7 + i, 7 + j };
@@ -63,5 +66,23 @@ namespace shapes {
 		icosahedron(points);
 		icosahedron(faces);
 		platonic(conf, mat_project, triangles, points, 12, faces, 20);
+	}
+
+	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points(12);
+		vector<Edge> edges(30);
+		icosahedron(points.data());
+		icosahedron(edges.data());
+		fractal(conf, points, edges);
+		platonic(conf, mat_project, lines, points, edges);
+	}
+
+	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points(12);
+		vector<Face> faces(20);
+		icosahedron(points.data());
+		icosahedron(faces.data());
+		fractal(conf, points, faces);
+		platonic(conf, mat_project, triangles, points, faces);
 	}
 }

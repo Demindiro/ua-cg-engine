@@ -141,6 +141,9 @@ img::EasyImage Triangles3D::draw(uint size, Color background) const {
 	min_x = min_y = +numeric_limits<double>::infinity();
 	max_x = max_y = -numeric_limits<double>::infinity();
 	for (auto &t : triangles) {
+		assert(t.a.z != 0 && "division by 0");
+		assert(t.b.z != 0 && "division by 0");
+		assert(t.c.z != 0 && "division by 0");
 		min_x = min(min(min_x, t.a.x / -t.a.z), min(t.b.x / -t.b.z, t.c.x / -t.c.z));
 		min_y = min(min(min_y, t.a.y / -t.a.z), min(t.b.y / -t.b.z, t.c.y / -t.c.z));
 		max_x = max(max(max_x, t.a.x / -t.a.z), max(t.b.x / -t.b.z, t.c.x / -t.c.z));
@@ -149,11 +152,27 @@ img::EasyImage Triangles3D::draw(uint size, Color background) const {
 
 	auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
 
+	assert(!isnan(d));
+	assert(!isnan(offset_x));
+	assert(!isnan(offset_y));
+
 	// Transform & draw triangles
 	ZBuffer z(img.get_width(), img.get_height());
 	for (auto &t : triangles) {
 		img.draw_zbuf_triag(z, t.a, t.b, t.c, d, offset_x, offset_y, t.color);
 	}
+
+#if GRAPHICS_DEBUG > 1
+	for (auto &l : triangles) {
+		Point3D a(l.a.x / -l.a.z * d + offset_x, l.a.y / -l.a.z * d + offset_y, l.a.z);
+		Point3D b(l.b.x / -l.b.z * d + offset_x, l.b.y / -l.b.z * d + offset_y, l.b.z);
+		Point3D c(l.c.x / -l.c.z * d + offset_x, l.c.y / -l.c.z * d + offset_y, l.c.z);
+		auto color = img::Color(255 - l.color.red, 255 - l.color.green, 255 - l.color.blue);
+		Line3D(a, b, color).draw(img, z);
+		Line3D(b, c, color).draw(img, z);
+		Line3D(c, a, color).draw(img, z);
+	}
+#endif
 
 	return img;
 }

@@ -19,11 +19,6 @@ using namespace shapes;
 
 namespace wireframe {
 
-	static Vector3D polar_to_cartesian(double theta, double phi, double r) {
-		auto r_sin_phi = r * sin(phi);
-		return Vector3D::point(r_sin_phi * cos(theta), r_sin_phi * sin(theta), r * cos(phi));
-	}
-
 	void line_drawing(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
 		// Read transformation & color
 		auto mat = transform_from_conf(conf, mat_project);
@@ -31,17 +26,17 @@ namespace wireframe {
 
 		// Read points & transform
 		vector<Vector3D> points;
-		auto points_n = conf["nrPoints"].as_int_or_die();
+		auto points_n = (unsigned int)conf["nrPoints"].as_int_or_die();
 		points.reserve(points_n);
-		for (int i = 0; i < points_n; i++) {
+		for (unsigned int i = 0; i < points_n; i++) {
 			auto p = tup_to_point3d(conf[string("point") + to_string(i)].as_double_tuple_or_die());
 			points.push_back(p * mat);
 		}
 
 		// Read lines
-		auto lines_n = conf["nrLines"].as_int_or_die();
+		auto lines_n = (unsigned int)conf["nrLines"].as_int_or_die();
 		lines.reserve(lines.size() + lines_n);
-		for (int i = 0; i < lines_n; i++) {
+		for (unsigned int i = 0; i < lines_n; i++) {
 			auto line = conf[string("line") + to_string(i)].as_int_tuple_or_die();
 			auto b = points.at(line.at(1)), a = points.at(line.at(0));
 			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color});

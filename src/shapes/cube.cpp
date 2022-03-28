@@ -3,6 +3,7 @@
 #include "ini_configuration.h"
 #include "lines.h"
 #include "shapes.h"
+#include "shapes/fractal.h"
 #include "vector3d.h"
 
 using namespace std;
@@ -71,5 +72,23 @@ namespace shapes {
 		cube(points);
 		cube(faces);
 		platonic(conf, mat_project, triangles, points, 8, faces, 12);
+	}
+
+	void fractal_cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+		vector<Vector3D> points(8);
+		vector<Edge> edges(12);
+		cube(points.data());
+		cube(edges.data());
+		fractal(conf, points, edges);
+		platonic(conf, mat_project, lines, points, edges);
+	}
+
+	void fractal_cube(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+		vector<Vector3D> points(8);
+		vector<Face> faces(12);
+		cube(points.data());
+		cube(faces.data());
+		fractal(conf, points, faces);
+		platonic(conf, mat_project, triangles, points, faces);
 	}
 }

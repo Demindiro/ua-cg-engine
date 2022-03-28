@@ -8,7 +8,7 @@ project(engine)
 ############################################################
 # If supported by your compiler, you can add the -Wall, -Wextra, –fstack-protector-all and -g3 flags here.
 set(OWN_GXX_FLAGS "-std=c++14 -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${OWN_GXX_FLAGS} -g -fsanitize=undefined")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${OWN_GXX_FLAGS} -g -DGRAPHICS_DEBUG=1")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OWN_GXX_FLAGS} -flto -march=native")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${OWN_GXX_FLAGS}")
 
@@ -25,11 +25,13 @@ set(engine_sources
 	src/l_parser.cpp
 	src/l_system.cpp
 	src/shapes.cpp
+	src/shapes/buckyball.cpp
 	src/shapes/cone.cpp
 	src/shapes/circle.cpp
 	src/shapes/cube.cpp
 	src/shapes/cylinder.cpp
 	src/shapes/dodecahedron.cpp
+	src/shapes/fractal.cpp
 	src/shapes/icosahedron.cpp
 	src/shapes/tetrahedron.cpp
 	src/shapes/octahedron.cpp
