@@ -361,9 +361,9 @@ namespace shapes {
 						case NEAR : return -p.z < frustum.near;
 						case FAR  : return -p.z > frustum.far;
 						case RIGHT: return p.x * frustum.near / -p.z > v;
-						case LEFT : return p.x * frustum.near / -p.z < -v;
+						case LEFT : return p.x * frustum.near / -p.z < v;
 						case TOP  : return p.y * frustum.near / -p.z > v;
-						case DOWN : return p.y * frustum.near / -p.z < -v;
+						case DOWN : return p.y * frustum.near / -p.z < v;
 						default:
 									assert(!"Invalid direction");
 									return false;
@@ -379,24 +379,24 @@ namespace shapes {
 				};
 
 				// Near & far
-				auto dnear = -frustum.near, dfar = -frustum.far;
+				auto dnear = frustum.near, dfar = frustum.far;
 				{
 					frustum_apply(f,
 						[&outside_mask](auto &t) { return outside_mask(t, NEAR, NAN); },
 						[dnear, dfar](Point3D from, Point3D to) {
-							return (dnear - to.z) / (from.z - to.z);
+							return (-dnear - to.z) / (from.z - to.z);
 						}
 					);
 					frustum_apply(f,
 						[&outside_mask](auto &t) { return outside_mask(t, FAR, NAN); },
 						[dnear, dfar](Point3D from, Point3D to) {
-							return (dfar - to.z) / (from.z - to.z);
+							return (-dfar - to.z) / (from.z - to.z);
 						}
 					);
 				}
 
 				// Left & right plane
-				auto right = frustum.near * tan(frustum.fov / 2);
+				auto right = dnear * tan(frustum.fov / 2);
 				{
 					frustum_apply(f,
 						[&outside_mask, right](auto &t) { return outside_mask(t, RIGHT, right); },
