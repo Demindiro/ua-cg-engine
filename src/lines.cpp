@@ -162,7 +162,7 @@ img::EasyImage Triangles3D::draw(uint size, Color background) const {
 		img.draw_zbuf_triag(z, t.a, t.b, t.c, d, offset_x, offset_y, t.color);
 	}
 
-#ifdef GRAPHICS_DEBUG
+#if GRAPHICS_DEBUG > 1
 	for (auto &l : triangles) {
 		Point3D a(l.a.x / -l.a.z * d + offset_x, l.a.y / -l.a.z * d + offset_y, l.a.z);
 		Point3D b(l.b.x / -l.b.z * d + offset_x, l.b.y / -l.b.z * d + offset_y, l.b.z);

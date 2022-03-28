@@ -294,12 +294,6 @@ void img::EasyImage::draw_zbuf_triag(
 	double g_x = (a.x + b.x + c.x) / 3;
 	double g_y = (a.y + b.y + c.y) / 3;
 
-#if __cplusplus < 201703L
-	auto clamp = [](double v, double min_v, double max_v) {
-		return max(min_v, min(v, max_v));
-	};
-#endif
-
 	// Y bounds
 	double y_min = min(min(a.y, b.y), c.y);
 	double y_max = max(max(a.y, b.y), c.y);
