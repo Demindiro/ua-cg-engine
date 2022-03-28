@@ -5,15 +5,13 @@ INI   := $(patsubst assets/%,%,$(wildcard assets/*.ini))
 
 ARCHIVE := s0215648
 
-CPUS := $(shell nproc)
-
 build:
 	cmake -DCMAKE_BUILD_TYPE=Release -B $@
-	cd $@ && make -j$(CPUS)
+	make -C $@
 
 build-debug:
 	cmake -DCMAKE_BUILD_TYPE=Debug -B $@
-	cd $@ && make -j$(CPUS)
+	make -C $@
 
 #test: build-debug
 #	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
@@ -43,7 +41,7 @@ bench-batch: build
 	cd assets && perf stat ../$</engine *.ini
 
 gen: build
-	make -j$(CPUS) $(patsubst %,_gen-%,$(INI))
+	make -C . $(patsubst %,_gen-%,$(INI))
 
 gen-%: build
 	make $(patsubst _%,%,$@)
@@ -63,4 +61,4 @@ clean-images::
 	rm -rf assets/*.bmp
 
 loop::
-	while true; do make build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done
+	while true; do clear; make build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done

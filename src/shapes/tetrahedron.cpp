@@ -5,11 +5,11 @@
 using namespace std;
 
 namespace shapes {
-	static void tetrahedron(Vector3D points[4]) {
-		points[0] = Vector3D::point( 1, -1, -1);
-		points[1] = Vector3D::point(-1,  1, -1);
-		points[2] = Vector3D::point( 1,  1,  1);
-		points[3] = Vector3D::point(-1, -1,  1);
+	static void tetrahedron(Point3D points[4]) {
+		points[0] = {  1, -1, -1 };
+		points[1] = { -1,  1, -1 };
+		points[2] = {  1,  1,  1 };
+		points[3] = { -1, -1,  1 };
 	}
 
 	static void tetrahedron(Edge edges[6]) {
@@ -29,23 +29,23 @@ namespace shapes {
 	}
 
 	void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[4];
+		Point3D points[4];
 		Edge edges[6];
 		tetrahedron(points);
 		tetrahedron(edges);
 		platonic(conf, mat_project, lines, points, 4, edges, 6);
 	}
 
-	void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		Vector3D points[4];
-		Face faces[4];
-		tetrahedron(points);
-		tetrahedron(faces);
-		platonic(conf, mat_project, triangles, points, 4, faces, 4);
+	TriangleFigure tetrahedron(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(4);
+		vector<Face> faces(4);
+		tetrahedron(points.data());
+		tetrahedron(faces.data());
+		return platonic(conf, mat_project, points, faces);
 	}
 
 	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points(4);
+		vector<Point3D> points(4);
 		vector<Edge> edges(6);
 		tetrahedron(points.data());
 		tetrahedron(edges.data());
@@ -53,12 +53,12 @@ namespace shapes {
 		platonic(conf, mat_project, lines, points, edges);
 	}
 
-	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points(4);
+	TriangleFigure fractal_tetrahedron(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(4);
 		vector<Face> faces(4);
 		tetrahedron(points.data());
 		tetrahedron(faces.data());
 		fractal(conf, points, faces);
-		platonic(conf, mat_project, triangles, points, faces);
+		return platonic(conf, mat_project, points, faces);
 	}
 }

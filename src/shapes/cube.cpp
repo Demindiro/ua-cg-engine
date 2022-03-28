@@ -10,15 +10,15 @@ using namespace std;
 
 namespace shapes {
 
-	static void cube(Vector3D points[8]) {
-		points[0] = Vector3D::point( 1,  1,  1);
-		points[1] = Vector3D::point( 1,  1, -1);
-		points[2] = Vector3D::point( 1, -1,  1);
-		points[3] = Vector3D::point( 1, -1, -1);
-		points[4] = Vector3D::point(-1,  1,  1);
-		points[5] = Vector3D::point(-1,  1, -1);
-		points[6] = Vector3D::point(-1, -1,  1);
-		points[7] = Vector3D::point(-1, -1, -1);
+	static void cube(Point3D points[8]) {
+		points[0] = {  1,  1,  1 };
+		points[1] = {  1,  1, -1 };
+		points[2] = {  1, -1,  1 };
+		points[3] = {  1, -1, -1 };
+		points[4] = { -1,  1,  1 };
+		points[5] = { -1,  1, -1 };
+		points[6] = { -1, -1,  1 };
+		points[7] = { -1, -1, -1 };
 	}
 
 	static void cube(Edge edges[12]) {
@@ -59,23 +59,23 @@ namespace shapes {
 	}
 
 	void cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[8];
+		Point3D points[8];
 		Edge edges[12];
 		cube(points);
 		cube(edges);
 		platonic(conf, mat_project, lines, points, 8, edges, 12);
 	}
 
-	void cube(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		Vector3D points[8];
-		Face faces[12];
-		cube(points);
-		cube(faces);
-		platonic(conf, mat_project, triangles, points, 8, faces, 12);
+	TriangleFigure cube(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(8);
+		vector<Face> faces(12);
+		cube(points.data());
+		cube(faces.data());
+		return platonic(conf, mat_project, points, faces);
 	}
 
 	void fractal_cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points(8);
+		vector<Point3D> points(8);
 		vector<Edge> edges(12);
 		cube(points.data());
 		cube(edges.data());
@@ -83,12 +83,12 @@ namespace shapes {
 		platonic(conf, mat_project, lines, points, edges);
 	}
 
-	void fractal_cube(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points(8);
+	TriangleFigure fractal_cube(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(8);
 		vector<Face> faces(12);
 		cube(points.data());
 		cube(faces.data());
 		fractal(conf, points, faces);
-		platonic(conf, mat_project, triangles, points, faces);
+		return platonic(conf, mat_project, points, faces);
 	}
 }

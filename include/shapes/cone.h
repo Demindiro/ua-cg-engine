@@ -3,9 +3,11 @@
 #include <vector>
 #include "ini_configuration.h"
 #include "lines.h"
+#include "shapes.h"
 #include "vector3d.h"
 
 namespace shapes {
 	void cone(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
-	void cone(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+
+	TriangleFigure cone(ini::Section &conf, Matrix &mat_project);
 }

@@ -7,17 +7,17 @@
 using namespace std;
 
 namespace shapes {
-	static void dodecahedron(Vector3D points[20]) {
-		Vector3D ico[12];
+	static void dodecahedron(Point3D points[20]) {
+		Point3D ico[12];
 		icosahedron(ico);
 		for (unsigned int i = 0; i < 5; i++) {
 			unsigned int j = (i + 1) % 5;
 			// Top & bottom "hat"
-			points[0 + i] = (ico[0] + ico[2 + i] + ico[2 + j]) / 3;
-			points[5 + i] = (ico[1] + ico[7 + i] + ico[7 + j]) / 3;
+			points[0 + i] = Point3D::center({ ico[0], ico[2 + i], ico[2 + j] });
+			points[5 + i] = Point3D::center({ ico[1], ico[7 + i], ico[7 + j] });
 			// Ring
-			points[10 + i] = (ico[2 + i] + ico[7 + i] + ico[7 + j]) / 3;
-			points[15 + i] = (ico[2 + i] + ico[2 + j] + ico[7 + j]) / 3;
+			points[10 + i] = Point3D::center({ ico[2 + i], ico[7 + i], ico[7 + j] });
+			points[15 + i] = Point3D::center({ ico[2 + i], ico[2 + j], ico[7 + j] });
 		}
 	}
 
@@ -65,23 +65,23 @@ namespace shapes {
 	}
 
 	void dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[20];
+		Point3D points[20];
 		Edge edges[30];
 		dodecahedron(points);
 		dodecahedron(edges);
 		platonic(conf, mat_project, lines, points, 20, edges, 30);
 	}
 
-	void dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		Vector3D points[20];
-		Face faces[36];
-		dodecahedron(points);
-		dodecahedron(faces);
-		platonic(conf, mat_project, triangles, points, 20, faces, 36);
+	TriangleFigure dodecahedron(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(20);
+		vector<Face> faces(36);
+		dodecahedron(points.data());
+		dodecahedron(faces.data());
+		return platonic(conf, mat_project, points, faces);
 	}
 
 	void fractal_dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points(20);
+		vector<Point3D> points(20);
 		vector<Edge> edges(30);
 		dodecahedron(points.data());
 		dodecahedron(edges.data());
@@ -89,12 +89,12 @@ namespace shapes {
 		platonic(conf, mat_project, lines, points, edges);
 	}
 
-	void fractal_dodecahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points(20);
+	TriangleFigure fractal_dodecahedron(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(20);
 		vector<Face> faces(36);
 		dodecahedron(points.data());
 		dodecahedron(faces.data());
 		fractal(conf, points, faces);
-		platonic(conf, mat_project, triangles, points, faces);
+		return platonic(conf, mat_project, points, faces);
 	}
 }

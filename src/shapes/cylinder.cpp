@@ -10,7 +10,7 @@ namespace shapes {
 		auto n = (unsigned int)conf["n"].as_int_or_die();
 		auto height = conf["height"].as_double_or_die();
 
-		vector<Vector3D> points;
+		vector<Point3D> points;
 		points.reserve(n * 2);
 		circle(points, n, 0);
 		circle(points, n, height);
@@ -25,11 +25,11 @@ namespace shapes {
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	void cylinder(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
+	TriangleFigure cylinder(ini::Section &conf, Matrix &mat_project) {
 		auto n = (unsigned int)conf["n"].as_int_or_die();
 		auto height = conf["height"].as_double_or_die();
 
-		vector<Vector3D> points;
+		vector<Point3D> points;
 		vector<Face> faces;
 		points.reserve(n * 2);
 		faces.reserve(n * 2);
@@ -44,6 +44,6 @@ namespace shapes {
 			faces.push_back({ j, n + i, n + j });
 		}
 
-		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
+		return platonic(conf, mat_project, points, faces);
 	}
 }

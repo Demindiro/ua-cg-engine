@@ -6,13 +6,13 @@
 using namespace std;
 
 namespace shapes {
-	static void octahedron(Vector3D points[6]) {
-		points[0] = Vector3D::point( 1,  0,  0);
-		points[1] = Vector3D::point(-1,  0,  0);
-		points[2] = Vector3D::point( 0,  1,  0);
-		points[3] = Vector3D::point( 0,  0,  1);
-		points[4] = Vector3D::point( 0, -1,  0);
-		points[5] = Vector3D::point( 0,  0, -1);
+	static void octahedron(Point3D points[6]) {
+		points[0] = Point3D( 1,  0,  0);
+		points[1] = Point3D(-1,  0,  0);
+		points[2] = Point3D( 0,  1,  0);
+		points[3] = Point3D( 0,  0,  1);
+		points[4] = Point3D( 0, -1,  0);
+		points[5] = Point3D( 0,  0, -1);
 	}
 
 	static void octahedron(Edge edges[12]) {
@@ -47,23 +47,23 @@ namespace shapes {
 	}
 
 	void octahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[6];
+		Point3D points[6];
 		Edge edges[12];
 		octahedron(points);
 		octahedron(edges);
 		platonic(conf, mat_project, lines, points, 6, edges, 12);
 	}
 
-	void octahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &lines) {
-		Vector3D points[6];
-		Face faces[8];
-		octahedron(points);
-		octahedron(faces);
-		platonic(conf, mat_project, lines, points, 6, faces, 8);
+	TriangleFigure octahedron(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(6);
+		vector<Face> faces(8);
+		octahedron(points.data());
+		octahedron(faces.data());
+		return platonic(conf, mat_project, points, faces);
 	}
 
 	void fractal_octahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points(6);
+		vector<Point3D> points(6);
 		vector<Edge> edges(12);
 		octahedron(points.data());
 		octahedron(edges.data());
@@ -71,12 +71,12 @@ namespace shapes {
 		platonic(conf, mat_project, lines, points, edges);
 	}
 
-	void fractal_octahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points(6);
+	TriangleFigure fractal_octahedron(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points(6);
 		vector<Face> faces(8);
 		octahedron(points.data());
 		octahedron(faces.data());
 		fractal(conf, points, faces);
-		platonic(conf, mat_project, triangles, points, faces);
+		return platonic(conf, mat_project, points, faces);
 	}
 }

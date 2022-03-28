@@ -7,7 +7,7 @@
 using namespace std;
 
 namespace shapes {
-	static void bisect(vector<Vector3D> &points, vector<Edge> &edges, vector<Face> &faces) {
+	static void bisect(vector<Point3D> &points, vector<Edge> &edges, vector<Face> &faces) {
 		vector<Edge> new_edges;
 		vector<Face> new_faces;
 		new_edges.reserve(edges.size() * 3);
@@ -18,7 +18,7 @@ namespace shapes {
 		// Use edges to add points & determine new edges
 		for (auto e : edges) {
 			unsigned int i = points.size();
-			points.push_back((points[e.a] + points[e.b]) / 2);
+			points.push_back(Point3D::center({ points[e.a], points[e.b] }));
 			new_edges.push_back({e.a, i});
 			new_edges.push_back({i, e.b});
 			edge_to_new_point[e] = i;
@@ -44,9 +44,9 @@ namespace shapes {
 		faces = new_faces;
 	}
 
-	static void sphere(ini::Section &conf, vector<Vector3D> &points, vector<Edge> &edges, vector<Face> &faces) {
+	static void sphere(ini::Section &conf, vector<Point3D> &points, vector<Edge> &edges, vector<Face> &faces) {
 		auto n = (unsigned int)conf["n"].as_int_or_die();
-		points = vector<Vector3D>(12);
+		points = vector<Point3D>(12);
 		edges = vector<Edge>(30);
 		faces = vector<Face>(20);
 
@@ -59,23 +59,25 @@ namespace shapes {
 		}
 
 		for (auto &p : points) {
-			p.normalise();
+			auto v = Vector3D::point(p.x, p.y, p.z);
+			v.normalise();
+			p = v;
 		}
 	}
 
 	void sphere(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points;
+		vector<Point3D> points;
 		vector<Edge> edges;
 		vector<Face> faces;
 		sphere(conf, points, edges, faces);
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	void sphere(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points;
+	TriangleFigure sphere(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points;
 		vector<Edge> edges;
 		vector<Face> faces;
 		sphere(conf, points, edges, faces);
-		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
+		return platonic(conf, mat_project, points, faces);
 	}
 }

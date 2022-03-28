@@ -6,20 +6,20 @@
 using namespace std;
 
 namespace shapes {
-	static void torus(ini::Section &conf, vector<Vector3D> &points, unsigned int &n, unsigned int &m) {
+	static void torus(ini::Section &conf, vector<Point3D> &points, unsigned int &n, unsigned int &m) {
 		auto mr = conf["R"].as_double_or_die();
 		auto sr = conf["r"].as_double_or_die();
 		n = conf["n"].as_int_or_die();
 		m = conf["m"].as_int_or_die();
 
-		points = vector<Vector3D>(m * n);
+		points = vector<Point3D>(m * n);
 
 		double d = 2 * M_PI / m;
 		for (unsigned int i = 0; i < m; i++) {
-			auto x = 0;
+			auto x = 0.0;
 			auto y = mr + sin(i * d) * sr;
 			auto z = cos(i * d) * sr;
-			points[i] = Vector3D::point(x, y, z);
+			points[i] = { x, y, z };
 		}
 
 		auto rot = Rotation(2 * M_PI / n).z();
@@ -32,7 +32,7 @@ namespace shapes {
 	}
 
 	void torus(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points;
+		vector<Point3D> points;
 		unsigned int n, m;
 		torus(conf, points, n, m);
 		vector<Edge> edges;
@@ -45,8 +45,8 @@ namespace shapes {
 		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	void torus(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points;
+	TriangleFigure torus(ini::Section &conf, Matrix &mat_project) {
+		vector<Point3D> points;
 		unsigned int n, m;
 		torus(conf, points, n, m);
 		vector<Face> faces;
@@ -58,6 +58,6 @@ namespace shapes {
 				faces.push_back({ k * m + l, k * m + j, i * m + l });
 			}
 		}
-		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
+		return platonic(conf, mat_project, points, faces);
 	}
 }
