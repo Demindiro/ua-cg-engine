@@ -23,7 +23,7 @@ namespace shapes {
 
 	static void tetrahedron(Face faces[4]) {
 		faces[0] = { 0, 1, 2 };
-		faces[1] = { 0, 1, 3 };
+		faces[1] = { 0, 3, 1 };
 		faces[2] = { 0, 2, 3 };
 		faces[3] = { 2, 1, 3 };
 	}
