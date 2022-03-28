@@ -423,6 +423,8 @@ namespace shapes {
 					});
 				}
 			}
+		} else {
+			lights.ambient = { 1, 1, 1 };
 		}
 
 		// Clipping
