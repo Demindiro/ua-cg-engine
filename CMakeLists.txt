@@ -43,6 +43,7 @@ set(engine_sources
 	src/shapes/torus.cpp
 	src/vector3d.cpp
 	src/wireframe.cpp
+	src/zbuffer.cpp
 )
 
 set(exe_name "engine")

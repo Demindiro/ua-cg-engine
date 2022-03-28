@@ -117,5 +117,5 @@ namespace shapes {
 
 	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
 
-	img::EasyImage draw(const std::vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, img::Color background);
+	img::EasyImage draw(std::vector<TriangleFigure> figures, const Lights &lights, unsigned int size, img::Color background);
 }

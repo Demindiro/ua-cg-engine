@@ -522,7 +522,7 @@ namespace shapes {
 		return draw(figures, lights, size, bg);
 	}
 
-	img::EasyImage draw(const std::vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, img::Color background) {
+	img::EasyImage draw(std::vector<TriangleFigure> figures, const Lights &lights, unsigned int size, img::Color background) {
 		// TODO wdym "unitialized", GCC?
 		double d = NAN, offset_x = NAN, offset_y = NAN;
 
@@ -560,6 +560,25 @@ namespace shapes {
 		assert(!isnan(offset_x));
 		assert(!isnan(offset_y));
 
+		// Preprocess figures to speed up some later operations
+		for (auto &f : figures) {
+			f.ambient *= lights.ambient;
+		}
+
+		ZBuffer zbuf(img.get_width(), img.get_height());
+
+		// Fill in ZBuffer with figure & triangle IDs
+		assert(figures.size() < UINT16_MAX);
+		for (u_int16_t i = 0; i < figures.size(); i++) {
+			auto &f = figures[i];
+			assert(f.faces.size() < UINT32_MAX);
+			for (u_int32_t k = 0; k < f.faces.size(); k++) {
+				auto &t = f.faces[k];
+				f2p(f, t);
+				zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k});
+			}
+		}
+
 #if GRAPHICS_DEBUG > 0 || GRAPHICS_DEBUG_NORMALS > 0 || GRAPHICS_DEBUG_FACES > 0
 		// "Randomize" face colors to help debug clipping & other issues
 		const img::Color colors_pool[12] = {
@@ -582,33 +601,35 @@ namespace shapes {
 		const size_t color_pool_size = sizeof(colors_pool) / sizeof(*colors_pool);
 #endif
 
-		// Transform & draw triangles
-		ZBuffer z(img.get_width(), img.get_height());
-		for (auto &f : figures) {
-			// Apply ambient light
-			auto ambient_color = f.ambient * lights.ambient;
-#if GRAPHICS_DEBUG_FACES > 0
-			size_t color_i = 0;
-#endif
-			for (size_t i = 0; i < f.faces.size(); i++) {
-				auto color = ambient_color;
-				auto &t = f.faces[i];
+		// Draw triangle colors
+		// A custom iterator would be neat but C++'s iterators are cursed so nah.
+		for (unsigned int y = 0; y < img.get_height(); y++) {
+			for (unsigned int x = 0; x < img.get_width(); x++) {
+				auto pair = zbuf.get(x, y);
+				if (!pair.is_valid())
+					continue;
+
+				auto &f = figures[pair.figure_id];
+				auto &t = f.faces[pair.triangle_id];
+
+				auto color = f.ambient;
 				f2p(f, t);
-#if GRAPHICS_DEBUG_FACES > 0
-				auto clr = colors_pool[color_i++];
-				color_i %= color_pool_size;
-#else
+
 				// Apply lights
 				for (auto &d : lights.directional) {
 					assert(f.faces.size() == f.normals.size() && "No normals");
-					color += (f.diffuse * d.diffuse) * max(f.normals[i].dot(-d.direction), 0.0);
+					// TODO this assumes face normals
+					color += (f.diffuse * d.diffuse) * max(f.normals[pair.triangle_id].dot(-d.direction), 0.0);
 				}
 				assert(color.r >= 0 && "Colors can't be negative");
 				assert(color.g >= 0 && "Colors can't be negative");
 				assert(color.b >= 0 && "Colors can't be negative");
-				auto clr = color.to_img_color();
+				img(x, y) = color.to_img_color();
+
+#if GRAPHICS_DEBUG_FACES > 0
+				img(x, y) = colors_pool[color_i++];
+				color_i %= color_pool_size;
 #endif
-				img.draw_zbuf_triag(z, a, b, c, d, offset_x, offset_y, clr);
 			}
 		}
 
