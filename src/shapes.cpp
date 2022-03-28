@@ -54,6 +54,15 @@ namespace shapes {
 		return { r, g, b };
 	}
 
+	static Color try_color_from_conf(const vector<double> &c) {
+		if (c.size() <= 3)
+			return { 0, 0, 0 };
+		double b = c.at(2);
+		double g = c.at(1);
+		double r = c.at(0);
+		return { r, g, b };
+	}
+
 	static Color color_from_conf(const ini::Entry &e) {
 		return color_from_conf(e.as_double_tuple_or_die());
 	}
@@ -422,8 +431,8 @@ namespace shapes {
 						d *= mat_eye;
 						lights.directional.push_back({
 							d,
-							color_from_conf(diffuse),
-							color_from_conf(specular),
+							try_color_from_conf(diffuse),
+							try_color_from_conf(specular),
 						});
 					} else {
 						auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
@@ -431,8 +440,8 @@ namespace shapes {
 						d *= mat_eye;
 						lights.point.push_back({
 							d,
-							color_from_conf(diffuse),
-							color_from_conf(specular),
+							try_color_from_conf(diffuse),
+							try_color_from_conf(specular),
 							cos(a),
 						});
 					}
