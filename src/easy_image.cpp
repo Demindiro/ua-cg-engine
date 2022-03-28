@@ -205,6 +205,54 @@ void img::EasyImage::draw_line(unsigned int x0, unsigned int y0,
 	}
 }
 
+static bool clip(
+	double &x0, double &y0, double z0,
+	double x1, double y1, double z1,
+	unsigned int w, unsigned int h
+) {
+	w--, h--;
+
+	auto p = 0.0;
+	if (x0 < 0) {
+		p = -x0 / (-x0 + x1);
+	} else if (x0 > w) {
+		p = (x0 - w) / ((x0 - w) + (w - x1));
+	}
+	p = clamp(p, 0.0, 1.0);
+	x0 = x0 * (1 - p) + x1 * p;
+	y0 = y0 * (1 - p) + y1 * p;
+	z0 = z0 * (1 - p) + z1 * p;
+
+	p = 0.0;
+	if (y0 < 0) {
+		p = -y0 / (-y0 + y1);
+	} else if (y0 > h) {
+		p = (y0 - h) / ((y0 - h) + (h - y1));
+	}
+	p = clamp(p, 0.0, 1.0);
+	x0 = x0 * (1 - p) + x1 * p;
+	y0 = y0 * (1 - p) + y1 * p;
+	z0 = z0 * (1 - p) + z1 * p;
+
+	auto inside = !((x0 < 0 && x1 < 0) || (y0 < 0 && y1 < 0) || (x0 > w && x1 > w) || (y0 > h && y1 > h));
+	return inside;
+}
+
+void img::EasyImage::draw_line_clip(double x0, double y0, double x1, double y1, Color color) {
+	double z0 = 0, z1 = 0;
+	if (!clip(x0, y0, z0, x1, y1, z1, get_width(), get_height()))
+		return;
+	if (!clip(x1, y1, z1, x0, y0, z0, get_width(), get_height()))
+		return;
+	draw_line(
+		round_up(x0),
+		round_up(y0),
+		round_up(x1),
+		round_up(y1),
+		color
+	);
+}
+
 void img::EasyImage::draw_zbuf_line(
 	ZBuffer &zbuffer,
 	unsigned int x0, unsigned int y0, double z0,
@@ -260,6 +308,28 @@ void img::EasyImage::draw_zbuf_line(
 			}
 		}
 	}
+}
+
+void img::EasyImage::draw_zbuf_line_clip(
+	ZBuffer &zbuffer,
+	double x0, double y0, double z0,
+	double x1, double y1, double z1,
+	Color color
+) {
+	if (!clip(x0, y0, z0, x1, y1, z1, get_width(), get_height()))
+		return;
+	if (!clip(x1, y1, z1, x0, y0, z0, get_width(), get_height()))
+		return;
+	draw_zbuf_line(
+		zbuffer,
+		round_up(x0),
+		round_up(y0),
+		z0,
+		round_up(x1),
+		round_up(y1),
+		z1,
+		color
+	);
 }
 
 void img::EasyImage::draw_zbuf_triag(

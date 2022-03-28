@@ -58,8 +58,33 @@ namespace shapes {
 		return color_from_conf(e.as_double_tuple_or_die());
 	}
 
+	static Color try_color_from_conf(const ini::Entry &e) {
+		vector<double> c;
+		if (e.as_double_tuple_if_exists(c)) {
+			return color_from_conf(c);
+		}
+		return Color();
+	}
+
 	Color color_from_conf(const ini::Section &conf) {
 		return color_from_conf(conf["color"]);
+	}
+
+	vector<Vector3D> calculate_face_normals(const vector<Point3D> &points, const vector<Face> &faces) {
+		vector<Vector3D> normals;
+		normals.reserve(faces.size());
+		for (auto &f : faces) {
+			assert(f.a < points.size());
+			assert(f.b < points.size());
+			assert(f.c < points.size());
+			auto a = points[f.a];
+			auto b = points[f.b];
+			auto c = points[f.c];
+			auto n = (b - a).cross(c - a);
+			n.normalise();
+			normals.push_back(n);
+		}
+		return normals;
 	}
 
 	void platonic(const FigureConfiguration &conf, vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len) {
@@ -80,19 +105,30 @@ namespace shapes {
 	}
 
 	TriangleFigure platonic(const FigureConfiguration &conf, vector<Point3D> points, vector<Face> faces) {
+
 		TriangleFigure fig;
 		fig.points = points;
 		fig.faces = faces;
+		if (conf.with_lighting) {
+			assert(conf.face_normals && "TODO: vertex normals");
+			fig.normals = calculate_face_normals(points, faces);
+		}
+		fig.face_normals = conf.face_normals;
 
 		auto mat = transform_from_conf(conf.section, conf.eye);
 		if (conf.with_lighting) {
-			fig.ambient = color_from_conf(conf.section["ambientReflection"]);
+			fig.ambient = try_color_from_conf(conf.section["ambientReflection"]);
+			fig.diffuse = try_color_from_conf(conf.section["diffuseReflection"]);
+			fig.specular = try_color_from_conf(conf.section["specularReflection"]);
 		} else {
 			fig.ambient = color_from_conf(conf.section);
 		}
 
 		for (auto &p : fig.points) {
 			p *= mat;
+		}
+		for (auto &n : fig.normals) {
+			n *= mat;
 		}
 
 		return fig;
@@ -162,6 +198,7 @@ namespace shapes {
 			FigureConfiguration fconf {
 				section,
 				mat_eye,
+				false,
 				false,
 			};
 			auto type = fconf.section["type"].as_string_or_die();
@@ -310,6 +347,10 @@ namespace shapes {
 
 		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
 
+#if GRAPHICS_DEBUG > 0
+		lights.eye = mat_eye;
+#endif
+
 		// Parse figures
 		vector<TriangleFigure> figures;
 		figures.reserve(nr_fig);
@@ -319,6 +360,7 @@ namespace shapes {
 				section,
 				mat_eye,
 				with_lighting,
+				true,
 			};
 			auto type = fconf.section["type"].as_string_or_die();
 			TriangleFigure fig;
@@ -370,10 +412,15 @@ namespace shapes {
 			for (int i = 0; i < nr_light; i++) {
 				auto section = conf[string("Light") + to_string(i)];
 				vector<double> color;
-				if (section["ambientLight"].as_double_tuple_if_exists(color)) {
-					lights.ambient += color_from_conf(color);
-				} else {
-					throw TypeException("light"); // TODO new exception type
+				lights.ambient += color_from_conf(section["ambientLight"]);
+				if (section["infinity"].as_bool_or_default(false)) {
+					auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
+					d.normalise();
+					d *= mat_eye;
+					lights.directional.push_back({
+						d,
+						color_from_conf(section["diffuseLight"]),
+					});
 				}
 			}
 		}
@@ -472,10 +519,10 @@ namespace shapes {
 		}
 
 		// Draw
-		return draw(figures, with_lighting ? &lights : NULL, size, bg);
+		return draw(figures, lights, size, bg);
 	}
 
-	img::EasyImage draw(const std::vector<TriangleFigure> &figures, Lights *lights, unsigned int size, img::Color background) {
+	img::EasyImage draw(const std::vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, img::Color background) {
 		// TODO wdym "unitialized", GCC?
 		double d = NAN, offset_x = NAN, offset_y = NAN;
 
@@ -513,7 +560,7 @@ namespace shapes {
 		assert(!isnan(offset_x));
 		assert(!isnan(offset_y));
 
-#if GRAPHICS_DEBUG > 0
+#if GRAPHICS_DEBUG > 0 || GRAPHICS_DEBUG_NORMALS > 0 || GRAPHICS_DEBUG_FACES > 0
 		// "Randomize" face colors to help debug clipping & other issues
 		const img::Color colors_pool[12] = {
 			img::Color(255, 0, 0),
@@ -532,31 +579,61 @@ namespace shapes {
 			img::Color(50, 200, 50),
 			img::Color(50, 50, 200),
 		};
+		const size_t color_pool_size = sizeof(colors_pool) / sizeof(*colors_pool);
 #endif
 
 		// Transform & draw triangles
 		ZBuffer z(img.get_width(), img.get_height());
 		for (auto &f : figures) {
-			auto color = f.ambient;
-			if (lights != NULL) {
-				color *= lights->ambient;
-			}
-#if GRAPHICS_DEBUG > 0
+			// Apply ambient light
+			auto ambient_color = f.ambient * lights.ambient;
+#if GRAPHICS_DEBUG_FACES > 0
 			size_t color_i = 0;
 #endif
-			for (auto &t : f.faces) {
+			for (size_t i = 0; i < f.faces.size(); i++) {
+				auto color = ambient_color;
+				auto &t = f.faces[i];
 				f2p(f, t);
-#if GRAPHICS_DEBUG > 0
+#if GRAPHICS_DEBUG_FACES > 0
 				auto clr = colors_pool[color_i++];
-				color_i %= sizeof(colors_pool) / sizeof(*colors_pool);
+				color_i %= color_pool_size;
 #else
+				// Apply lights
+				for (auto &d : lights.directional) {
+					assert(f.faces.size() == f.normals.size() && "No normals");
+					color += (f.diffuse * d.diffuse) * max(f.normals[i].dot(-d.direction), 0.0);
+				}
+				assert(color.r >= 0 && "Colors can't be negative");
+				assert(color.g >= 0 && "Colors can't be negative");
+				assert(color.b >= 0 && "Colors can't be negative");
 				auto clr = color.to_img_color();
 #endif
 				img.draw_zbuf_triag(z, a, b, c, d, offset_x, offset_y, clr);
 			}
 		}
 
-#if GRAPHICS_DEBUG > 0
+#if GRAPHICS_DEBUG_NORMALS > 0
+		for (auto &f : figures) {
+			size_t color_i = 3; // Take an opposite color for clarity
+			if (f.face_normals) {
+				for (size_t i = 0; i < f.faces.size(); i++) {
+					auto &t = f.faces[i];
+					f2p(f, t);
+					auto from = Point3D::center({ a, b, c });
+					auto to = from + f.normals[i] * 0.1;
+					Point3D ft(from.x / -from.z * d + offset_x, from.y / -from.z * d + offset_y, from.z);
+					Point3D tt(to.x / -to.z * d + offset_x, to.y / -to.z * d + offset_y, to.z);
+					auto clr = colors_pool[color_i++];
+					color_i %= color_pool_size;
+					Line3D(ft, tt, clr).draw_clip(img, z);
+				}
+			} else {
+				assert(!"TODO vertex normals");
+			}
+		}
+#endif
+
+#if GRAPHICS_DEBUG > 1
 		for (auto &f : figures) {
 			for (auto &t : f.faces) {
 				f2p(f, t);
@@ -569,6 +646,24 @@ namespace shapes {
 				Line3D(lb, lc, clr).draw(img, z);
 				Line3D(lc, la, clr).draw(img, z);
 			}
+		}
+#endif
+
+#if GRAPHICS_DEBUG > 0
+		// Axes
+		{
+			Point3D o;
+			o *= lights.eye;
+			auto ox = o + Vector3D::vector(1000, 0, 0) * lights.eye;
+			auto oy = o + Vector3D::vector(0, 1000, 0) * lights.eye;
+			auto oz = o + Vector3D::vector(0, 0, 1000) * lights.eye;
+			Point3D lo(o.x / -o.z * d + offset_x, o.y / -o.z * d + offset_y, o.z);
+			Point3D lox(ox.x / -ox.z * d + offset_x, ox.y / -ox.z * d + offset_y, ox.z);
+			Point3D loy(oy.x / -oy.z * d + offset_x, oy.y / -oy.z * d + offset_y, oy.z);
+			Point3D loz(oz.x / -oz.z * d + offset_x, oz.y / -oz.z * d + offset_y, oz.z);
+			Line3D(lo, lox, img::Color(255, 0, 0)).draw_clip(img, z);
+			Line3D(lo, loy, img::Color(0, 255, 0)).draw_clip(img, z);
+			Line3D(lo, loz, img::Color(0, 0, 255)).draw_clip(img, z);
 		}
 #endif
 

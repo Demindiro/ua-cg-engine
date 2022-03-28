@@ -25,7 +25,7 @@ namespace shapes {
 		faces[0] = { 0, 1, 2 };
 		faces[1] = { 0, 1, 3 };
 		faces[2] = { 0, 2, 3 };
-		faces[3] = { 1, 2, 3 };
+		faces[3] = { 2, 1, 3 };
 	}
 
 	void tetrahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {

@@ -40,10 +40,10 @@ namespace shapes {
 		faces[2] = { 0, 4, 5 };
 		faces[3] = { 0, 5, 2 };
 		// Bottom
-		faces[4] = { 1, 2, 3 };
-		faces[5] = { 1, 3, 4 };
-		faces[6] = { 1, 4, 5 };
-		faces[7] = { 1, 5, 2 };
+		faces[4] = { 2, 1, 3 };
+		faces[5] = { 3, 1, 4 };
+		faces[6] = { 4, 1, 5 };
+		faces[7] = { 5, 1, 2 };
 	}
 
 	void octahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {

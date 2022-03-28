@@ -36,11 +36,11 @@ namespace shapes {
 		circle(points, n, 0);
 		circle(points, n, height);
 		circle(faces, n, 0);
-		circle(faces, n, n);
+		circle_reversed(faces, n, n);
 
 		for (unsigned int i = 0; i < n; i++) {
 			unsigned int j = (i + 1) % n;
-			faces.push_back({ i, j, n + i });
+			faces.push_back({ j, i, n + i });
 			faces.push_back({ j, n + i, n + j });
 		}
 

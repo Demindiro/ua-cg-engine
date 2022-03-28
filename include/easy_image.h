@@ -222,6 +222,8 @@ namespace img
 			 */
 			void draw_line(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, Color color);
 
+			void draw_line_clip(double x0, double y0, double x1, double y1, Color color);
+
 			/**
 			 * \brief Draw a line accounting for depth
 			 */
@@ -229,6 +231,13 @@ namespace img
 				ZBuffer &,
 				unsigned int x0, unsigned int y0, double z0,
 				unsigned int x1, unsigned int y1, double z1,
+				Color
+			);
+
+			void draw_zbuf_line_clip(
+				ZBuffer &,
+				double x0, double y0, double z0,
+				double x1, double y1, double z1,
 				Color
 			);
 

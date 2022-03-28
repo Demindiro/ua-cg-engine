@@ -37,7 +37,7 @@ shapes::TriangleFigure shapes::cone(const FigureConfiguration &conf) {
 	points.push_back({ 0, 0, height });
 
 	for (unsigned int i = 0; i < n; i++) {
-		faces.push_back({ n, i, (i + 1) % n });
+		faces.push_back({ i, n, (i + 1) % n });
 	}
 
 	return platonic(conf, points, faces);

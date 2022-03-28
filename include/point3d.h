@@ -10,7 +10,7 @@ struct Point3D {
 	constexpr inline Point3D(double x, double y, double z) : x(x), y(y), z(z) {}
 	inline Point3D(Vector3D v) : x(v.x), y(v.y), z(v.z) {}
 
-	inline Point3D operator *(Matrix &m) const {
+	inline Point3D operator *(const Matrix &m) const {
 		auto v = Vector3D::point(this->x, this->y, this->z) * m;
 		return { v.x, v.y, v.z };
 	}
@@ -27,7 +27,7 @@ struct Point3D {
 		return { this->x - v.x, this->y - v.y, this->z - v.z };
 	}
 
-	inline void operator *=(Matrix &m) {
+	inline void operator *=(const Matrix &m) {
 		*this = *this * m;
 	}
 

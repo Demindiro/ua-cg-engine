@@ -50,6 +50,7 @@ struct Line3D {
 	Line3D(Point3D a, Point3D b, Color color) : a(a), b(b), color(color) {}
 
 	void draw(img::EasyImage &, ZBuffer &z) const;
+	void draw_clip(img::EasyImage &img, ZBuffer &z) const;
 };
 
 class Lines3D {

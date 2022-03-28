@@ -54,7 +54,7 @@ namespace shapes {
 			for (unsigned int j = 0; j < m; j++) {
 				unsigned int k = (i + 1) % n;
 				unsigned int l = (j + 1) % m;
-				faces.push_back({ i * m + j, k * m + j, i * m + l });
+				faces.push_back({ i * m + j, i * m + l, k * m + j });
 				faces.push_back({ k * m + l, k * m + j, i * m + l });
 			}
 		}

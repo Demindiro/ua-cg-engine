@@ -47,10 +47,10 @@ namespace shapes {
 			unsigned int j = (i + 1) % 5;
 			// Top & bottom "hat"
 			faces[0 + i] = { 0, 2 + i, 2 + j };
-			faces[5 + i] = { 1, 7 + i, 7 + j };
+			faces[5 + i] = { 1, 7 + j, 7 + i };
 			// Ring
 			faces[10 + i] = { 2 + i, 7 + i, 7 + j };
-			faces[15 + i] = { 2 + i, 2 + j, 7 + j };
+			faces[15 + i] = { 2 + j, 2 + i, 7 + j };
 		}
 	}
 

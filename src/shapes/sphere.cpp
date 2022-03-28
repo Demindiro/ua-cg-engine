@@ -34,7 +34,7 @@ namespace shapes {
 			new_faces.push_back({  d,   e,   f});
 			new_faces.push_back({g.a,   d,   f});
 			new_faces.push_back({  d, g.b,   e});
-			new_faces.push_back({  e,   f, g.c});
+			new_faces.push_back({  f,   e, g.c});
 			new_edges.push_back({ d, e });
 			new_edges.push_back({ e, f });
 			new_edges.push_back({ f, d });

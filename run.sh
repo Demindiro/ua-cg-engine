@@ -6,6 +6,6 @@ then
 	exit 1
 fi
 
-make build \
+make -j$(nproc) build \
 	&& cd assets \
 	&& perf stat ../build/engine "$1".ini \

@@ -36,6 +36,10 @@ namespace shapes {
 			return Color { r * rhs.r, g * rhs.g, b * rhs.b };
 		}
 
+		constexpr Color operator *(double f) const {
+			return Color { r * f, g * f, b * f };
+		}
+
 		constexpr void operator +=(Color rhs) {
 			*this = *this + rhs;
 		}
@@ -56,27 +60,50 @@ namespace shapes {
 
 	struct TriangleFigure {
 		std::vector<Point3D> points;
+		/**
+		 * \brief Normals for calculating lighting. Empty if no lighting.
+		 */
 		std::vector<Vector3D> normals;
 		std::vector<Face> faces;
 		Color ambient;
 		Color diffuse;
 		Color specular;
 		double reflection;
+		/**
+		 * \brief Whether each normal is part of a face or a point.
+		 */
+		bool face_normals;
 	};
 
 	struct FigureConfiguration {
 		ini::Section &section;
 		Matrix eye;
 		bool with_lighting;
+		bool face_normals;
+	};
+
+	struct DirectionalLight {
+		Vector3D direction;
+		Color diffuse;
 	};
 
 	struct Lights {
 		Color ambient;
+		std::vector<DirectionalLight> directional;
+#if GRAPHICS_DEBUG > 0
+		// TODO find a clean way to pass this without adding more parameters
+		Matrix eye;
+#endif
 	};
 
 	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection);
 
 	Color color_from_conf(const ini::Section &conf);
+
+	/**
+	 * \brief Generic face normal calculator.
+	 */
+	std::vector<Vector3D> calculate_face_normals(const std::vector<Point3D> &points, const std::vector<Face> &faces);
 
 	void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len);
 
@@ -90,5 +117,5 @@ namespace shapes {
 
 	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
 
-	img::EasyImage draw(const std::vector<TriangleFigure> &figures, Lights *lights, unsigned int size, img::Color background);
+	img::EasyImage draw(const std::vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, img::Color background);
 }

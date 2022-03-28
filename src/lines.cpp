@@ -81,6 +81,10 @@ void Line3D::draw(img::EasyImage &img, ZBuffer &z) const {
 	img.draw_zbuf_line(z, round_up(a.x), round_up(a.y), a.z, round_up(b.x), round_up(b.y), b.z, color);
 }
 
+void Line3D::draw_clip(img::EasyImage &img, ZBuffer &z) const {
+	img.draw_zbuf_line_clip(z, round_up(a.x), round_up(a.y), a.z, round_up(b.x), round_up(b.y), b.z, color);
+}
+
 void Lines3D::add(Line3D line) {
 	this->lines.push_back(line);
 }
