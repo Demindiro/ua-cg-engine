@@ -56,8 +56,11 @@ $(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
 		CMakeLists.txt LICENSE README.md
 	tar czvf $@ $^
 
-clean::
-	rm -rf $(ARCHIVE) assets/*.bmp build/ build-debug/
+clean:: clean-images
+	rm -rf $(ARCHIVE) build/ build-debug/
+
+clean-images::
+	rm -rf assets/*.bmp
 
 loop::
 	while true; do make build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done

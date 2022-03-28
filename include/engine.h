@@ -44,6 +44,10 @@ static inline Vector3D tup_to_vector3d(std::vector<double> v) {
 	return Vector3D::vector(x, y, z);
 }
 
+static inline double deg2rad(double a) {
+	return a / 180 * M_PI;
+}
+
 struct Rotation {
 	double u, v;
 

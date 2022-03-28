@@ -1,4 +1,5 @@
 #include "shapes.h"
+#include <initializer_list>
 #include <vector>
 #include "engine.h"
 #include "ini_configuration.h"
@@ -85,7 +86,20 @@ namespace shapes {
 		}
 	}
 
-	static void common_conf(const ini::Configuration &conf, Color &background, int &size, Matrix &mat_eye, int &nr_fig) {
+	struct Frustum {
+		double near, far;
+		double fov, aspect;
+		bool use;
+	};
+
+	static void common_conf(
+		const ini::Configuration &conf,
+		Color &background,
+		int &size,
+		Matrix &mat_eye,
+		int &nr_fig,
+		Frustum &frustum
+	) {
 		background = tup_to_color(conf["General"]["backgroundcolor"].as_double_tuple_or_die());
 		size = conf["General"]["size"].as_int_or_die();
 		auto eye = tup_to_point3d(conf["General"]["eye"].as_double_tuple_or_die());
@@ -97,15 +111,17 @@ namespace shapes {
 		Vector3D dir;
 		if (clipping) {
 			dir = tup_to_vector3d(conf["General"]["viewDirection"].as_double_tuple_or_die());
-			auto near = conf["General"]["dNear"].as_double_or_die();
-			auto far = conf["General"]["dFar"].as_double_or_die();
-			auto fov = conf["General"]["hfov"].as_double_or_die();
-			auto aspect = conf["General"]["aspectRatio"].as_double_or_die();
+			frustum.use = true;
+			frustum.near = conf["General"]["dNear"].as_double_or_die();
+			frustum.far = conf["General"]["dFar"].as_double_or_die();
+			frustum.fov = deg2rad(conf["General"]["hfov"].as_double_or_die());
+			frustum.aspect = conf["General"]["aspectRatio"].as_double_or_die();
 		} else {
+			frustum.use = false;
 			dir = -eye;
 		}
 
-		auto r = eye.length();
+		auto r = dir.length();
 		auto theta = atan2(-dir.y, -dir.x);
 		auto phi = acos(-dir.z / r);
 
@@ -124,7 +140,8 @@ namespace shapes {
 		Color bg;
 		int size, nr_fig;
 		Matrix mat_eye;
-		common_conf(conf, bg, size, mat_eye, nr_fig);
+		Frustum frustum;
+		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
 
 		// Parse figures
 		vector<Line3D> lines;
@@ -182,7 +199,8 @@ namespace shapes {
 		Color bg;
 		int size, nr_fig;
 		Matrix mat_eye;
-		common_conf(conf, bg, size, mat_eye, nr_fig);
+		Frustum frustum;
+		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
 
 		// Parse figures
 		vector<Triangle3D> triangles;
@@ -225,6 +243,263 @@ namespace shapes {
 				puts("TODO MengerSponge triangles");
 			} else {
 				throw TypeException(type);
+			}
+		}
+
+#ifdef GRAPHICS_DEBUG
+		// "Randomize" face colors to help debug clipping & other issues
+		const img::Color colors_pool[12] = {
+			img::Color(255, 0, 0),
+			img::Color(0, 255, 0),
+			img::Color(0, 0, 255),
+
+			img::Color(0, 255, 255),
+			img::Color(255, 0, 255),
+			img::Color(255, 255, 0),
+
+			img::Color(50, 200, 200),
+			img::Color(200, 50, 200),
+			img::Color(200, 200, 50),
+
+			img::Color(200, 50, 50),
+			img::Color(50, 200, 50),
+			img::Color(50, 50, 200),
+		};
+		size_t color_i = 0;
+		for (auto &t : triangles) {
+			t.color = colors_pool[color_i++];
+			color_i %= sizeof(colors_pool) / sizeof(*colors_pool);
+		}
+#endif
+
+		// Clipping
+		if (frustum.use) {
+			enum Plane {
+				NEAR,
+				FAR,
+				RIGHT,
+				LEFT,
+				TOP,
+				DOWN,
+			};
+			auto outside = [&frustum](Point3D p, int plane, double v) {
+				switch (plane) {
+				case NEAR : return -p.z < frustum.near;
+				case FAR  : return -p.z > frustum.far;
+				case RIGHT: return p.x * frustum.near / -p.z > v;
+				case LEFT : return p.x * frustum.near / -p.z < -v;
+				case TOP  : return p.y * frustum.near / -p.z > v;
+				case DOWN : return p.y * frustum.near / -p.z < -v;
+				default:
+					assert(!"Invalid direction");
+					return false;
+				}
+			};
+			auto outside_mask = [&outside](Triangle3D &t, int plane, double v) {
+				return (int)outside(t.a, plane, v) << 2
+					| (int)outside(t.b, plane, v) << 1
+					| (int)outside(t.c, plane, v);
+			};
+
+			auto swap_remove = [&triangles](size_t i) {
+				// Swap, then remove. This is always O(1)
+				if (i < triangles.size()) {
+					triangles[i] = triangles.back();
+				}
+				triangles.pop_back();
+			};
+			auto interpolate = [](Point3D from, Point3D to, double p) {
+				// If two points are *very* close to a plane there may be significant imprecision
+				// that causes p to far exceed the value it should have.
+				// Clamping it works well enough as a workaround.
+				p = min(p, 1.0);
+				assert(p >= 0 && "p must be between 0 and 1");
+				assert(p <= 1 && "p must be between 0 and 1");
+				return Point3D(
+					from.x * p + to.x * (1 - p),
+					from.y * p + to.y * (1 - p),
+					from.z * p + to.z * (1 - p)
+				);
+			};
+
+			// Near & far plane
+			for (auto plane : { NEAR, FAR }) {
+				for (size_t i = 0; i < triangles.size(); i++) {
+					auto project = [plane, &frustum, interpolate](Point3D from, Point3D to) {
+						auto dval = plane == NEAR ? -frustum.near : -frustum.far;
+						return interpolate(from, to, (dval - to.z) / (from.z - to.z));
+					};
+
+					auto &t = triangles[i];
+					switch(outside_mask(t, plane, NAN)) {
+					// Nothing to do
+					case 0b000:
+						break;
+					// Split triangle
+					case 0b100: {
+						auto p = project(t.a, t.b);
+						auto q = project(t.a, t.c);
+						t.a = p;
+						triangles.push_back({ p, q, t.c, t.color });
+						break;
+					}
+					case 0b010: {
+						auto p = project(t.b, t.c);
+						auto q = project(t.b, t.a);
+						t.b = p;
+						triangles.push_back({ p, q, t.a, t.color });
+						break;
+					}
+					case 0b001: {
+						auto p = project(t.c, t.a);
+						auto q = project(t.c, t.b);
+						t.c = p;
+						triangles.push_back({ p, q, t.b, t.color });
+						break;
+					}
+					// Shrink triangle
+					case 0b011:
+						t.b = project(t.b, t.a);
+						t.c = project(t.c, t.a);
+						break;
+					case 0b101:
+						t.c = project(t.c, t.b);
+						t.a = project(t.a, t.b);
+						break;
+					case 0b110:
+						t.a = project(t.a, t.c);
+						t.b = project(t.b, t.c);
+						break;
+					// Remove triangle
+					case 0b111:
+						swap_remove(i--);
+						break;
+					default:
+						assert(!"unreachable");
+					}
+				}
+			}
+
+			// Left & right plane
+			auto right = frustum.near * tan(frustum.fov / 2);
+			for (auto plane : { RIGHT, LEFT }) {
+				for (size_t i = 0; i < triangles.size(); i++) {
+					auto project = [plane, &frustum, interpolate, right](Point3D from, Point3D to) {
+						auto dval = plane == RIGHT ? right : -right;
+						auto p = (to.x * frustum.near + to.z * dval) /
+							((to.x - from.x) * frustum.near + (to.z - from.z) * dval);
+						return interpolate(from, to, p);
+					};
+
+					auto &t = triangles[i];
+					switch(outside_mask(t, plane, right)) {
+					// Nothing to do
+					case 0b000:
+						break;
+					// Split triangle
+					case 0b100: {
+						auto p = project(t.a, t.b);
+						auto q = project(t.a, t.c);
+						t.a = p;
+						triangles.push_back({ p, q, t.c, t.color });
+						break;
+					}
+					case 0b010: {
+						auto p = project(t.b, t.c);
+						auto q = project(t.b, t.a);
+						t.b = p;
+						triangles.push_back({ p, q, t.a, t.color });
+						break;
+					}
+					case 0b001: {
+						auto p = project(t.c, t.a);
+						auto q = project(t.c, t.b);
+						t.c = p;
+						triangles.push_back({ p, q, t.b, t.color });
+						break;
+					}
+					// Shrink triangle
+					case 0b011:
+						t.b = project(t.b, t.a);
+						t.c = project(t.c, t.a);
+						break;
+					case 0b101:
+						t.c = project(t.c, t.b);
+						t.a = project(t.a, t.b);
+						break;
+					case 0b110:
+						t.a = project(t.a, t.c);
+						t.b = project(t.b, t.c);
+						break;
+					// Remove triangle
+					case 0b111:
+						swap_remove(i--);
+						break;
+					default:
+						assert(!"unreachable");
+					}
+				}
+			}
+
+			// Top & down plane
+			auto top = right / frustum.aspect;
+			for (auto plane : { TOP, DOWN }) {
+				for (size_t i = 0; i < triangles.size(); i++) {
+					auto project = [plane, &frustum, interpolate, top](Point3D from, Point3D to) {
+						auto dval = plane == TOP ? top : -top;
+						auto p = (to.y * frustum.near + to.z * dval) /
+							((to.y - from.y) * frustum.near + (to.z - from.z) * dval);
+						return interpolate(from, to, p);
+					};
+
+					auto &t = triangles[i];
+					switch(outside_mask(t, plane, top)) {
+					// Nothing to do
+					case 0b000:
+						break;
+					// Split triangle
+					case 0b100: {
+						auto p = project(t.a, t.b);
+						auto q = project(t.a, t.c);
+						t.a = p;
+						triangles.push_back({ p, q, t.c, t.color });
+						break;
+					}
+					case 0b010: {
+						auto p = project(t.b, t.c);
+						auto q = project(t.b, t.a);
+						t.b = p;
+						triangles.push_back({ p, q, t.a, t.color });
+						break;
+					}
+					case 0b001: {
+						auto p = project(t.c, t.a);
+						auto q = project(t.c, t.b);
+						t.c = p;
+						triangles.push_back({ p, q, t.b, t.color });
+						break;
+					}
+					// Shrink triangle
+					case 0b011:
+						t.b = project(t.b, t.a);
+						t.c = project(t.c, t.a);
+						break;
+					case 0b101:
+						t.c = project(t.c, t.b);
+						t.a = project(t.a, t.b);
+						break;
+					case 0b110:
+						t.a = project(t.a, t.c);
+						t.b = project(t.b, t.c);
+						break;
+					// Remove triangle
+					case 0b111:
+						swap_remove(i--);
+						break;
+					default:
+						assert(!"unreachable");
+					}
+				}
 			}
 		}
 
