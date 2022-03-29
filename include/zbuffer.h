@@ -47,6 +47,14 @@ public:
 		constexpr bool is_valid() const {
 			return figure_id != UINT16_MAX && triangle_id != UINT32_MAX;
 		}
+
+		constexpr bool operator ==(const IdPair &rhs) {
+			return figure_id == rhs.figure_id && triangle_id == rhs.triangle_id;
+		}
+
+		constexpr bool operator !=(const IdPair &rhs) {
+			return !(*this == rhs);
+		}
 	};
 
 	ZBuffer(unsigned int width, unsigned int height) : width(width), height(height) {
@@ -56,6 +64,14 @@ public:
 		for (auto &c : buffer) c = INFINITY;
 		for (auto &e : figure_ids) e = UINT16_MAX;
 		for (auto &e : triangle_ids) e = UINT32_MAX;
+	}
+
+	constexpr unsigned int get_width() {
+		return width;
+	}
+
+	constexpr unsigned int get_height() {
+		return height;
 	}
 	
 	/**
@@ -91,7 +107,7 @@ public:
 	 * \param dy Offset along Y axis.
 	 * \param pair Pair of figure-triangle IDs. It's inv_z value is ignored.
 	 */
-	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair);
+	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair, double bias);
 
 	/**
 	 * \brief Replace a 1/Z value with a *lower* value.

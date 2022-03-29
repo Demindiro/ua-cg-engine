@@ -40,6 +40,10 @@ namespace shapes {
 			return Color { r * f, g * f, b * f };
 		}
 
+		constexpr Color operator /(double f) const {
+			return Color { r / f, g / f, b / f };
+		}
+
 		constexpr void operator +=(Color rhs) {
 			*this = *this + rhs;
 		}
@@ -93,16 +97,20 @@ namespace shapes {
 		Point3D point;
 		Color diffuse, specular;
 		double spot_angle_cos;
+		struct {
+			Matrix eye;
+			ZBuffer zbuf;
+			double d, dx, dy;
+		} cached;
 	};
 
 	struct Lights {
 		Color ambient;
 		std::vector<DirectionalLight> directional;
 		std::vector<PointLight> point;
-#if GRAPHICS_DEBUG > 0
-		// TODO find a clean way to pass this without adding more parameters
 		Matrix eye;
-#endif
+		unsigned int shadow_mask;
+		bool shadows;
 	};
 
 	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection);
@@ -126,5 +134,5 @@ namespace shapes {
 
 	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
 
-	img::EasyImage draw(std::vector<TriangleFigure> figures, const Lights &lights, unsigned int size, img::Color background);
+	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights &lights, unsigned int size, img::Color background);
 }

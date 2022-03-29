@@ -18,6 +18,10 @@
 #include "shapes/torus.h"
 #include "wireframe.h"
 
+// Cursus says 1.0001, but a little lower gives better shadow quality & seems
+// to be consistent with the example images
+#define Z_BIAS (1.00001)
+
 
 using namespace std;
 
@@ -165,6 +169,22 @@ namespace shapes {
 		bool use;
 	};
 
+	static Matrix look_direction(Point3D pos, Vector3D dir) {
+		auto r = dir.length();
+		auto theta = atan2(-dir.y, -dir.x);
+		auto phi = acos(-dir.z / r);
+
+		Matrix mat_tr, mat_rot_z, mat_rot_x;
+
+		mat_tr(4, 1) = -pos.x;
+		mat_tr(4, 2) = -pos.y;
+		mat_tr(4, 3) = -pos.z;
+		mat_rot_z = Rotation(-(theta + M_PI / 2)).z();
+		mat_rot_x = Rotation(-phi).x();
+
+		return mat_tr * mat_rot_z * mat_rot_x;
+	}
+
 	static void common_conf(
 		const ini::Configuration &conf,
 		img::Color &background,
@@ -194,19 +214,7 @@ namespace shapes {
 			dir = -eye;
 		}
 
-		auto r = dir.length();
-		auto theta = atan2(-dir.y, -dir.x);
-		auto phi = acos(-dir.z / r);
-
-		Matrix mat_tr, mat_rot_z, mat_rot_x;
-
-		mat_tr(4, 1) = -eye.x;
-		mat_tr(4, 2) = -eye.y;
-		mat_tr(4, 3) = -eye.z;
-		mat_rot_z = Rotation(-(theta + M_PI / 2)).z();
-		mat_rot_x = Rotation(-phi).x();
-
-		mat_eye = mat_tr * mat_rot_z * mat_rot_x;
+		mat_eye = look_direction(eye, dir);
 	}
 
 	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
@@ -396,8 +404,63 @@ namespace shapes {
 
 		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
 
-#if GRAPHICS_DEBUG > 0
-		lights.eye = mat_eye;
+		// Parse lights
+		if (with_lighting) {
+			lights.eye = mat_eye;
+			lights.shadows = conf["General"]["shadowEnabled"].as_bool_or_default(false);
+			lights.shadow_mask = lights.shadows ? conf["General"]["shadowMask"].as_int_or_die(): 0;
+
+			int nr_light = conf["General"]["nrLights"];
+			for (int i = 0; i < nr_light; i++) {
+				auto section = conf[string("Light") + to_string(i)];
+				lights.ambient += color_from_conf(section["ambientLight"]);
+				vector<double> diffuse, specular;
+				if (section["diffuseLight"].as_double_tuple_if_exists(diffuse)
+					| section["specularLight"].as_double_tuple_if_exists(specular)) {
+					if (section["infinity"].as_bool_or_default(false)) {
+						auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
+						d.normalise();
+						d *= mat_eye;
+						lights.directional.push_back({
+							d,
+							try_color_from_conf(diffuse),
+							try_color_from_conf(specular),
+						});
+					} else {
+						auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
+						auto a = deg2rad(section["spotAngle"].as_double_or_default(90)); // 91 to ensure >= 1.0 works
+						d *= mat_eye;
+						lights.point.push_back({
+							d,
+							try_color_from_conf(diffuse),
+							try_color_from_conf(specular),
+							cos(a),
+							{ Matrix(), ZBuffer(0, 0), NAN, NAN, NAN },
+						});
+					}
+				}
+			}
+		} else {
+			lights.ambient = { 1, 1, 1 };
+			lights.shadows = false;
+		}
+#if GRAPHICS_DEBUG_LIGHT > 0
+		{
+			lights.ambient = { 1, 1, 1 };
+			lights.shadows = false;
+			for (auto &p : lights.point) {
+				auto pt = p.point * Matrix::inv(mat_eye);
+				mat_eye = look_direction(pt, -(pt - Point3D()));
+				break;
+			}
+			if (lights.shadows) {
+				size = lights.shadow_mask;
+			}
+			size = lights.shadow_mask;
+			lights.directional.clear();
+			lights.point.clear();
+			lights.shadows = false;
+		}
 #endif
 
 		// Parse figures
@@ -454,40 +517,6 @@ namespace shapes {
 				throw TypeException(type);
 			}
 			figures.push_back(fig);
-		}
-
-		if (with_lighting) {
-			int nr_light = conf["General"]["nrLights"];
-			for (int i = 0; i < nr_light; i++) {
-				auto section = conf[string("Light") + to_string(i)];
-				lights.ambient += color_from_conf(section["ambientLight"]);
-				vector<double> diffuse, specular;
-				if (section["diffuseLight"].as_double_tuple_if_exists(diffuse)
-					| section["specularLight"].as_double_tuple_if_exists(specular)) {
-					if (section["infinity"].as_bool_or_default(false)) {
-						auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
-						d.normalise();
-						d *= mat_eye;
-						lights.directional.push_back({
-							d,
-							try_color_from_conf(diffuse),
-							try_color_from_conf(specular),
-						});
-					} else {
-						auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
-						auto a = deg2rad(section["spotAngle"].as_double_or_default(90)); // 91 to ensure >= 1.0 works
-						d *= mat_eye;
-						lights.point.push_back({
-							d,
-							try_color_from_conf(diffuse),
-							try_color_from_conf(specular),
-							cos(a),
-						});
-					}
-				}
-			}
-		} else {
-			lights.ambient = { 1, 1, 1 };
 		}
 
 		// Clipping
@@ -589,44 +618,79 @@ namespace shapes {
 			}
 		}
 
-		// Cull based on direction
-		for (auto &f : figures) {
-			if (!f.can_cull) {
-				continue;
-			}
-			assert(f.normals.size() == f.faces.size() && "Normals don't match face count");
-			size_t i = f.normals.size();
-			auto swap_remove = [&f, &i]() {
-				f.faces[i] = f.faces.back();
-				f.normals[i] = f.normals.back();
-				f.faces.pop_back();
-				f.normals.pop_back();
-			};
-			while (i --> 0) {
-				if (f.normals[i].z <= 0) {
-					swap_remove();
-				}
-			}
-		}
-
 		// Draw
 		return draw(figures, lights, size, bg);
 	}
 
-	img::EasyImage draw(std::vector<TriangleFigure> figures, const Lights &lights, unsigned int size, img::Color background) {
-		// TODO wdym "unitialized", GCC?
-		double d = NAN, offset_x = NAN, offset_y = NAN;
+	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights &lights, unsigned int size, img::Color background) {
 
 		if (figures.empty()) {
 			return img::EasyImage(0, 0);
 		}
 
-		Point3D a, b, c;
-		auto f2p = [&a, &b, &c](auto &f, auto &t) {
-			a = f.points[t.a];
-			b = f.points[t.b];
-			c = f.points[t.c];
+		struct Tri {
+			Point3D a, b, c;
 		};
+		auto f2p = [](auto &f, auto &t) {
+			return Tri {
+				f.points[t.a],
+				f.points[t.b],
+				f.points[t.c],
+			};
+		};
+
+		// Process point light shadows first
+		// FIXME we need the original figures *before* clipping
+		if (lights.shadows) {
+			auto inv_project = Matrix::inv(lights.eye);
+			for (auto &p : lights.point) {
+				vector<TriangleFigure> figures_copy = figures;
+				// Project from camera perspective & determine bounds
+				auto pt = p.point * inv_project;
+				p.cached.eye = inv_project * look_direction(pt, -(pt - Point3D()));
+				auto reproj = inv_project * p.cached.eye;
+				double min_x, max_x, min_y, max_y;
+				min_x = min_y = +numeric_limits<double>::infinity();
+				max_x = max_y = -numeric_limits<double>::infinity();
+				for (auto &f : figures_copy) {
+					for (auto &n : f.normals) {
+						n *= p.cached.eye;
+					}
+					for (auto &a : f.points) {
+						a = a * p.cached.eye;
+						assert(a.z != 0 && "division by 0");
+						min_x = min(min_x, a.x / -a.z);
+						min_y = min(min_y, a.y / -a.z);
+						max_x = max(max_x, a.x / -a.z);
+						max_y = max(max_y, a.y / -a.z);
+					}
+				}
+
+				// Create ZBuffer
+				double d = NAN, dx = NAN, dy = NAN;
+				// TODO don't create EasyImage object
+				auto img = create_img(min_x, min_y, max_x, max_y, lights.shadow_mask, background, d, dx, dy);
+				p.cached.zbuf = ZBuffer(img.get_width(), img.get_height());
+				p.cached.d = d;
+				p.cached.dx = dx;
+				p.cached.dy = dy;
+
+				// Fill in ZBuffer with figure & triangle IDs
+				assert(figures.size() < UINT16_MAX);
+				for (u_int16_t i = 0; i < figures_copy.size(); i++) {
+					auto &f = figures_copy[i];
+					assert(f.faces.size() < UINT32_MAX);
+					for (u_int32_t k = 0; k < f.faces.size(); k++) {
+						auto &t = f.faces[k];
+						auto abc = f2p(f, t);
+						auto a = abc.a, b = abc.b, c = abc.c;
+						if (!f.can_cull || f.normals[k].dot(abc.a - Point3D()) <= 0) {
+							p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.dx, p.cached.dy, {i, k, NAN}, 1);
+						}
+					}
+				}
+			}
+		}
 
 		// Determine bounds
 		double min_x, max_x, min_y, max_y;
@@ -634,7 +698,8 @@ namespace shapes {
 		max_x = max_y = -numeric_limits<double>::infinity();
 		for (auto &f : figures) {
 			for (auto &t : f.faces) {
-				f2p(f, t);
+				auto abc = f2p(f, t);
+				auto a = abc.a, b = abc.b, c = abc.c;
 				assert(a.z != 0 && "division by 0");
 				assert(b.z != 0 && "division by 0");
 				assert(c.z != 0 && "division by 0");
@@ -645,6 +710,8 @@ namespace shapes {
 			}
 		}
 
+		// TODO wdym "unitialized", GCC?
+		double d = NAN, offset_x = NAN, offset_y = NAN;
 		auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
 
 		assert(!isnan(d));
@@ -665,8 +732,11 @@ namespace shapes {
 			assert(f.faces.size() < UINT32_MAX);
 			for (u_int32_t k = 0; k < f.faces.size(); k++) {
 				auto &t = f.faces[k];
-				f2p(f, t);
-				zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k, NAN});
+				auto abc = f2p(f, t);
+				auto a = abc.a, b = abc.b, c = abc.c;
+				if (!f.can_cull || f.normals[k].dot(abc.a - Point3D()) <= 0) {
+					zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k, NAN}, Z_BIAS);
+				}
 			}
 		}
 
@@ -692,6 +762,27 @@ namespace shapes {
 		const size_t color_pool_size = sizeof(colors_pool) / sizeof(*colors_pool);
 #endif
 
+#if GRAPHICS_DEBUG_Z > 0
+		auto &_dbg_zb = zbuf;
+#if GRAPHICS_DEBUG_Z == 2
+		for (auto &p : lights.point) {
+			_dbg_zb = p.cached.zbuf;
+			break;
+		}
+#endif
+		auto max_inv_z = -numeric_limits<double>::infinity();
+		auto min_inv_z = numeric_limits<double>::infinity();
+		for (unsigned int y = 0; y < _dbg_zb.get_height(); y++) {
+			for (unsigned int x = 0; x < _dbg_zb.get_width(); x++) {
+				auto inv_z = _dbg_zb.get(x, y).inv_z;
+				if (isinf(inv_z))
+					continue;
+				max_inv_z = max(max_inv_z, inv_z);
+				min_inv_z = min(min_inv_z, inv_z);
+			}
+		}
+#endif
+
 		// Draw triangle colors
 		// A custom iterator would be neat but C++'s iterators are cursed so nah.
 		for (unsigned int y = 0; y < img.get_height(); y++) {
@@ -703,6 +794,9 @@ namespace shapes {
 				auto &f = figures[pair.figure_id];
 
 				auto color = f.ambient;
+#if GRAPHICS_DEBUG_Z > 0
+				color = Color();
+#endif
 
 				// Apply lights
 				// TODO this assumes face normals
@@ -749,7 +843,53 @@ namespace shapes {
 					assert(f.faces.size() == f.normals.size() && "No normals");
 					auto dot = n.dot(-direction);
 					if (dot > 0) {
-					// Diffuse
+
+						// Check if shadowed
+						if (lights.shadows) {
+							auto l = point * p.cached.eye;
+							auto lx = l.x / -l.z * p.cached.d + p.cached.dx;
+							auto ly = l.y / -l.z * p.cached.d + p.cached.dy;
+							assert(!isinf(lx) && !isnan(lx));
+							assert(!isinf(ly) && !isnan(ly));
+							auto fx = floor(lx);
+							auto fy = floor(ly);
+							auto cx = fx + 1;
+							auto cy = fy + 1;
+							auto get_z = [&p](unsigned int x, unsigned int y) {
+								return x < p.cached.zbuf.get_width() && y < p.cached.zbuf.get_height()
+									? p.cached.zbuf.get(x, y).inv_z
+									: numeric_limits<double>::infinity();
+							};
+							auto cxa = lx - fx;
+							auto cya = ly - fy;
+							auto fxa = 1 - cxa;
+							auto fya = 1 - cya;
+							assert(1 >= fxa && fxa >= 0);
+							assert(1 >= fya && fya >= 0);
+							assert(1 >= cxa && cxa >= 0);
+							assert(1 >= cya && cya >= 0);
+							auto inv_z = (
+								(
+									+ get_z(fx, fy) * fxa
+									+ get_z(cx, fy) * cxa
+								) * fya + (
+									+ get_z(fx, cy) * fxa
+									+ get_z(cx, cy) * cxa
+								) * cya
+							);
+							assert(!isnan(inv_z) && "shadow 1/z is NaN");
+#if GRAPHICS_DEBUG_Z == 2
+							if (!isinf(inv_z)) {
+								color = Color(1, 1, 1) * (inv_z - min_inv_z) / (max_inv_z - min_inv_z);
+							}
+							break;
+#endif
+							if (inv_z < 1 / l.z) {
+								continue;
+							}
+						}
+
+						// Diffuse
 						auto s = max(1 - (1 - dot) / (1 - p.spot_angle_cos), 0.0);
 						color += (f.diffuse * p.diffuse) * s;
 						// Specular
@@ -763,6 +903,9 @@ namespace shapes {
 						}
 					}
 				}
+#if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
+				color = Color(1, 1, 1) * (pair.inv_z - min_inv_z) / (max_inv_z - min_inv_z);
+#endif
 
 				assert(color.r >= 0 && "Colors can't be negative");
 				assert(color.g >= 0 && "Colors can't be negative");
@@ -784,7 +927,8 @@ namespace shapes {
 			if (f.face_normals) {
 				for (size_t i = 0; i < f.faces.size(); i++) {
 					auto &t = f.faces[i];
-					f2p(f, t);
+					auto abc = f2p(f, t);
+					auto a = abc.a, b = abc.b, c = abc.c;
 					auto from = Point3D::center({ a, b, c });
 					auto to = from + f.normals[i] * 0.1;
 					Point3D ft(from.x / -from.z * d + offset_x, from.y / -from.z * d + offset_y, from.z);
@@ -803,7 +947,8 @@ namespace shapes {
 #if GRAPHICS_DEBUG > 1
 		for (auto &f : figures) {
 			for (auto &t : f.faces) {
-				f2p(f, t);
+				auto abc = f2p(f, t);
+				auto a = abc.a, b = abc.b, c = abc.c;
 				Point3D la(a.x / -a.z * d + offset_x, a.y / -a.z * d + offset_y, a.z);
 				Point3D lb(b.x / -b.z * d + offset_x, b.y / -b.z * d + offset_y, b.z);
 				Point3D lc(c.x / -c.z * d + offset_x, c.y / -c.z * d + offset_y, c.z);

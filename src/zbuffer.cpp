@@ -3,7 +3,7 @@
 #include "point3d.h"
 #include "vector3d.h"
 
-void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair pair) {
+void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair pair, double bias) {
 	using namespace std;
 
 	// Find repricoral Z-values first, which require unprojected points
@@ -55,7 +55,7 @@ void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, dou
 		unsigned int to_x   = round_up(x_max - 0.5);
 
 		for (unsigned int x = from_x; x <= to_x; x++) {
-			pair.inv_z = 1.0001 * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
+			pair.inv_z = bias * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
 			this->set(x, y, pair);
 		}
 	}
