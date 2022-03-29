@@ -6,11 +6,11 @@
 using namespace std;
 
 namespace shapes {
-	void cylinder(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		auto n = (unsigned int)conf["n"].as_int_or_die();
-		auto height = conf["height"].as_double_or_die();
+	void cylinder(const FigureConfiguration &conf, vector<Line3D> &lines) {
+		auto n = (unsigned int)conf.section["n"].as_int_or_die();
+		auto height = conf.section["height"].as_double_or_die();
 
-		vector<Vector3D> points;
+		vector<Point3D> points;
 		points.reserve(n * 2);
 		circle(points, n, 0);
 		circle(points, n, height);
@@ -22,28 +22,28 @@ namespace shapes {
 			edges[2 * n + i] = { 0 * n + i, 1 * n + i };
 		}
 
-		platonic(conf, mat_project, lines, points.data(), points.size(), edges.data(), edges.size());
+		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	void cylinder(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		auto n = (unsigned int)conf["n"].as_int_or_die();
-		auto height = conf["height"].as_double_or_die();
+	TriangleFigure cylinder(const FigureConfiguration &conf) {
+		auto n = (unsigned int)conf.section["n"].as_int_or_die();
+		auto height = conf.section["height"].as_double_or_die();
 
-		vector<Vector3D> points;
+		vector<Point3D> points;
 		vector<Face> faces;
 		points.reserve(n * 2);
 		faces.reserve(n * 2);
 		circle(points, n, 0);
 		circle(points, n, height);
 		circle(faces, n, 0);
-		circle(faces, n, n);
+		circle_reversed(faces, n, n);
 
 		for (unsigned int i = 0; i < n; i++) {
 			unsigned int j = (i + 1) % n;
-			faces.push_back({ i, j, n + i });
+			faces.push_back({ j, i, n + i });
 			faces.push_back({ j, n + i, n + j });
 		}
 
-		platonic(conf, mat_project, triangles, points.data(), points.size(), faces.data(), faces.size());
+		return platonic(conf, points, faces);
 	}
 }

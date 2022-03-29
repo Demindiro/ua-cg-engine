@@ -6,7 +6,7 @@ then
 	exit 1
 fi
 
-make build-debug \
+make -j build-debug \
 	&& cd assets \
 	&& time ../build-debug/engine "$1".ini \
 	&& ../feh.sh "$1".bmp \

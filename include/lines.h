@@ -7,6 +7,15 @@
 
 using Color = img::Color;
 
+img::EasyImage create_img(
+	double min_x, double min_y,
+	double max_x, double max_y,
+	uint size,
+	Color background,
+	double &d,
+	double &offset_x, double &offset_y
+);
+
 struct Point2D {
 	double x, y;
 
@@ -41,6 +50,7 @@ struct Line3D {
 	Line3D(Point3D a, Point3D b, Color color) : a(a), b(b), color(color) {}
 
 	void draw(img::EasyImage &, ZBuffer &z) const;
+	void draw_clip(img::EasyImage &img, ZBuffer &z) const;
 };
 
 class Lines3D {
@@ -53,23 +63,4 @@ public:
 	void add(Line3D);
 	
 	img::EasyImage draw(unsigned int size, Color background, bool with_z) const;
-};
-
-struct Triangle3D {
-	Point3D a, b, c;
-	Color color;
-
-	Triangle3D(Point3D a, Point3D b, Point3D c, Color color) : a(a), b(b), c(c), color(color) {}
-};
-
-class Triangles3D {
-	std::vector<Triangle3D> triangles;
-
-public:
-	Triangles3D() {}
-	Triangles3D(std::vector<Triangle3D> triangles) : triangles(triangles) {}
-
-	void add(Triangle3D);
-
-	img::EasyImage draw(unsigned int size, Color background) const;
 };

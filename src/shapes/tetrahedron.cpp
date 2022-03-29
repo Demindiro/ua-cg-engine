@@ -5,11 +5,11 @@
 using namespace std;
 
 namespace shapes {
-	static void tetrahedron(Vector3D points[4]) {
-		points[0] = Vector3D::point( 1, -1, -1);
-		points[1] = Vector3D::point(-1,  1, -1);
-		points[2] = Vector3D::point( 1,  1,  1);
-		points[3] = Vector3D::point(-1, -1,  1);
+	static void tetrahedron(Point3D points[4]) {
+		points[0] = {  1, -1, -1 };
+		points[1] = { -1,  1, -1 };
+		points[2] = {  1,  1,  1 };
+		points[3] = { -1, -1,  1 };
 	}
 
 	static void tetrahedron(Edge edges[6]) {
@@ -23,42 +23,42 @@ namespace shapes {
 
 	static void tetrahedron(Face faces[4]) {
 		faces[0] = { 0, 1, 2 };
-		faces[1] = { 0, 1, 3 };
+		faces[1] = { 0, 3, 1 };
 		faces[2] = { 0, 2, 3 };
-		faces[3] = { 1, 2, 3 };
+		faces[3] = { 2, 1, 3 };
 	}
 
-	void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[4];
+	void tetrahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {
+		Point3D points[4];
 		Edge edges[6];
 		tetrahedron(points);
 		tetrahedron(edges);
-		platonic(conf, mat_project, lines, points, 4, edges, 6);
+		platonic(conf, lines, points, 4, edges, 6);
 	}
 
-	void tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		Vector3D points[4];
-		Face faces[4];
-		tetrahedron(points);
-		tetrahedron(faces);
-		platonic(conf, mat_project, triangles, points, 4, faces, 4);
+	TriangleFigure tetrahedron(const FigureConfiguration &conf) {
+		vector<Point3D> points(4);
+		vector<Face> faces(4);
+		tetrahedron(points.data());
+		tetrahedron(faces.data());
+		return platonic(conf, points, faces);
 	}
 
-	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points(4);
+	void fractal_tetrahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {
+		vector<Point3D> points(4);
 		vector<Edge> edges(6);
 		tetrahedron(points.data());
 		tetrahedron(edges.data());
 		fractal(conf, points, edges);
-		platonic(conf, mat_project, lines, points, edges);
+		platonic(conf, lines, points, edges);
 	}
 
-	void fractal_tetrahedron(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points(4);
+	TriangleFigure fractal_tetrahedron(const FigureConfiguration &conf) {
+		vector<Point3D> points(4);
 		vector<Face> faces(4);
 		tetrahedron(points.data());
 		tetrahedron(faces.data());
 		fractal(conf, points, faces);
-		platonic(conf, mat_project, triangles, points, faces);
+		return platonic(conf, points, faces);
 	}
 }

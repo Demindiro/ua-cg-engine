@@ -39,7 +39,7 @@ namespace wireframe {
 		for (unsigned int i = 0; i < lines_n; i++) {
 			auto line = conf[string("line") + to_string(i)].as_int_tuple_or_die();
 			auto b = points.at(line.at(1)), a = points.at(line.at(0));
-			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color});
+			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color.to_img_color() });
 		}
 	}
 
@@ -122,7 +122,7 @@ namespace wireframe {
 			f >> s.sys;
 		}
 		s.project = transform_from_conf(conf, mat_project);
-		s.color = color_from_conf(conf);
+		s.color = color_from_conf(conf).to_img_color();
 		s.current = { Vector3D::point(0, 0, 0), {} };
 		s.drot = Rotation(s.sys.get_angle() / 180 * M_PI);
 		s.saved = saved;

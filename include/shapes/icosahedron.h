@@ -7,17 +7,17 @@
 #include "vector3d.h"
 
 namespace shapes {
-	void icosahedron(Vector3D points[12]);
+	void icosahedron(Point3D points[12]);
 
 	void icosahedron(Edge edges[30]);
 
 	void icosahedron(Face faces[20]);
 
-	void icosahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void icosahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	void icosahedron(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+	TriangleFigure icosahedron(const FigureConfiguration &conf);
 
-	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void fractal_icosahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	void fractal_icosahedron(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+	TriangleFigure fractal_icosahedron(const FigureConfiguration &conf);
 }

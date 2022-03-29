@@ -8,8 +8,12 @@ project(engine)
 ############################################################
 # If supported by your compiler, you can add the -Wall, -Wextra, –fstack-protector-all and -g3 flags here.
 set(OWN_GXX_FLAGS "-std=c++14 -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${OWN_GXX_FLAGS} -g -DGRAPHICS_DEBUG=1")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OWN_GXX_FLAGS} -flto -march=native")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${OWN_GXX_FLAGS} -g")
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined")
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DGRAPHICS_DEBUG=2")
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DGRAPHICS_DEBUG_FACES=2")
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DGRAPHICS_DEBUG_NORMALS=1")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OWN_GXX_FLAGS} -flto -march=native -fno-trapping-math -fno-math-errno -freciprocal-math")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${OWN_GXX_FLAGS}")
 
 ############################################################
@@ -39,6 +43,7 @@ set(engine_sources
 	src/shapes/torus.cpp
 	src/vector3d.cpp
 	src/wireframe.cpp
+	src/zbuffer.cpp
 )
 
 set(exe_name "engine")

@@ -10,15 +10,15 @@ using namespace std;
 
 namespace shapes {
 
-	static void cube(Vector3D points[8]) {
-		points[0] = Vector3D::point( 1,  1,  1);
-		points[1] = Vector3D::point( 1,  1, -1);
-		points[2] = Vector3D::point( 1, -1,  1);
-		points[3] = Vector3D::point( 1, -1, -1);
-		points[4] = Vector3D::point(-1,  1,  1);
-		points[5] = Vector3D::point(-1,  1, -1);
-		points[6] = Vector3D::point(-1, -1,  1);
-		points[7] = Vector3D::point(-1, -1, -1);
+	static void cube(Point3D points[8]) {
+		points[0] = {  1,  1,  1 };
+		points[1] = {  1,  1, -1 };
+		points[2] = {  1, -1,  1 };
+		points[3] = {  1, -1, -1 };
+		points[4] = { -1,  1,  1 };
+		points[5] = { -1,  1, -1 };
+		points[6] = { -1, -1,  1 };
+		points[7] = { -1, -1, -1 };
 	}
 
 	static void cube(Edge edges[12]) {
@@ -40,55 +40,54 @@ namespace shapes {
 	}
 
 	static void cube(Face faces[12]) {
-		// TODO fix order of vertices so culling works properly
 		// X
-		faces[0] = { 0, 1, 2 };
+		faces[0] = { 1, 0, 2 };
 		faces[1] = { 3, 1, 2 };
 		faces[2] = { 4, 5, 6 };
-		faces[3] = { 7, 5, 6 };
+		faces[3] = { 7, 6, 5 };
 		// Y
 		faces[4] = { 0, 1, 4 };
-		faces[5] = { 5, 1, 4 };
-		faces[6] = { 2, 3, 6 };
-		faces[7] = { 7, 3, 6 };
+		faces[5] = { 1, 5, 4 };
+		faces[6] = { 3, 2, 6 };
+		faces[7] = { 3, 6, 7 };
 		// Z
-		faces[ 8] = { 0, 2, 4 };
-		faces[ 9] = { 2, 6, 4 };
+		faces[ 8] = { 2, 0, 4 };
+		faces[ 9] = { 6, 2, 4 };
 		faces[10] = { 1, 3, 5 };
-		faces[11] = { 3, 7, 5 };
+		faces[11] = { 7, 5, 3 };
 	}
 
-	void cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		Vector3D points[8];
+	void cube(const FigureConfiguration &conf, vector<Line3D> &lines) {
+		Point3D points[8];
 		Edge edges[12];
 		cube(points);
 		cube(edges);
-		platonic(conf, mat_project, lines, points, 8, edges, 12);
+		platonic(conf, lines, points, 8, edges, 12);
 	}
 
-	void cube(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		Vector3D points[8];
-		Face faces[12];
-		cube(points);
-		cube(faces);
-		platonic(conf, mat_project, triangles, points, 8, faces, 12);
+	TriangleFigure cube(const FigureConfiguration &conf) {
+		vector<Point3D> points(8);
+		vector<Face> faces(12);
+		cube(points.data());
+		cube(faces.data());
+		return platonic(conf, points, faces);
 	}
 
-	void fractal_cube(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
-		vector<Vector3D> points(8);
+	void fractal_cube(const FigureConfiguration &conf, vector<Line3D> &lines) {
+		vector<Point3D> points(8);
 		vector<Edge> edges(12);
 		cube(points.data());
 		cube(edges.data());
 		fractal(conf, points, edges);
-		platonic(conf, mat_project, lines, points, edges);
+		platonic(conf, lines, points, edges);
 	}
 
-	void fractal_cube(ini::Section &conf, Matrix &mat_project, vector<Triangle3D> &triangles) {
-		vector<Vector3D> points(8);
+	TriangleFigure fractal_cube(const FigureConfiguration &conf) {
+		vector<Point3D> points(8);
 		vector<Face> faces(12);
 		cube(points.data());
 		cube(faces.data());
 		fractal(conf, points, faces);
-		platonic(conf, mat_project, triangles, points, faces);
+		return platonic(conf, points, faces);
 	}
 }

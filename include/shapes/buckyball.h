@@ -3,14 +3,15 @@
 #include <vector>
 #include "ini_configuration.h"
 #include "lines.h"
+#include "shapes.h"
 #include "vector3d.h"
 
 namespace shapes {
-	void buckyball(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void buckyball(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	void buckyball(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+	TriangleFigure buckyball(const FigureConfiguration &conf);
 
-	void fractal_buckyball(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void fractal_buckyball(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	void fractal_buckyball(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+	TriangleFigure fractal_buckyball(const FigureConfiguration &conf);
 }

@@ -3,14 +3,15 @@
 #include <vector>
 #include "ini_configuration.h"
 #include "lines.h"
+#include "shapes.h"
 #include "vector3d.h"
 
 namespace shapes {
-	void cube(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void cube(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	void cube(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+	TriangleFigure cube(const FigureConfiguration &conf);
 
-	void fractal_cube(ini::Section &conf, Matrix &mat_project, std::vector<Line3D> &lines);
+	void fractal_cube(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	void fractal_cube(ini::Section &conf, Matrix &mat_project, std::vector<Triangle3D> &triangles);
+	TriangleFigure  fractal_cube(const FigureConfiguration &conf);
 }

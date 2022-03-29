@@ -5,6 +5,8 @@
 #include "easy_image.h"
 #include "vector3d.h"
 
+#define UNREACHABLE assert(!"unreachable")
+
 class TypeException : public std::exception {
 	std::string type;
 	
@@ -44,9 +46,18 @@ static inline Vector3D tup_to_vector3d(std::vector<double> v) {
 	return Vector3D::vector(x, y, z);
 }
 
-static inline double deg2rad(double a) {
+static constexpr inline double deg2rad(double a) {
 	return a / 180 * M_PI;
 }
+
+#if __cplusplus < 201703L
+template <typename T>
+static constexpr inline double clamp(T v, T min, T max) {
+	if (min >= max)
+		UNREACHABLE;
+	return v < min ? min : (v > max ? max : v);
+}
+#endif
 
 struct Rotation {
 	double u, v;

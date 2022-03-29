@@ -32,7 +32,9 @@ img::EasyImage generate_image(const ini::Configuration &conf) {
 	} else if (type == "ZBufferedWireframe") {
 		return shapes::wireframe(conf, true);
 	} else if (type == "ZBuffering") {
-		return shapes::triangles(conf);
+		return shapes::triangles(conf, false);
+	} else if (type == "LightedZBuffering") {
+		return shapes::triangles(conf, true);
 	} else {
 		throw TypeException(type);
 	}
@@ -52,6 +54,7 @@ int main(int argc, char const *argv[]) {
 		}
 		for (std::string fileName : args) {
 			ini::Configuration conf;
+			std::cout << "gen " << fileName << std::endl;
 			try {
 				std::ifstream fin(fileName);
 				fin >> conf;

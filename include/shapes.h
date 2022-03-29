@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include "easy_image.h"
+#include "engine.h"
 #include "ini_configuration.h"
 #include "lines.h"
 #include "vector3d.h"
@@ -20,23 +22,107 @@ namespace shapes {
 		unsigned int a, b, c;
 	};
 
-	Matrix transform_from_conf(ini::Section &conf, Matrix &projection);
+	struct Color {
+		double r, g, b;
 
-	img::Color color_from_conf(ini::Section &conf);
+		constexpr Color() : r(0), g(0), b(0) {}
+		constexpr Color(double r, double g, double b) : r(r), g(g), b(b) {}
 
-	void platonic(ini::Section &conf, Matrix &project, std::vector<Line3D> &lines, Vector3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len);
+		constexpr Color operator +(Color rhs) const {
+			return Color { r + rhs.r, g + rhs.g, b + rhs.b };
+		}
 
-	void platonic(ini::Section &conf, Matrix &project, std::vector<Triangle3D> &triangles, Vector3D *points, unsigned int points_len, Face *faces, unsigned int faces_len);
+		constexpr Color operator *(Color rhs) const {
+			return Color { r * rhs.r, g * rhs.g, b * rhs.b };
+		}
 
-	inline void platonic(ini::Section &conf, Matrix &project, std::vector<Line3D> &lines, std::vector<Vector3D> points, std::vector<Edge> edges) {
-		platonic(conf, project, lines, points.data(), points.size(), edges.data(), edges.size());
+		constexpr Color operator *(double f) const {
+			return Color { r * f, g * f, b * f };
+		}
+
+		constexpr void operator +=(Color rhs) {
+			*this = *this + rhs;
+		}
+
+		constexpr void operator *=(Color rhs) {
+			*this = *this * rhs;
+		}
+
+		constexpr Color clamp() const {
+			return { ::clamp(r, 0.0, 1.0), ::clamp(g, 0.0, 1.0), ::clamp(b, 0.0, 1.0) };
+		}
+
+		inline img::Color to_img_color() const {
+			auto c = clamp();
+			return img::Color(round_up(c.r * 255), round_up(c.g * 255), round_up(c.b * 255));
+		}
+	};
+
+	struct TriangleFigure {
+		std::vector<Point3D> points;
+		/**
+		 * \brief Normals for calculating lighting. Empty if no lighting.
+		 */
+		std::vector<Vector3D> normals;
+		std::vector<Face> faces;
+		Color ambient;
+		Color diffuse;
+		Color specular;
+		double reflection;
+		/**
+		 * \brief Whether each normal is part of a face or a point.
+		 */
+		bool face_normals;
+	};
+
+	struct FigureConfiguration {
+		ini::Section &section;
+		Matrix eye;
+		bool with_lighting;
+		bool face_normals;
+	};
+
+	struct DirectionalLight {
+		Vector3D direction;
+		Color diffuse, specular;
+	};
+
+	struct PointLight {
+		Point3D point;
+		Color diffuse, specular;
+		double spot_angle_cos;
+	};
+
+	struct Lights {
+		Color ambient;
+		std::vector<DirectionalLight> directional;
+		std::vector<PointLight> point;
+#if GRAPHICS_DEBUG > 0
+		// TODO find a clean way to pass this without adding more parameters
+		Matrix eye;
+#endif
+	};
+
+	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection);
+
+	Color color_from_conf(const ini::Section &conf);
+
+	/**
+	 * \brief Generic face normal calculator.
+	 */
+	std::vector<Vector3D> calculate_face_normals(const std::vector<Point3D> &points, const std::vector<Face> &faces);
+
+	void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len);
+
+	inline void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, std::vector<Point3D> points, std::vector<Edge> edges) {
+		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
 
-	inline void platonic(ini::Section &conf, Matrix &project, std::vector<Triangle3D> &triangles, std::vector<Vector3D> points, std::vector<Face> faces) {
-		platonic(conf, project, triangles, points.data(), points.size(), faces.data(), faces.size());
-	}
+	TriangleFigure platonic(const FigureConfiguration &conf, std::vector<Point3D> points, std::vector<Face> faces);
 
 	img::EasyImage wireframe(const ini::Configuration &, bool with_z);
 
-	img::EasyImage triangles(const ini::Configuration &);
+	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
+
+	img::EasyImage draw(std::vector<TriangleFigure> figures, const Lights &lights, unsigned int size, img::Color background);
 }

@@ -5,15 +5,13 @@ INI   := $(patsubst assets/%,%,$(wildcard assets/*.ini))
 
 ARCHIVE := s0215648
 
-CPUS := $(shell nproc)
-
 build:
 	cmake -DCMAKE_BUILD_TYPE=Release -B $@
-	cd $@ && make -j$(CPUS)
+	make -C $@
 
 build-debug:
 	cmake -DCMAKE_BUILD_TYPE=Debug -B $@
-	cd $@ && make -j$(CPUS)
+	make -C $@
 
 #test: build-debug
 #	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
@@ -30,23 +28,29 @@ test-fractals: build-debug
 test-clipping: build-debug
 	cd assets && for f in clipping*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-specular: build-debug
+	cd assets && for f in specular_light*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 test: $(INI)
 
 $(INI): build-debug
 	@echo $@
 	@cd assets && ../$</engine $@ > /dev/null || echo $@ failed with code $$? || exit 1
 
-bench-sep: build
-	cd assets && for f in *.ini; do echo "$$f"; perf stat ../$</engine "$$f"; done
+bench-sep: $(patsubst %.ini,bench-sep-%,$(INI))
+	perf stat make -C . $^
+
+bench-sep-%: build
+	cd assets && ../$</engine "$(patsubst bench-sep-%,%.ini,$@)"
 
 bench-batch: build
 	cd assets && perf stat ../$</engine *.ini
 
 gen: build
-	make -j$(CPUS) $(patsubst %,_gen-%,$(INI))
+	make -C . $(patsubst %,_gen-%,$(INI))
 
 gen-%: build
-	make $(patsubst _%,%,$@)
+	make -C . $(patsubst _%,%,$@)
 
 _gen-%:
 	cd assets && ../build/engine $(patsubst _gen-%,%,$@)
@@ -63,4 +67,4 @@ clean-images::
 	rm -rf assets/*.bmp
 
 loop::
-	while true; do make build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done
+	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done

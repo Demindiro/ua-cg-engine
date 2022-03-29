@@ -4,17 +4,23 @@
 
 using namespace std;
 
-void shapes::circle(vector<Vector3D> &points, unsigned int n, double z) {
+void shapes::circle(vector<Point3D> &points, unsigned int n, double z) {
 	double d = 2 * M_PI / n;
 	for (unsigned int i = 0; i < n; i++) {
 		auto x = sin(i * d);
 		auto y = cos(i * d);
-		points.push_back(Vector3D::point(x, y, z));
+		points.push_back({ x, y, z });
 	}
 }
 
 void shapes::circle(vector<Face> &faces, unsigned int n, unsigned int offt) {
 	for (unsigned int i = 0; i < n - 2; i++) {
-		faces.push_back({ offt, offt + i + 1, offt + i + 2 });
+		faces.push_back({ offt + i + 1, offt + i + 2, offt });
+	}
+}
+
+void shapes::circle_reversed(vector<Face> &faces, unsigned int n, unsigned int offt) {
+	for (unsigned int i = 0; i < n - 2; i++) {
+		faces.push_back({ offt + i + 2, offt + i + 1, offt });
 	}
 }
