@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "easy_image.h"
+#include <cstdlib>
 #include <algorithm>
 #include <assert.h>
 #include <iostream>
@@ -54,6 +55,18 @@ struct bmp_header {
 	uint32_t ncolors;
 	uint32_t nimpcolors;
 };
+
+static size_t calc_meta_size() {
+	return sizeof(bmpfile_magic)
+		+ sizeof(bmpfile_header)
+		+ sizeof(bmp_header);
+}
+
+static size_t calc_size(unsigned int width, unsigned int height) {
+	assert((unsigned long long)width * height == width * height && "size overflow");
+	return calc_meta_size() + ((width * 3 + 3) & ~3L) * height;
+}
+
 // copy-pasted from lparser.cc to allow these classes to be used independently
 // from each other
 class enable_exceptions {
@@ -87,6 +100,16 @@ template <typename T> T to_little_endian(T value) {
 	}
 	return temp_storage.t;
 }
+
+/*
+static uint16_t htole16(uint16_t t) {
+	return to_little_endian(t);
+}
+
+static uint32_t htole32(uint32_t t) {
+	return to_little_endian(t);
+}
+*/
 
 template <typename T> T from_little_endian(T value) {
 	// yes, unions must be used with caution, but this is a case in which a
@@ -126,52 +149,92 @@ const char *img::UnsupportedFileTypeException::what() const throw() {
 	return message.c_str();
 }
 
-img::EasyImage::EasyImage() : width(0), height(0), bitmap() {}
+img::EasyImage::EasyImage() : img::EasyImage::EasyImage(0, 0) {}
 
-img::EasyImage::EasyImage(unsigned int _width, unsigned int _height,
-						  Color color)
-	: width(_width), height(_height), bitmap(width * height, color) {}
+img::EasyImage::EasyImage(unsigned int width, unsigned int height, Color color) {
+	// FIXME some bytes are unitialized. This isn't too bad right now but may leak secrets
+	// if this code is used elsewhere.
+	data = malloc(calc_size(width, height));
+	if (data == NULL)
+		throw std::bad_alloc();
+	row_size = (width * 3 + 3) & ~3; // Round up to multiple of 4
 
-img::EasyImage::EasyImage(EasyImage const &img)
-	: width(img.width), height(img.height), bitmap(img.bitmap) {}
+	bmpfile_magic *fm = (bmpfile_magic *)data;
+	bmpfile_header *fh = (bmpfile_header *)((char *)data + sizeof(*fm));
+	bmp_header *h = (bmp_header *)((char *)data + sizeof(*fm) + sizeof(*fh));
 
-img::EasyImage::~EasyImage() { bitmap.clear(); }
+	fm->magic[0] = 'B';
+	fm->magic[1] = 'M';
 
-img::EasyImage &img::EasyImage::operator=(img::EasyImage const &img) {
-	width = img.width;
-	height = img.height;
-	bitmap.assign(img.bitmap.begin(), img.bitmap.end());
-	return (*this);
+	fh->file_size = htole32(calc_size(width, height));
+	fh->bmp_offset = htole32(calc_meta_size());
+
+	h->header_size = htole32(sizeof(*h));
+	h->width = htole32(width);
+	h->height = htole32(height);
+	h->nplanes = htole16(1);
+	h->bits_per_pixel = htole16(24); // 3bytes or 24 bits per pixel
+	h->compress_type = 0;                     // no compression
+	h->pixel_size = htole32(row_size * height);
+	h->hres = htole32(11811); // 11811 pixels/meter or 300dpi
+	h->vres = htole32(11811); // 11811 pixels/meter or 300dpi
+	h->ncolors = 0;                    // no color palette
+	h->nimpcolors = 0;                 // no important colors
+
+	clear(color);
 }
 
-unsigned int img::EasyImage::get_width() const { return width; }
+img::EasyImage::EasyImage(EasyImage const &img) : EasyImage(img.get_width(), img.get_height()) {
+	for (unsigned int y = 0; y < get_height(); y++) {
+		for (unsigned int x = 0; x < get_width(); x++) {
+			(*this)(x, y) = img(x, y);
+		}
+	}
+}
 
-unsigned int img::EasyImage::get_height() const { return height; }
+img::EasyImage::~EasyImage() {
+	assert(data != NULL && "data is NULL");
+	free(data);
+}
+
+img::EasyImage &img::EasyImage::operator=(img::EasyImage const &img) {
+	*this = img::EasyImage(img);
+	return *this;
+}
+
+unsigned int img::EasyImage::get_width() const {
+	return le32toh(((bmp_header *)((char *)data + sizeof(bmpfile_magic) + sizeof(bmpfile_header)))->width);
+}
+
+unsigned int img::EasyImage::get_height() const {
+	return le32toh(((bmp_header *)((char *)data + sizeof(bmpfile_magic) + sizeof(bmpfile_header)))->height);
+}
 
 void img::EasyImage::clear(Color color) {
-	for (std::vector<Color>::iterator i = bitmap.begin(); i != bitmap.end();
-		 i++) {
-		*i = color;
+	for (unsigned int y = 0; y < get_height(); y++) {
+		for (unsigned int x = 0; x < get_width(); x++) {
+			(*this)(x, y) = color;
+		}
 	}
 }
 
 img::Color &img::EasyImage::operator()(unsigned int x, unsigned int y) {
-	assert(x < this->width);
-	assert(y < this->height);
-	return bitmap.at(x + y * width);
+	assert(x < get_width());
+	assert(y < get_height());
+	return ((Color *)((char *)data + calc_meta_size() + (size_t)row_size * y))[x];
 }
 
 img::Color const &img::EasyImage::operator()(unsigned int x,
 											 unsigned int y) const {
-	assert(x < this->width);
-	assert(y < this->height);
-	return bitmap.at(x + y * width);
+	assert(x < get_width());
+	assert(y < get_height());
+	return ((Color *)((char *)data + calc_meta_size() + (size_t)row_size * y))[x];
 }
 
 void img::EasyImage::draw_line(unsigned int x0, unsigned int y0,
 							   unsigned int x1, unsigned int y1, Color color) {
-	assert(x0 < this->width && y0 < this->height);
-	assert(x1 < this->width && y1 < this->height);
+	assert(x0 < get_width() && y0 < get_height());
+	assert(x1 < get_width() && y1 < get_height());
 	if (x0 == x1) {
 		// special case for x0 == x1
 		for (unsigned int i = std::min(y0, y1); i <= std::max(y0, y1); i++) {
@@ -259,8 +322,8 @@ void img::EasyImage::draw_zbuf_line(
 	unsigned int x1, unsigned int y1, double z1,
 	Color color
 ) {
-	assert(x0 < this->width && y0 < this->height);
-	assert(x1 < this->width && y1 < this->height);
+	assert(x0 < get_width() && y0 < get_height());
+	assert(x1 < get_width() && y1 < get_height());
 	double inv_z0 = 1 / z0, inv_z1 = 1 / z1;
 	double a = NAN;
 	auto set = [&](unsigned int x, unsigned int y, unsigned int i) {
@@ -399,150 +462,24 @@ void img::EasyImage::draw_zbuf_triag(
 }
 
 std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
-
-	// temporaryily enable exceptions on output stream
 	enable_exceptions(out, std::ios::badbit | std::ios::failbit);
-	// declare some struct-vars we're going to need:
-	bmpfile_magic magic;
-	bmpfile_header file_header;
-	bmp_header header;
-	// calculate the total size of the pixel data
-	unsigned int line_width = image.get_width() * 3; // 3 bytes per pixel
-	unsigned int line_padding = 0;
-	if (line_width % 4 != 0) {
-		line_padding = 4 - (line_width % 4);
-	}
-	// lines must be aligned to a multiple of 4 bytes
-	line_width += line_padding;
-	unsigned int pixel_size = image.get_height() * line_width;
-
-	// start filling the headers
-	magic.magic[0] = 'B';
-	magic.magic[1] = 'M';
-
-	file_header.file_size = to_little_endian(pixel_size + sizeof(file_header) +
-											 sizeof(header) + sizeof(magic));
-	file_header.bmp_offset =
-		to_little_endian(sizeof(file_header) + sizeof(header) + sizeof(magic));
-	file_header.reserved_1 = 0;
-	file_header.reserved_2 = 0;
-	header.header_size = to_little_endian(sizeof(header));
-	header.width = to_little_endian(image.get_width());
-	header.height = to_little_endian(image.get_height());
-	header.nplanes = to_little_endian(1);
-	header.bits_per_pixel = to_little_endian(24); // 3bytes or 24 bits per pixel
-	header.compress_type = 0;                     // no compression
-	header.pixel_size = pixel_size;
-	header.hres = to_little_endian(11811); // 11811 pixels/meter or 300dpi
-	header.vres = to_little_endian(11811); // 11811 pixels/meter or 300dpi
-	header.ncolors = 0;                    // no color palette
-	header.nimpcolors = 0;                 // no important colors
-
-	// okay that should be all the header stuff: let's write it to the stream
-	out.write((char *)&magic, sizeof(magic));
-	out.write((char *)&file_header, sizeof(file_header));
-	out.write((char *)&header, sizeof(header));
-
-	// okay let's write the pixels themselves:
-	// they are arranged left->right, bottom->top, b,g,r
-
-	// Manual buffering since ostream is horribly slow. (~50ms -> ~10ms = ~5x!)
-	char buf[1 << 20]; // 1 MiB
-	size_t buf_i = 0;
-
-	for (unsigned int i = 0; i < image.get_height(); i++) {
-		// loop over all lines
-		for (unsigned int j = 0; j < image.get_width(); j++) {
-			// loop over all pixels in a line
-			// we cast &color to char*. since the color fields are ordered
-			// blue,green,red they should be written automatically in the right
-			// order
-			if (buf_i >= sizeof(buf) - 4) {
-				out.write(buf, buf_i);
-				buf_i = 0;
-			}
-			memcpy(buf + buf_i, (char *)&image(j, i), 3 * sizeof(uint8_t));
-			buf_i += 3 * sizeof(uint8_t);
-		}
-		if (buf_i >= sizeof(buf) - line_padding) {
-			out.write(buf, buf_i);
-			buf_i = 0;
-		}
-		memset(buf + buf_i, 0, line_padding);
-		buf_i += line_padding;
-	}
-	out.write(buf, buf_i);
-
-	// okay we should be done
+	out.write((char *)image.data, calc_size(image.get_width(), image.get_height()));
 	return out;
 }
 std::istream &img::operator>>(std::istream &in, EasyImage &image) {
-	enable_exceptions(in, std::ios::badbit | std::ios::failbit);
-	// declare some struct-vars we're going to need
-	bmpfile_magic magic;
-	bmpfile_header file_header;
-	bmp_header header;
-	// a temp buffer for reading the padding at the end of each line
-	uint8_t padding[] = {0, 0, 0, 0};
+	// FIXME sanitize input
 
-	// read the headers && do some sanity checks
-	in.read((char *)&magic, sizeof(magic));
-	if (magic.magic[0] != 'B' || magic.magic[1] != 'M')
-		throw UnsupportedFileTypeException(
-			"Could not parse BMP File: invalid magic header");
-	in.read((char *)&file_header, sizeof(file_header));
-	in.read((char *)&header, sizeof(header));
-	if (le32toh(header.pixel_size) + le32toh(file_header.bmp_offset) !=
-		le32toh(file_header.file_size))
-		throw UnsupportedFileTypeException(
-			"Could not parse BMP File: file size mismatch");
-	if (le32toh(header.header_size) != sizeof(header))
-		throw UnsupportedFileTypeException(
-			"Could not parse BMP File: Unsupported BITMAPV5HEADER size");
-	if (le32toh(header.compress_type) != 0)
-		throw UnsupportedFileTypeException(
-			"Could not parse BMP File: Only uncompressed BMP files can be "
-			"parsed");
-	if (le32toh(header.nplanes) != 1)
-		throw UnsupportedFileTypeException(
-			"Could not parse BMP File: Only one plane should exist in the BMP "
-			"file");
-	if (le32toh(header.bits_per_pixel) != 24)
-		throw UnsupportedFileTypeException(
-			"Could not parse BMP File: Only 24bit/pixel BMP's are supported");
-	// if height<0 -> read top to bottom instead of bottom to top
-	bool invertedLines = from_little_endian(header.height) < 0;
-	image.height = std::abs(from_little_endian(header.height));
-	image.width = std::abs(from_little_endian(header.width));
-	unsigned int line_padding =
-		from_little_endian(header.pixel_size) / image.height -
-		(3 * image.width);
-	// re-initialize the image bitmap
-	image.bitmap.clear();
-	image.bitmap.assign(image.height * image.width, Color());
-	// okay let's read the pixels themselves:
-	// they are arranged left->right., bottom->top if height>0, top->bottom if
-	// height<0, b,g,r
-	for (unsigned int i = 0; i < image.get_height(); i++) {
-		// loop over all lines
-		for (unsigned int j = 0; j < image.get_width(); j++) {
-			// loop over all pixels in a line
-			// we cast &color to char*. since the color fields are ordered
-			// blue,green,red, the data read should be written in the right
-			// variables
-			if (invertedLines) {
-				// store top-to-bottom
-				in.read((char *)&image(j, image.height - 1 - i),
-						3 * sizeof(uint8_t));
-			} else {
-				// store bottom-to-top
-				in.read((char *)&image(j, i), 3 * sizeof(uint8_t));
-			}
-		}
-		if (line_padding > 0) {
-			in.read((char *)padding, line_padding);
-		}
-	}
-	// okay we're done
-	return in;
+	enable_exceptions(in, std::ios::badbit | std::ios::failbit);
+
+	in.seekg(0, std::ios::end);
+	size_t size = in.tellg();
+	void *d = malloc(size);
+	if (d == NULL)
+		throw std::bad_alloc();
+	in.seekg(0, std::ios::beg);
+
+	free(image.data);
+	image.data = d;
+
+	return in.read((char *)d, size);
 }

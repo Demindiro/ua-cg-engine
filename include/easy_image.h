@@ -127,6 +127,12 @@ namespace img
 	 */
 	class EasyImage
 	{
+		friend std::istream& operator>>(std::istream& in, EasyImage & image);
+		friend std::ostream& operator<<(std::ostream& out, EasyImage const& image);
+
+		void *data;
+		unsigned int row_size;
+
 		public:
 			/**
 			 * \brief Default Constructor. Creates a zero-pixel image
@@ -260,21 +266,6 @@ namespace img
 				double dx, double dy,
 				Color color
 			);
-
-		private:
-			friend std::istream& operator>>(std::istream& in, EasyImage & image);
-			/**
-			 * \brief the width of the image
-			 */
-			unsigned int width;
-			/**
-			 * \brief the height of the image
-			 */
-			unsigned int height;
-			/**
-			 * \brief the vector containing all pixels
-			 */
-			std::vector<Color> bitmap;
 	};
 
 	/**
