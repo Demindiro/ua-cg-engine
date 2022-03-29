@@ -28,6 +28,9 @@ test-fractals: build-debug
 test-clipping: build-debug
 	cd assets && for f in clipping*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-specular: build-debug
+	cd assets && for f in specular_light*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 test: $(INI)
 
 $(INI): build-debug

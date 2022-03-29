@@ -55,7 +55,7 @@ namespace shapes {
 	}
 
 	static Color try_color_from_conf(const vector<double> &c) {
-		if (c.size() <= 3)
+		if (c.size() < 3)
 			return { 0, 0, 0 };
 		double b = c.at(2);
 		double g = c.at(1);
@@ -607,6 +607,12 @@ namespace shapes {
 		// Preprocess figures to speed up some later operations
 		for (auto &f : figures) {
 			f.ambient *= lights.ambient;
+			// FIXME normals are being scaled too if the figure is scaled. Making a separate transformation
+			// matrix without the scaling would very likely be more efficient instead of fixing it after the
+			// fact.
+			for (auto &n : f.normals) {
+				n.normalise();
+			}
 		}
 
 		ZBuffer zbuf(img.get_width(), img.get_height());
@@ -654,45 +660,59 @@ namespace shapes {
 					continue;
 
 				auto &f = figures[pair.figure_id];
-				auto &t = f.faces[pair.triangle_id];
 
 				auto color = f.ambient;
-				f2p(f, t);
 
 				// Apply lights
 				// TODO this assumes face normals
+				auto n = f.normals.empty() ? Vector3D::vector(0, 0, 0) : f.normals[pair.triangle_id];
+
+				// Invert perspective projection
+				// Given: x', y', 1/z, dx, dy
+				// x' = x / -z * d + dx => x = (x' - dx) * -z / d, ditto for y
+				Point3D point(
+					(x - offset_x) / (d * -pair.inv_z),
+					(y - offset_y) / (d * -pair.inv_z),
+					1 / pair.inv_z
+				);
+				auto cam_dir = point - Point3D();
+				cam_dir.normalise();
+
+				n = n.dot(cam_dir) > 0 ? -n : n;
+
 				for (auto &d : lights.directional) {
+					assert(!f.normals.empty());
+					//auto n = f.normals[pair.triangle_id];
 					assert(f.faces.size() == f.normals.size() && "No normals");
-					auto n = f.normals[pair.triangle_id];
-					auto dot = max(n.dot(-d.direction), 0.0);
-					// Diffuse
-					color += (f.diffuse * d.diffuse) * dot;
-					// Specular
-					auto r = 2 * dot * n + d.direction;
-					auto cam_dir = Vector3D::vector(0, 0, -1);
-					color += (f.specular * d.specular) * pow(r.dot(cam_dir), f.reflection);
+					auto dot = n.dot(-d.direction);
+					if (dot > 0) {
+						// Diffuse
+						color += (f.diffuse * d.diffuse) * dot;
+						// Specular
+						// Note to myself and future readers: make ABSOLUTELY sure r.dot(...) returns a **positive**
+						// number lest you'd have mysterious bugs when reflection switches between even and odd...
+						auto r = 2 * dot * n + d.direction;
+						if (r.dot(-cam_dir) > 0) {
+							color += (f.specular * d.specular) * pow(r.dot(-cam_dir), f.reflection);
+						}
+					}
 				}
 				for (auto &p : lights.point) {
-					// Invert perspective projection
-					// Given: x', y', 1/z, dx, dy
-					// x' = x / -z * d + dx => x = (x' - dx) * -z / d, ditto for y
-					Point3D point(
-						(x - offset_x) / (d * -pair.inv_z),
-						(y - offset_y) / (d * -pair.inv_z),
-						1 / pair.inv_z
-					);
+					assert(!f.normals.empty());
 					auto direction = point - p.point;
 					direction.normalise();
 					assert(f.faces.size() == f.normals.size() && "No normals");
-					auto n = f.normals[pair.triangle_id];
 					auto dot = n.dot(-direction);
+					if (dot > 0) {
 					// Diffuse
-					auto s = max(1 - (1 - dot) / (1 - p.spot_angle_cos), 0.0);
-					color += (f.diffuse * p.diffuse) * s;
-					// Specular
-					auto r = 2 * dot * n + direction;
-					auto cam_dir = Vector3D::vector(0, 0, -1);
-					color += (f.specular * p.specular) * pow(r.dot(cam_dir), f.reflection) * s;
+						auto s = max(1 - (1 - dot) / (1 - p.spot_angle_cos), 0.0);
+						color += (f.diffuse * p.diffuse) * s;
+						// Specular
+						auto r = 2 * dot * n + direction;
+						if (r.dot(-cam_dir) > 0) {
+							color += (f.specular * p.specular) * pow(r.dot(-cam_dir), f.reflection);
+						}
+					}
 				}
 
 				assert(color.r >= 0 && "Colors can't be negative");
@@ -700,7 +720,10 @@ namespace shapes {
 				assert(color.b >= 0 && "Colors can't be negative");
 				img(x, y) = color.to_img_color();
 
-#if GRAPHICS_DEBUG_FACES > 0
+#if GRAPHICS_DEBUG_FACES == 2
+				auto cg = (color.r + color.g + color.b) / 3;
+				img(x, y) = (f.normals[pair.triangle_id].dot(cam_dir) > 0 ? Color(cg, 0, 0) : Color(0, cg, 0)).to_img_color();
+#elif GRAPHICS_DEBUG_FACES > 0
 				img(x, y) = colors_pool[pair.triangle_id % color_pool_size];
 #endif
 			}

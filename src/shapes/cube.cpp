@@ -53,8 +53,8 @@ namespace shapes {
 		// Z
 		faces[ 8] = { 2, 0, 4 };
 		faces[ 9] = { 6, 2, 4 };
-		faces[10] = { 3, 1, 5 };
-		faces[11] = { 7, 3, 5 };
+		faces[10] = { 1, 3, 5 };
+		faces[11] = { 7, 5, 3 };
 	}
 
 	void cube(const FigureConfiguration &conf, vector<Line3D> &lines) {
