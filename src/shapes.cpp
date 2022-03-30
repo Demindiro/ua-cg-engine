@@ -134,7 +134,6 @@ namespace shapes {
 		fig.points = points;
 		fig.faces = faces;
 		assert(conf.face_normals && "TODO: vertex normals");
-		fig.normals = calculate_face_normals(points, faces);
 		fig.face_normals = conf.face_normals;
 		if (conf.with_lighting) {
 			fig.ambient = try_color_from_conf(conf.section["ambientReflection"]);
@@ -152,19 +151,13 @@ namespace shapes {
 		fig.can_cull = true; // All platonics are solid (& other generated meshes are too)
 		fig.clipped = false;
 
-		Matrix mat_scale;
-		auto mat = transform_from_conf(conf.section, conf.eye, mat_scale);
+		auto mat = transform_from_conf(conf.section, conf.eye);
 
-		// Without scale
-		for (auto &n : fig.normals) {
-			n *= mat;
-		}
-
-		// With scale
-		mat = mat_scale * mat;
 		for (auto &p : fig.points) {
 			p *= mat;
 		}
+
+		fig.normals = calculate_face_normals(fig.points, fig.faces);
 
 		return fig;
 	}
