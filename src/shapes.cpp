@@ -553,13 +553,13 @@ namespace shapes {
 					switch (plane) {
 						case NEAR : return -p.z < frustum.near;
 						case FAR  : return -p.z > frustum.far;
-						case RIGHT: return p.x * frustum.near / -p.z > v;
-						case LEFT : return p.x * frustum.near / -p.z < v;
-						case TOP  : return p.y * frustum.near / -p.z > v;
-						case DOWN : return p.y * frustum.near / -p.z < v;
+						case RIGHT: return p.x * frustum.near > v * -p.z;
+						case LEFT : return p.x * frustum.near < v * -p.z;
+						case TOP  : return p.y * frustum.near > v * -p.z;
+						case DOWN : return p.y * frustum.near < v * -p.z;
 						default:
-									assert(!"Invalid direction");
-									return false;
+							assert(!"Invalid direction");
+							return false;
 					}
 				};
 				auto outside_mask = [&f, &outside](Face &t, int plane, double v) {
