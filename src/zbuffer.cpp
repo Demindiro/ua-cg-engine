@@ -27,9 +27,9 @@ void ZBuffer::triangle(
 	}
 	
 	// Project
-	a.x = a.x * d / -a.z + dx, a.y = a.y * d / -a.z + dy;
-	b.x = b.x * d / -b.z + dx, b.y = b.y * d / -b.z + dy;
-	c.x = c.x * d / -c.z + dx, c.y = c.y * d / -c.z + dy;
+	a.x = a.x * (d / -a.z) + dx, a.y = a.y * (d / -a.z) + dy;
+	b.x = b.x * (d / -b.z) + dx, b.y = b.y * (d / -b.z) + dy;
+	c.x = c.x * (d / -c.z) + dx, c.y = c.y * (d / -c.z) + dy;
 
 	// These center coordaintes must be projected.
 	double g_x = (a.x + b.x + c.x) / 3;
