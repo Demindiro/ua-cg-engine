@@ -22,7 +22,7 @@
 using namespace std;
 
 namespace shapes {
-	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection) {
+	static Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection, Matrix &mat_scale) {
 		auto rot_x = conf["rotateX"].as_double_or_die() * M_PI / 180;
 		auto rot_y = conf["rotateY"].as_double_or_die() * M_PI / 180;
 		auto rot_z = conf["rotateZ"].as_double_or_die() * M_PI / 180;
@@ -32,7 +32,7 @@ namespace shapes {
 		// Create transformation matrix
 		// Order of operations: scale > rot_x > rot_y > rot_z > translate > project
 		// NB the default constructor creates identity matrices (diagonal is 1)
-		Matrix mat_scale, mat_rot_x, mat_rot_y, mat_rot_z, mat_translate;
+		Matrix mat_rot_x, mat_rot_y, mat_rot_z, mat_translate;
 
 		mat_scale(1, 1) = mat_scale(2, 2) = mat_scale(3, 3) = scale;
 
@@ -44,7 +44,13 @@ namespace shapes {
 		mat_translate(4, 2) = center.y;
 		mat_translate(4, 3) = center.z;
 
-		return mat_scale * mat_rot_x * mat_rot_y * mat_rot_z * mat_translate * projection;
+		return mat_rot_x * mat_rot_y * mat_rot_z * mat_translate * projection;
+	}
+
+	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection) {
+		Matrix mat_scale, mat;
+		mat = transform_from_conf(conf, projection, mat_scale);
+		return mat_scale * mat;
 	}
 
 	static Color color_from_conf(const vector<double> &c) {
@@ -123,8 +129,6 @@ namespace shapes {
 			fig.normals = calculate_face_normals(points, faces);
 		}
 		fig.face_normals = conf.face_normals;
-
-		auto mat = transform_from_conf(conf.section, conf.eye);
 		if (conf.with_lighting) {
 			fig.ambient = try_color_from_conf(conf.section["ambientReflection"]);
 			fig.diffuse = try_color_from_conf(conf.section["diffuseReflection"]);
@@ -139,11 +143,18 @@ namespace shapes {
 			fig.ambient = color_from_conf(conf.section);
 		}
 
-		for (auto &p : fig.points) {
-			p *= mat;
-		}
+		Matrix mat_scale;
+		auto mat = transform_from_conf(conf.section, conf.eye, mat_scale);
+
+		// Without scale
 		for (auto &n : fig.normals) {
 			n *= mat;
+		}
+
+		// With scale
+		mat = mat_scale * mat;
+		for (auto &p : fig.points) {
+			p *= mat;
 		}
 
 		return fig;
@@ -612,12 +623,6 @@ namespace shapes {
 		// Preprocess figures to speed up some later operations
 		for (auto &f : figures) {
 			f.ambient *= lights.ambient;
-			// FIXME normals are being scaled too if the figure is scaled. Making a separate transformation
-			// matrix without the scaling would very likely be more efficient instead of fixing it after the
-			// fact.
-			for (auto &n : f.normals) {
-				n.normalise();
-			}
 		}
 
 		ZBuffer zbuf(img.get_width(), img.get_height());
