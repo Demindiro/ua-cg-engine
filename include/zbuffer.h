@@ -22,14 +22,27 @@
  */
 class ZBuffer {
 	std::vector<double> buffer;
-	std::vector<u_int16_t> figure_ids;
-	std::vector<u_int32_t> triangle_ids;
 	unsigned int width, height;
 
+protected:
 	double &operator()(unsigned int x, unsigned int y) {
 		assert(x < width);
 		assert(y < height);
 		return buffer.at(x + y * width);
+	}
+
+	template<typename F>
+	void triangle(
+		Point3D a, Point3D b, Point3D c,
+		double d, double dx, double dy,
+		double bias,
+		F callback
+	);
+
+public:
+	ZBuffer(unsigned int width, unsigned int height) : width(width), height(height) {
+		buffer.resize(width * height);
+		for (auto &c : buffer) c = INFINITY;
 	}
 
 	double operator()(unsigned int x, unsigned int y) const {
@@ -37,6 +50,42 @@ class ZBuffer {
 		assert(y < height);
 		return buffer.at(x + y * width);
 	}
+
+	constexpr unsigned int get_width() {
+		return width;
+	}
+
+	constexpr unsigned int get_height() {
+		return height;
+	}
+
+	/**
+	 * \brief Replace a 1/Z value with a *lower* value.
+	 *
+	 * \return true if the given value is lower, false otherwise
+	 */
+	bool replace(unsigned int x, unsigned int y, double inv_z) {
+		bool lower = (*this)(x, y) > inv_z;
+		(*this)(x, y) = lower ? inv_z : (*this)(x, y);
+		return lower;
+	}
+
+	/**
+	 * \brief Place a triangle in the ZBuffer.
+	 *
+	 * \param a Point A of the triangle.
+	 * \param b Point B of the triangle.
+	 * \param c Point C of the triangle.
+	 * \param d Scale factor.
+	 * \param dx Offset along X axis.
+	 * \param dy Offset along Y axis.
+	 */
+	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, double bias);
+};
+
+class TaggedZBuffer : public ZBuffer {
+	std::vector<u_int16_t> figure_ids;
+	std::vector<u_int32_t> triangle_ids;
 
 public:
 	struct IdPair {
@@ -57,21 +106,11 @@ public:
 		}
 	};
 
-	ZBuffer(unsigned int width, unsigned int height) : width(width), height(height) {
-		buffer.resize(width * height);
+	TaggedZBuffer(unsigned int width, unsigned int height) : ZBuffer(width, height) {
 		figure_ids.resize(width * height);
 		triangle_ids.resize(width * height);
-		for (auto &c : buffer) c = INFINITY;
 		for (auto &e : figure_ids) e = UINT16_MAX;
 		for (auto &e : triangle_ids) e = UINT32_MAX;
-	}
-
-	constexpr unsigned int get_width() {
-		return width;
-	}
-
-	constexpr unsigned int get_height() {
-		return height;
 	}
 	
 	/**
@@ -82,8 +121,8 @@ public:
 		if (lower) {
 			(*this)(x, y) = pair.inv_z;
 			// Should be fine since the lengths of all buffers are equal
-			figure_ids[x + y * width] = pair.figure_id;
-			triangle_ids[x + y * width] = pair.triangle_id;
+			figure_ids[x + y * get_width()] = pair.figure_id;
+			triangle_ids[x + y * get_width()] = pair.triangle_id;
 		}
 	}
 
@@ -91,9 +130,14 @@ public:
 	 * \brief Get the figure & triangle ID at a pixel.
 	 */
 	IdPair get(unsigned int x, unsigned int y) {
-		assert(x < width);
-		assert(y < height);
-		return { figure_ids.at(x + y * width), triangle_ids[x + y * width], buffer[x + y * width] };
+		assert(x < get_width());
+		assert(y < get_height());
+		auto inv_z = (*this)(x, y); // Take advantage of bounds check.
+		return {
+			figure_ids[x + y * get_width()],
+			triangle_ids[x + y * get_width()],
+			inv_z
+		};
 	}
 
 	/**
@@ -108,15 +152,4 @@ public:
 	 * \param pair Pair of figure-triangle IDs. It's inv_z value is ignored.
 	 */
 	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair, double bias);
-
-	/**
-	 * \brief Replace a 1/Z value with a *lower* value.
-	 *
-	 * \return true if the given value is lower, false otherwise
-	 */
-	bool replace(unsigned int x, unsigned int y, double inv_z) {
-		bool lower = (*this)(x, y) > inv_z;
-		(*this)(x, y) = lower ? inv_z : (*this)(x, y);
-		return lower;
-	}
 };

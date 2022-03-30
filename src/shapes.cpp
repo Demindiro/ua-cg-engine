@@ -704,7 +704,7 @@ namespace shapes {
 						auto a = abc.a, b = abc.b, c = abc.c;
 						auto norm = (b - a).cross(c - a);
 						if (!f.can_cull || norm.dot(abc.a - Point3D()) <= 0) {
-							p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.dx, p.cached.dy, {i, k, NAN}, 1);
+							p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.dx, p.cached.dy, 1);
 						}
 					}
 				}
@@ -742,7 +742,7 @@ namespace shapes {
 			f.ambient *= lights.ambient;
 		}
 
-		ZBuffer zbuf(img.get_width(), img.get_height());
+		TaggedZBuffer zbuf(img.get_width(), img.get_height());
 
 		// Fill in ZBuffer with figure & triangle IDs
 		assert(figures.size() < UINT16_MAX);
@@ -876,7 +876,7 @@ namespace shapes {
 							auto cy = fy + 1;
 							auto get_z = [&p](unsigned int x, unsigned int y) {
 								return x < p.cached.zbuf.get_width() && y < p.cached.zbuf.get_height()
-									? p.cached.zbuf.get(x, y).inv_z
+									? ((const ZBuffer &)p.cached.zbuf)(x, y)
 									: numeric_limits<double>::infinity();
 							};
 							auto cxa = lx - fx;

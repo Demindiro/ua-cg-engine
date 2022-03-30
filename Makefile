@@ -46,6 +46,9 @@ bench-sep-%: build
 bench-batch: build
 	cd assets && perf stat ../$</engine *.ini
 
+bench-batch-%: build
+	cd assets && perf stat ../$</engine $(patsubst bench-batch-%,%*.ini,$@)
+
 gen: build
 	make -C . $(patsubst %,_gen-%,$(INI))
 
