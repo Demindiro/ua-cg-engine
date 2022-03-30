@@ -18,7 +18,7 @@ namespace shapes {
 		points = vector<Point3D>(m * n);
 
 		{
-			Rotation d(2 * M_PI / m), r;
+			Rotation d(-2 * M_PI / m), r;
 			for (unsigned int i = 0; i < m; i++) {
 				points[i] = { 0, 0, sr };
 				points[i] *= r.x();

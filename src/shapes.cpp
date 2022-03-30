@@ -124,10 +124,8 @@ namespace shapes {
 		TriangleFigure fig;
 		fig.points = points;
 		fig.faces = faces;
-		if (conf.with_lighting) {
-			assert(conf.face_normals && "TODO: vertex normals");
-			fig.normals = calculate_face_normals(points, faces);
-		}
+		assert(conf.face_normals && "TODO: vertex normals");
+		fig.normals = calculate_face_normals(points, faces);
 		fig.face_normals = conf.face_normals;
 		if (conf.with_lighting) {
 			fig.ambient = try_color_from_conf(conf.section["ambientReflection"]);
@@ -142,6 +140,7 @@ namespace shapes {
 		} else {
 			fig.ambient = color_from_conf(conf.section);
 		}
+		fig.can_cull = true; // All platonics are solid (& other generated meshes are too)
 
 		Matrix mat_scale;
 		auto mat = transform_from_conf(conf.section, conf.eye, mat_scale);
@@ -296,7 +295,7 @@ namespace shapes {
 	 * \brief Apply frustum clipping.
 	 */
 	template<typename B, typename P>
-	void frustum_apply(TriangleFigure &f, B bitfield, P project) {
+	static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable_cull) {
 		assert(f.normals.size() == 0 || (f.faces.size() == f.normals.size() && "faces & normals out of sync"));
 		size_t faces_count = f.faces.size();
 		size_t added = 0;
@@ -309,7 +308,7 @@ namespace shapes {
 			f.points.push_back(p);
 			return (unsigned int)(f.points.size() - 1);
 		};
-		auto swap_remove = [&f, &faces_count](size_t i) {
+		auto swap_remove = [&f, &faces_count, disable_cull](size_t i) {
 			// Swap, then remove. This is always O(1)
 			if (i < faces_count) {
 				f.faces[i] = f.faces[faces_count - 1];
@@ -317,8 +316,11 @@ namespace shapes {
 					f.normals[i] = f.normals[faces_count - 1];
 			}
 			faces_count--;
+			if (disable_cull) {
+				f.can_cull = false;
+			}
 		};
-		auto split = [&proj, &f, &added](auto i, auto &out, auto inl, auto inr) {
+		auto split = [&proj, &f, &added, disable_cull](auto i, auto &out, auto inl, auto inr) {
 			auto p = proj(out, inl);
 			auto q = proj(out, inr);
 			out = p;
@@ -326,6 +328,9 @@ namespace shapes {
 			if (f.normals.size() > 0)
 				f.normals.push_back(f.normals[i]);
 			added++;
+			if (disable_cull) {
+				f.can_cull = false;
+			}
 		};
 		for (size_t i = 0; i < faces_count; i++) {
 			auto &t = f.faces[i];
@@ -528,13 +533,15 @@ namespace shapes {
 						[&outside_mask](auto &t) { return outside_mask(t, NEAR, NAN); },
 						[dnear, dfar](Point3D from, Point3D to) {
 							return (-dnear - to.z) / (from.z - to.z);
-						}
+						},
+						true
 					);
 					frustum_apply(f,
 						[&outside_mask](auto &t) { return outside_mask(t, FAR, NAN); },
 						[dnear, dfar](Point3D from, Point3D to) {
 							return (-dfar - to.z) / (from.z - to.z);
-						}
+						},
+						false
 					);
 				}
 
@@ -546,14 +553,16 @@ namespace shapes {
 						[dnear, right](Point3D from, Point3D to) {
 							return (to.x * dnear + to.z * right) /
 								((to.x - from.x) * dnear + (to.z - from.z) * right);
-						}
+						},
+						false
 					);
 					frustum_apply(f,
 						[&outside_mask, right](auto &t) { return outside_mask(t, LEFT, -right); },
 						[dnear, right](Point3D from, Point3D to) {
 							return (to.x * dnear + to.z * -right) /
 								((to.x - from.x) * dnear + (to.z - from.z) * -right);
-						}
+						},
+						false
 					);
 				}
 
@@ -565,15 +574,37 @@ namespace shapes {
 						[dnear, top](Point3D from, Point3D to) {
 							return (to.y * dnear + to.z * top) /
 								((to.y - from.y) * dnear + (to.z - from.z) * top);
-						}
+						},
+						false
 					);
 					frustum_apply(f,
 						[&outside_mask, top](auto &t) { return outside_mask(t, DOWN, -top); },
 						[dnear, top](Point3D from, Point3D to) {
 							return (to.y * dnear + to.z * -top) /
 								((to.y - from.y) * dnear + (to.z - from.z) * -top);
-						}
+						},
+						false
 					);
+				}
+			}
+		}
+
+		// Cull based on direction
+		for (auto &f : figures) {
+			if (!f.can_cull) {
+				continue;
+			}
+			assert(f.normals.size() == f.faces.size() && "Normals don't match face count");
+			size_t i = f.normals.size();
+			auto swap_remove = [&f, &i]() {
+				f.faces[i] = f.faces.back();
+				f.normals[i] = f.normals.back();
+				f.faces.pop_back();
+				f.normals.pop_back();
+			};
+			while (i --> 0) {
+				if (f.normals[i].z <= 0) {
+					swap_remove();
 				}
 			}
 		}

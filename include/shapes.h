@@ -74,6 +74,7 @@ namespace shapes {
 		 * \brief Whether each normal is part of a face or a point.
 		 */
 		bool face_normals;
+		bool can_cull;
 	};
 
 	struct FigureConfiguration {

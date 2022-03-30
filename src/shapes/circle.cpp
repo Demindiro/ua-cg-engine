@@ -6,7 +6,7 @@
 using namespace std;
 
 void shapes::circle(vector<Point3D> &points, unsigned int n, double z) {
-	Rotation d(2 * M_PI / n), r;
+	Rotation d(-2 * M_PI / n), r;
 	for (unsigned int i = 0; i < n; i++) {
 		points.push_back({ r.u, r.v, z });
 		r *= d;
