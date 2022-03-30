@@ -410,7 +410,6 @@ namespace shapes {
 		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
 
 		// Parse lights
-		lights.has_unclipped_figures = false;
 		if (with_lighting) {
 			lights.eye = mat_eye;
 			lights.shadows = conf["General"]["shadowEnabled"].as_bool_or_default(false);
@@ -525,14 +524,13 @@ namespace shapes {
 			figures.push_back(fig);
 		}
 
+		if (lights.shadows) {
+			// We need the full objects for shadowing
+			lights.zfigures = ZBufferTriangleFigure::convert(figures);
+		}
+
 		// Clipping
 		if (frustum.use) {
-
-			// We need the full objects for shadowing
-			if (lights.shadows) {
-				lights.unclipped_figures = figures;
-				lights.has_unclipped_figures = true;
-			}
 
 			// Near & far plane
 			// TODO experiment with loop order to see which is faster
@@ -634,7 +632,7 @@ namespace shapes {
 		return draw(figures, lights, size, bg);
 	}
 
-	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights &lights, unsigned int size, img::Color background) {
+	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights lights, unsigned int size, img::Color background) {
 
 		if (figures.empty()) {
 			return img::EasyImage(0, 0);
@@ -655,23 +653,29 @@ namespace shapes {
 		// FIXME we need the original figures *before* clipping
 		if (lights.shadows) {
 			auto inv_project = Matrix::inv(lights.eye);
-			for (auto &p : lights.point) {
-				vector<TriangleFigure> figures_copy = lights.has_unclipped_figures
-					? lights.unclipped_figures
-					: figures;
+
+			for (size_t pi = 0; pi < lights.point.size(); pi++) {
+				auto &p = lights.point[pi];
+
 				// Project from camera perspective & determine bounds
 				auto pt = p.point * inv_project;
 				p.cached.eye = inv_project * look_direction(pt, -(pt - Point3D()));
 				auto reproj = inv_project * p.cached.eye;
+
+				vector<ZBufferTriangleFigure> zfigs;
+				if (pi < lights.point.size() - 1) {
+					zfigs = lights.zfigures;
+				} else {
+					zfigs.swap(lights.zfigures);
+				}
+
 				double min_x, max_x, min_y, max_y;
 				min_x = min_y = +numeric_limits<double>::infinity();
 				max_x = max_y = -numeric_limits<double>::infinity();
-				for (auto &f : figures_copy) {
-					for (auto &n : f.normals) {
-						n *= p.cached.eye;
-					}
+
+				for (auto &f : zfigs) {
 					for (auto &a : f.points) {
-						a = a * p.cached.eye;
+						a *= p.cached.eye;
 						assert(a.z != 0 && "division by 0");
 						min_x = min(min_x, a.x / -a.z);
 						min_y = min(min_y, a.y / -a.z);
@@ -691,14 +695,15 @@ namespace shapes {
 
 				// Fill in ZBuffer with figure & triangle IDs
 				assert(figures.size() < UINT16_MAX);
-				for (u_int16_t i = 0; i < figures_copy.size(); i++) {
-					auto &f = figures_copy[i];
+				for (u_int16_t i = 0; i < zfigs.size(); i++) {
+					auto &f = zfigs[i];
 					assert(f.faces.size() < UINT32_MAX);
 					for (u_int32_t k = 0; k < f.faces.size(); k++) {
 						auto &t = f.faces[k];
 						auto abc = f2p(f, t);
 						auto a = abc.a, b = abc.b, c = abc.c;
-						if (!f.can_cull || f.normals[k].dot(abc.a - Point3D()) <= 0) {
+						auto norm = (b - a).cross(c - a);
+						if (!f.can_cull || norm.dot(abc.a - Point3D()) <= 0) {
 							p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.dx, p.cached.dy, {i, k, NAN}, 1);
 						}
 					}

@@ -81,6 +81,50 @@ namespace shapes {
 		bool can_cull;
 	};
 
+	/**
+	 * TriangleFigure optimized for ZBuffer use only (e.g. shadows).
+	 */
+	struct ZBufferTriangleFigure {
+		std::vector<Point3D> points;
+		std::vector<Face> faces;
+		bool can_cull;
+
+		ZBufferTriangleFigure(bool can_cull)
+			: can_cull(can_cull)
+		{}
+
+		ZBufferTriangleFigure(const TriangleFigure &fig)
+			: points(fig.points), faces(fig.faces), can_cull(fig.can_cull)
+		{}
+
+		ZBufferTriangleFigure(const TriangleFigure &fig, const Matrix &mat)
+			: faces(fig.faces), can_cull(fig.can_cull)
+		{
+			points.reserve(fig.points.size());
+			for (auto &p : fig.points) {
+				points.push_back(p * mat);
+			}
+		}
+
+		static std::vector<ZBufferTriangleFigure> convert(const std::vector<TriangleFigure> &figs) {
+			std::vector<ZBufferTriangleFigure> zfigs;
+			zfigs.reserve(figs.size());
+			for (auto &f : figs) {
+				zfigs.push_back(ZBufferTriangleFigure(f));
+			}
+			return zfigs;
+		}
+
+		static std::vector<ZBufferTriangleFigure> convert(const std::vector<TriangleFigure> &figs, const Matrix &mat) {
+			std::vector<ZBufferTriangleFigure> zfigs;
+			zfigs.reserve(figs.size());
+			for (auto &f : figs) {
+				zfigs.push_back(ZBufferTriangleFigure(f, mat));
+			}
+			return zfigs;
+		}
+	};
+
 	struct FigureConfiguration {
 		ini::Section &section;
 		Matrix eye;
@@ -107,11 +151,11 @@ namespace shapes {
 	struct Lights {
 		std::vector<DirectionalLight> directional;
 		std::vector<PointLight> point;
-		std::vector<TriangleFigure> unclipped_figures;
+		std::vector<ZBufferTriangleFigure> zfigures;
 		Matrix eye;
 		unsigned int shadow_mask;
 		Color ambient;
-		bool shadows, has_unclipped_figures;
+		bool shadows;
 	};
 
 	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection);
@@ -135,5 +179,5 @@ namespace shapes {
 
 	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
 
-	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights &lights, unsigned int size, img::Color background);
+	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights lights, unsigned int size, img::Color background);
 }
