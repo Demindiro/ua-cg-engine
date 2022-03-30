@@ -130,6 +130,11 @@ namespace shapes {
 			fig.diffuse = try_color_from_conf(conf.section["diffuseReflection"]);
 			fig.specular = try_color_from_conf(conf.section["specularReflection"]);
 			fig.reflection = conf.section["reflectionCoefficient"].as_double_or_default(0);
+			// integer powers are faster, so try to use that.
+			fig.reflection_int = fig.reflection;
+			if (fig.reflection_int != fig.reflection) {
+				fig.reflection_int = 0;
+			}
 		} else {
 			fig.ambient = color_from_conf(conf.section);
 		}
@@ -692,8 +697,12 @@ namespace shapes {
 						// Note to myself and future readers: make ABSOLUTELY sure r.dot(...) returns a **positive**
 						// number lest you'd have mysterious bugs when reflection switches between even and odd...
 						auto r = 2 * dot * n + d.direction;
-						if (r.dot(-cam_dir) > 0) {
-							color += (f.specular * d.specular) * pow(r.dot(-cam_dir), f.reflection);
+						auto rdot = r.dot(-cam_dir);
+						if (rdot > 0) {
+							double v = f.reflection_int != 0
+								? pow_uint(rdot, f.reflection_int)
+								: pow(rdot, f.reflection);
+							color += (f.specular * d.specular) * v;
 						}
 					}
 				}
@@ -709,8 +718,12 @@ namespace shapes {
 						color += (f.diffuse * p.diffuse) * s;
 						// Specular
 						auto r = 2 * dot * n + direction;
-						if (r.dot(-cam_dir) > 0) {
-							color += (f.specular * p.specular) * pow(r.dot(-cam_dir), f.reflection);
+						auto rdot = r.dot(-cam_dir);
+						if (rdot > 0) {
+							double v = f.reflection_int != 0
+								? pow_uint(rdot, f.reflection_int)
+								: pow(rdot, f.reflection);
+							color += (f.specular * p.specular) * v;
 						}
 					}
 				}

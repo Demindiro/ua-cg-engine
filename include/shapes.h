@@ -69,6 +69,7 @@ namespace shapes {
 		Color diffuse;
 		Color specular;
 		double reflection;
+		unsigned int reflection_int; // Not 0 if defined
 		/**
 		 * \brief Whether each normal is part of a face or a point.
 		 */

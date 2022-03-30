@@ -1,15 +1,15 @@
 #include "shapes/circle.h"
 #include <cmath>
+#include "engine.h"
 #include "lines.h"
 
 using namespace std;
 
 void shapes::circle(vector<Point3D> &points, unsigned int n, double z) {
-	double d = 2 * M_PI / n;
+	Rotation d(2 * M_PI / n), r;
 	for (unsigned int i = 0; i < n; i++) {
-		auto x = sin(i * d);
-		auto y = cos(i * d);
-		points.push_back({ x, y, z });
+		points.push_back({ r.u, r.v, z });
+		r *= d;
 	}
 }
 

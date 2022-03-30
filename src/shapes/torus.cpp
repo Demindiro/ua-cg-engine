@@ -1,4 +1,5 @@
 #include "shapes/torus.h"
+#include <cassert>
 #include <vector>
 #include "engine.h"
 #include "shapes/circle.h"
@@ -11,15 +12,19 @@ namespace shapes {
 		auto sr = conf["r"].as_double_or_die();
 		n = conf["n"].as_int_or_die();
 		m = conf["m"].as_int_or_die();
+		assert(n > 0 && "torus with no points");
+		assert(m > 0 && "torus with no points");
 
 		points = vector<Point3D>(m * n);
 
-		double d = 2 * M_PI / m;
-		for (unsigned int i = 0; i < m; i++) {
-			auto x = 0.0;
-			auto y = mr + sin(i * d) * sr;
-			auto z = cos(i * d) * sr;
-			points[i] = { x, y, z };
+		{
+			Rotation d(2 * M_PI / m), r;
+			for (unsigned int i = 0; i < m; i++) {
+				points[i] = { 0, 0, sr };
+				points[i] *= r.x();
+				points[i].y += mr;
+				r *= d;
+			}
 		}
 
 		auto rot = Rotation(2 * M_PI / n).z();

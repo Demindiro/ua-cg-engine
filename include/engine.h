@@ -59,6 +59,18 @@ static constexpr inline double clamp(T v, T min, T max) {
 }
 #endif
 
+static constexpr inline double pow_uint(double x, unsigned int y) {
+	double v = 1;
+	while (y > 0) {
+		if ((y & 1) > 0) {
+			v *= x;
+		}
+		x *= x;
+		y >>= 1;
+	}
+	return v;
+}
+
 struct Rotation {
 	double u, v;
 
@@ -68,6 +80,16 @@ struct Rotation {
 
 	constexpr Rotation inv() const {
 		return { u, -v };
+	}
+
+	constexpr Rotation operator *(Rotation rhs) const {
+		// (a + bi) * (e + fi) = (a*e - b*f) + (b*e + a*f)i
+		return { u * rhs.u - v * rhs.v, v * rhs.u + u * rhs.v };
+	}
+
+	constexpr Rotation operator *=(Rotation rhs) {
+		*this = *this * rhs;
+		return *this;
 	}
 
 	// TODO make matrix constructor & accessors constexpr
