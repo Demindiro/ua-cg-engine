@@ -105,12 +105,13 @@ namespace shapes {
 	};
 
 	struct Lights {
-		Color ambient;
 		std::vector<DirectionalLight> directional;
 		std::vector<PointLight> point;
+		std::vector<TriangleFigure> unclipped_figures;
 		Matrix eye;
 		unsigned int shadow_mask;
-		bool shadows;
+		Color ambient;
+		bool shadows, has_unclipped_figures;
 	};
 
 	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection);

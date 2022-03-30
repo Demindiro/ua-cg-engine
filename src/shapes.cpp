@@ -18,9 +18,14 @@
 #include "shapes/torus.h"
 #include "wireframe.h"
 
+
+/** If something looks off (vs examples), try changing these values **/
+
 // Cursus says 1.0001, but a little lower gives better shadow quality & seems
 // to be consistent with the example images
 #define Z_BIAS (1.00001)
+// Ditto
+#define Z_SHADOW_BIAS (1.5e-6)
 
 
 using namespace std;
@@ -405,6 +410,7 @@ namespace shapes {
 		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
 
 		// Parse lights
+		lights.has_unclipped_figures = false;
 		if (with_lighting) {
 			lights.eye = mat_eye;
 			lights.shadows = conf["General"]["shadowEnabled"].as_bool_or_default(false);
@@ -521,6 +527,12 @@ namespace shapes {
 
 		// Clipping
 		if (frustum.use) {
+
+			// We need the full objects for shadowing
+			if (lights.shadows) {
+				lights.unclipped_figures = figures;
+				lights.has_unclipped_figures = true;
+			}
 
 			// Near & far plane
 			// TODO experiment with loop order to see which is faster
@@ -644,7 +656,9 @@ namespace shapes {
 		if (lights.shadows) {
 			auto inv_project = Matrix::inv(lights.eye);
 			for (auto &p : lights.point) {
-				vector<TriangleFigure> figures_copy = figures;
+				vector<TriangleFigure> figures_copy = lights.has_unclipped_figures
+					? lights.unclipped_figures
+					: figures;
 				// Project from camera perspective & determine bounds
 				auto pt = p.point * inv_project;
 				p.cached.eye = inv_project * look_direction(pt, -(pt - Point3D()));
@@ -884,7 +898,7 @@ namespace shapes {
 							}
 							break;
 #endif
-							if (inv_z < 1 / l.z) {
+							if (inv_z + Z_SHADOW_BIAS < 1 / l.z) {
 								continue;
 							}
 						}
