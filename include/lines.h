@@ -7,6 +7,15 @@
 
 using Color = img::Color;
 
+void calc_image_parameters(
+	double min_x, double min_y,
+	double max_x, double max_y,
+	uint size,
+	double &d,
+	double &offset_x, double &offset_y,
+	double &img_x, double &img_y
+);
+
 img::EasyImage create_img(
 	double min_x, double min_y,
 	double max_x, double max_y,

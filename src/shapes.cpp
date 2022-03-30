@@ -691,10 +691,9 @@ namespace shapes {
 				}
 
 				// Create ZBuffer
-				double d = NAN, dx = NAN, dy = NAN;
-				// TODO don't create EasyImage object
-				auto img = create_img(min_x, min_y, max_x, max_y, lights.shadow_mask, background, d, dx, dy);
-				p.cached.zbuf = ZBuffer(img.get_width(), img.get_height());
+				double d = NAN, dx = NAN, dy = NAN, img_x, img_y;
+				calc_image_parameters(min_x, min_y, max_x, max_y, lights.shadow_mask, d, dx, dy, img_x, img_y);
+				p.cached.zbuf = ZBuffer(img_x, img_y);
 				p.cached.d = d;
 				p.cached.dx = dx;
 				p.cached.dy = dy;
