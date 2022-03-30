@@ -79,6 +79,7 @@ namespace shapes {
 		 */
 		bool face_normals;
 		bool can_cull;
+		bool clipped;
 	};
 
 	/**

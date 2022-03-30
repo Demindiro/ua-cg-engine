@@ -150,6 +150,7 @@ namespace shapes {
 			fig.ambient = color_from_conf(conf.section);
 		}
 		fig.can_cull = true; // All platonics are solid (& other generated meshes are too)
+		fig.clipped = false;
 
 		Matrix mat_scale;
 		auto mat = transform_from_conf(conf.section, conf.eye, mat_scale);
@@ -332,6 +333,7 @@ namespace shapes {
 			if (disable_cull) {
 				f.can_cull = false;
 			}
+			f.clipped = true;
 		};
 		auto split = [&proj, &f, &added, disable_cull](auto i, auto &out, auto inl, auto inr) {
 			auto p = proj(out, inl);
@@ -344,6 +346,7 @@ namespace shapes {
 			if (disable_cull) {
 				f.can_cull = false;
 			}
+			f.clipped = true;
 		};
 		for (size_t i = 0; i < faces_count; i++) {
 			auto &t = f.faces[i];
@@ -365,14 +368,17 @@ namespace shapes {
 			case 0b011:
 				t.b = proj(t.b, t.a);
 				t.c = proj(t.c, t.a);
+				f.clipped = true;
 				break;
 			case 0b101:
 				t.c = proj(t.c, t.b);
 				t.a = proj(t.a, t.b);
+				f.clipped = true;
 				break;
 			case 0b110:
 				t.a = proj(t.a, t.c);
 				t.b = proj(t.b, t.c);
+				f.clipped = true;
 				break;
 			// Remove triangle
 			case 0b111:
@@ -716,16 +722,26 @@ namespace shapes {
 		min_x = min_y = +numeric_limits<double>::infinity();
 		max_x = max_y = -numeric_limits<double>::infinity();
 		for (auto &f : figures) {
-			for (auto &t : f.faces) {
-				auto abc = f2p(f, t);
-				auto a = abc.a, b = abc.b, c = abc.c;
-				assert(a.z != 0 && "division by 0");
-				assert(b.z != 0 && "division by 0");
-				assert(c.z != 0 && "division by 0");
-				min_x = min(min(min_x, a.x / -a.z), min(b.x / -b.z, c.x / -c.z));
-				min_y = min(min(min_y, a.y / -a.z), min(b.y / -b.z, c.y / -c.z));
-				max_x = max(max(max_x, a.x / -a.z), max(b.x / -b.z, c.x / -c.z));
-				max_y = max(max(max_y, a.y / -a.z), max(b.y / -b.z, c.y / -c.z));
+			if (f.clipped) {
+				for (auto &t : f.faces) {
+					auto abc = f2p(f, t);
+					auto a = abc.a, b = abc.b, c = abc.c;
+					assert(a.z != 0 && "division by 0");
+					assert(b.z != 0 && "division by 0");
+					assert(c.z != 0 && "division by 0");
+					min_x = min(min(min_x, a.x / -a.z), min(b.x / -b.z, c.x / -c.z));
+					min_y = min(min(min_y, a.y / -a.z), min(b.y / -b.z, c.y / -c.z));
+					max_x = max(max(max_x, a.x / -a.z), max(b.x / -b.z, c.x / -c.z));
+					max_y = max(max(max_y, a.y / -a.z), max(b.y / -b.z, c.y / -c.z));
+				}
+			} else {
+				for (auto &a : f.points) {
+					assert(a.z != 0 && "division by 0");
+					min_x = min(min_x, a.x / -a.z);
+					min_y = min(min_y, a.y / -a.z);
+					max_x = max(max_x, a.x / -a.z);
+					max_y = max(max_y, a.y / -a.z);
+				}
 			}
 		}
 
