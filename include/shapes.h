@@ -34,7 +34,7 @@ namespace shapes {
 
 		constexpr Color() : r(0), g(0), b(0) {}
 		constexpr Color(double r, double g, double b) : r(r), g(g), b(b) {}
-		Color(img::Color c) : r(c.red / 255.0), g(c.green / 255.0), b(c.blue / 255.0) {}
+		Color(img::Color c) : r(c.r / 255.0), g(c.g / 255.0), b(c.b / 255.0) {}
 
 		constexpr Color operator +(Color rhs) const {
 			return Color { r + rhs.r, g + rhs.g, b + rhs.b };

@@ -128,10 +128,6 @@ template <typename T> T from_little_endian(T value) {
 }
 
 } // namespace
-img::Color::Color() : blue(0), green(0), red(0) {}
-img::Color::Color(uint8_t r, uint8_t g, uint8_t b)
-	: blue(b), green(g), red(r) {}
-img::Color::~Color() {}
 
 img::UnsupportedFileTypeException::UnsupportedFileTypeException(
 	std::string const &msg)
@@ -417,5 +413,5 @@ std::istream &img::operator>>(std::istream &in, EasyImage &image) {
 }
 
 std::ostream &img::operator<<(std::ostream &o, const img::Color &c) {
-	return o << "(" << (int)c.red << ", " << (int)c.green << ", " << (int)c.blue << ")";
+	return o << "(" << (int)c.r << ", " << (int)c.g << ", " << (int)c.b << ")";
 }
