@@ -4,7 +4,6 @@
 #include "ini_configuration.h"
 #include "lines.h"
 #include "shapes.h"
-#include "vector3d.h"
 
 namespace shapes {
 	void dodecahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);

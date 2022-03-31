@@ -7,14 +7,17 @@ ARCHIVE := s0215648
 
 build:
 	cmake -DCMAKE_BUILD_TYPE=Release -B $@
-	make -C $@
+	+make -C $@
 
 build-debug:
 	cmake -DCMAKE_BUILD_TYPE=Debug -B $@
-	make -C $@
+	+make -C $@
 
 #test: build-debug
 #	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
+test-intro: build-debug
+	cd assets && for f in Intro*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
 test-line-drawings: build-debug
 	cd assets && for f in line_*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
@@ -31,6 +34,12 @@ test-clipping: build-debug
 test-specular: build-debug
 	cd assets && for f in specular_light*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-texture: build-debug test-intro assets/honk.bmp
+	cd assets && ../$</engine texture*.ini
+
+assets/honk.bmp: assets/honk.webp
+	ffmpeg -y -i $< $@
+
 test: $(INI)
 
 $(INI): build-debug
@@ -45,6 +54,9 @@ bench-sep-%: build
 
 bench-batch: build
 	cd assets && perf stat ../$</engine *.ini
+
+bench-batch-%: build
+	cd assets && perf stat ../$</engine $(patsubst bench-batch-%,%*.ini,$@)
 
 gen: build
 	make -C . $(patsubst %,_gen-%,$(INI))
@@ -67,4 +79,4 @@ clean-images::
 	rm -rf assets/*.bmp
 
 loop::
-	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/; done
+	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/ include/math/; done

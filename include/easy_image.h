@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <vector>
 #include <iostream>
-#include "point3d.h"
+#include "math/point3d.h"
 #include "zbuffer.h"
 /**
  * \brief The namespace of the EasyImage class
@@ -72,6 +72,8 @@ namespace img
 			 */
 			~Color();
 	};
+
+	std::ostream &operator<<(std::ostream &o, const Color &c);
 
 	/**
 	 * \brief The exception that is thrown when an error occurs while trying to read an img::EasyImage from an input stream
@@ -155,10 +157,13 @@ namespace img
 			 */
 			EasyImage(EasyImage const& img);
 
-			/**
-			 * \brief Destructor
-			 */
-			virtual ~EasyImage();
+			EasyImage(EasyImage &&img) : data(img.data), row_size(img.row_size) {
+				img.data = NULL; // Avoid double free
+			}
+
+			~EasyImage() {
+				free(data);
+			}
 
 			/**
 			 * \brief Assignment operator. Allows an easyImage to be assigned to another easyImage

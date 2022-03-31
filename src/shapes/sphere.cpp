@@ -2,7 +2,7 @@
 #include <vector>
 #include "shapes.h"
 #include "shapes/icosahedron.h"
-#include "vector3d.h"
+#include "math/vector3d.h"
 
 using namespace std;
 
@@ -59,9 +59,7 @@ namespace shapes {
 		}
 
 		for (auto &p : points) {
-			auto v = Vector3D::point(p.x, p.y, p.z);
-			v.normalise();
-			p = v;
+			p = Point3D(Vector3D(p.x, p.y, p.z).normalize());
 		}
 	}
 

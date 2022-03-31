@@ -1,29 +1,33 @@
 #include "zbuffer.h"
 #include "engine.h"
-#include "point3d.h"
-#include "vector3d.h"
+#include "math/point3d.h"
+#include "math/vector3d.h"
 
-void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair pair) {
-	using namespace std;
+using namespace std;
 
+template<typename F>
+void ZBuffer::triangle(
+	Point3D a, Point3D b, Point3D c,
+	double d, double dx, double dy,
+	double bias,
+	F callback
+) {
 	// Find repricoral Z-values first, which require unprojected points
 	// Optimized version of 1 / (3 * a.z) + 1 / (3 * b.z) + 1 / (3 * c.z)
 	// The former will emit 3 div instructions even with -Ofast
 	double inv_g_z = (b.z * c.z + a.z * c.z + a.z * b.z) / (3 * a.z * b.z * c.z);
 	double dzdx, dzdy;
 	{
-		auto u = Vector3D::vector(b.x - a.x, b.y - a.y, b.z - a.z);
-		auto v = Vector3D::vector(c.x - a.x, c.y - a.y, c.z - a.z);
-		auto w = u.cross(v);
-		auto dk = d * w.dot(Vector3D::point(a.x, a.y, a.z));
+		auto w = (b - a).cross(c - a);
+		auto dk = d * w.dot(a.to_vector());
 		dzdx = -w.x / dk;
 		dzdy = -w.y / dk;
 	}
 	
 	// Project
-	a.x = a.x * d / -a.z + dx, a.y = a.y * d / -a.z + dy;
-	b.x = b.x * d / -b.z + dx, b.y = b.y * d / -b.z + dy;
-	c.x = c.x * d / -c.z + dx, c.y = c.y * d / -c.z + dy;
+	a.x = a.x * (d / -a.z) + dx, a.y = a.y * (d / -a.z) + dy;
+	b.x = b.x * (d / -b.z) + dx, b.y = b.y * (d / -b.z) + dy;
+	c.x = c.x * (d / -c.z) + dx, c.y = c.y * (d / -c.z) + dy;
 
 	// These center coordaintes must be projected.
 	double g_x = (a.x + b.x + c.x) / 3;
@@ -55,8 +59,21 @@ void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, dou
 		unsigned int to_x   = round_up(x_max - 0.5);
 
 		for (unsigned int x = from_x; x <= to_x; x++) {
-			pair.inv_z = 1.0001 * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
-			this->set(x, y, pair);
+			auto inv_z = bias * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
+			if (replace(x, y, inv_z)) {
+				callback(x, y);
+			}
 		}
 	}
+}
+
+void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, double bias) {
+	triangle(a, b, c, d, dx, dy, bias, [](auto, auto) {});
+}
+
+void TaggedZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair pair, double bias) {
+	ZBuffer::triangle(a, b, c, d, dx, dy, bias, [this, &pair](auto x, auto y) {
+		figure_ids[x + y * get_width()] = pair.figure_id;
+		triangle_ids[x + y * get_width()] = pair.triangle_id;
+	});
 }

@@ -4,7 +4,7 @@
 #include "lines.h"
 #include "shapes.h"
 #include "shapes/fractal.h"
-#include "vector3d.h"
+#include "math/point3d.h"
 
 using namespace std;
 

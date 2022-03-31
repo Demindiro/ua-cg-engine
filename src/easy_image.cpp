@@ -23,7 +23,7 @@
 #include <math.h>
 #include <cstring>
 #include "engine.h"
-#include "point3d.h"
+#include "math/point3d.h"
 #include "zbuffer.h"
 
 #ifndef le32toh
@@ -185,6 +185,7 @@ img::EasyImage::EasyImage(unsigned int width, unsigned int height, Color color) 
 }
 
 img::EasyImage::EasyImage(EasyImage const &img) : EasyImage(img.get_width(), img.get_height()) {
+	std::cerr << "copy ctor" << std::endl;
 	for (unsigned int y = 0; y < get_height(); y++) {
 		for (unsigned int x = 0; x < get_width(); x++) {
 			(*this)(x, y) = img(x, y);
@@ -192,12 +193,8 @@ img::EasyImage::EasyImage(EasyImage const &img) : EasyImage(img.get_width(), img
 	}
 }
 
-img::EasyImage::~EasyImage() {
-	assert(data != NULL && "data is NULL");
-	free(data);
-}
-
 img::EasyImage &img::EasyImage::operator=(img::EasyImage const &img) {
+	std::cerr << "copy assign" << std::endl;
 	*this = img::EasyImage(img);
 	return *this;
 }
@@ -224,8 +221,7 @@ img::Color &img::EasyImage::operator()(unsigned int x, unsigned int y) {
 	return ((Color *)((char *)data + calc_meta_size() + (size_t)row_size * y))[x];
 }
 
-img::Color const &img::EasyImage::operator()(unsigned int x,
-											 unsigned int y) const {
+img::Color const &img::EasyImage::operator()(unsigned int x, unsigned int y) const {
 	assert(x < get_width());
 	assert(y < get_height());
 	return ((Color *)((char *)data + calc_meta_size() + (size_t)row_size * y))[x];
@@ -281,7 +277,7 @@ static bool clip(
 	} else if (x0 > w) {
 		p = (x0 - w) / ((x0 - w) + (w - x1));
 	}
-	p = clamp(p, 0.0, 1.0);
+	p = std::clamp(p, 0.0, 1.0);
 	x0 = x0 * (1 - p) + x1 * p;
 	y0 = y0 * (1 - p) + y1 * p;
 	z0 = z0 * (1 - p) + z1 * p;
@@ -292,7 +288,7 @@ static bool clip(
 	} else if (y0 > h) {
 		p = (y0 - h) / ((y0 - h) + (h - y1));
 	}
-	p = clamp(p, 0.0, 1.0);
+	p = std::clamp(p, 0.0, 1.0);
 	x0 = x0 * (1 - p) + x1 * p;
 	y0 = y0 * (1 - p) + y1 * p;
 	z0 = z0 * (1 - p) + z1 * p;
@@ -395,72 +391,6 @@ void img::EasyImage::draw_zbuf_line_clip(
 	);
 }
 
-void img::EasyImage::draw_zbuf_triag(
-	ZBuffer &zbuffer,
-	Point3D a, Point3D b, Point3D c,
-	double d,
-	double dx, double dy,
-	Color color
-) {
-	using namespace std;
-
-	// Find repricoral Z-values first, which require unprojected points
-	// Optimized version of 1 / (3 * a.z) + 1 / (3 * b.z) + 1 / (3 * c.z)
-	// The former will emit 3 div instructions even with -Ofast
-	double inv_g_z = (b.z * c.z + a.z * c.z + a.z * b.z) / (3 * a.z * b.z * c.z);
-	double dzdx, dzdy;
-	{
-		auto u = Vector3D::vector(b.x - a.x, b.y - a.y, b.z - a.z);
-		auto v = Vector3D::vector(c.x - a.x, c.y - a.y, c.z - a.z);
-		auto w = u.cross(v);
-		auto dk = d * w.dot(Vector3D::point(a.x, a.y, a.z));
-		dzdx = -w.x / dk;
-		dzdy = -w.y / dk;
-	}
-	
-	// Project
-	a.x = a.x * d / -a.z + dx, a.y = a.y * d / -a.z + dy;
-	b.x = b.x * d / -b.z + dx, b.y = b.y * d / -b.z + dy;
-	c.x = c.x * d / -c.z + dx, c.y = c.y * d / -c.z + dy;
-
-	// These center coordaintes must be projected.
-	double g_x = (a.x + b.x + c.x) / 3;
-	double g_y = (a.y + b.y + c.y) / 3;
-
-	// Y bounds
-	double y_min = min(min(a.y, b.y), c.y);
-	double y_max = max(max(a.y, b.y), c.y);
-	unsigned int from_y = round_up(y_min + 0.5);
-	unsigned int to_y   = round_up(y_max - 0.5);
-
-	for (unsigned int y = from_y; y <= to_y; y++) {
-		// Find intersections
-		auto f = [y](Point3D &p, Point3D &q, double def = INFINITY) {
-			return (y - p.y) * (y - q.y) <= 0
-				? q.x + (p.x - q.x) * (y - q.y) / (p.y - q.y)
-				: def;
-		};
-		auto g = [f](Point3D &p, Point3D &q) {
-			return f(p, q, -INFINITY);
-		};
-		double xl = min(min(f(a, b), f(b, c)), f(c, a));
-		double xr = max(max(g(a, b), g(b, c)), g(c, a));
-
-		// X bounds
-		double x_min = min(xl, xr);
-		double x_max = max(xl, xr);
-		unsigned int from_x = round_up(x_min + 0.5);
-		unsigned int to_x   = round_up(x_max - 0.5);
-
-		for (unsigned int x = from_x; x <= to_x; x++) {
-			auto inv_z = 1.0001 * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
-			if (zbuffer.replace(x, y, inv_z)) {
-				(*this)(x, y) = color;
-			}
-		}
-	}
-}
-
 std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
 	enable_exceptions(out, std::ios::badbit | std::ios::failbit);
 	out.write((char *)image.data, calc_size(image.get_width(), image.get_height()));
@@ -479,7 +409,13 @@ std::istream &img::operator>>(std::istream &in, EasyImage &image) {
 	in.seekg(0, std::ios::beg);
 
 	free(image.data);
+	in.read((char *)d, size);
 	image.data = d;
+	image.row_size = (image.get_width() * 3 + 3) & ~3; // Round up to multiple of 4
 
-	return in.read((char *)d, size);
+	return in;
+}
+
+std::ostream &img::operator<<(std::ostream &o, const img::Color &c) {
+	return o << "(" << (int)c.red << ", " << (int)c.green << ", " << (int)c.blue << ")";
 }

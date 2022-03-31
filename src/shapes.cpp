@@ -1,10 +1,14 @@
 #include "shapes.h"
+#include <algorithm>
+#include <fstream>
 #include <initializer_list>
 #include <limits>
 #include <vector>
 #include "engine.h"
 #include "ini_configuration.h"
-#include "vector3d.h"
+#include "math/matrix2d.h"
+#include "math/matrix4d.h"
+#include "math/vector3d.h"
 #include "shapes/buckyball.h"
 #include "shapes/circle.h"
 #include "shapes/cone.h"
@@ -19,10 +23,19 @@
 #include "wireframe.h"
 
 
+/** If something looks off (vs examples), try changing these values **/
+
+// Cursus says 1.0001, but a little lower gives better shadow quality & seems
+// to be consistent with the example images
+#define Z_BIAS (1.00001)
+// Ditto
+#define Z_SHADOW_BIAS (1.5e-6)
+
+
 using namespace std;
 
 namespace shapes {
-	static Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection, Matrix &mat_scale) {
+	static Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection, Matrix4D &mat_scale) {
 		auto rot_x = conf["rotateX"].as_double_or_die() * M_PI / 180;
 		auto rot_y = conf["rotateY"].as_double_or_die() * M_PI / 180;
 		auto rot_z = conf["rotateZ"].as_double_or_die() * M_PI / 180;
@@ -32,7 +45,7 @@ namespace shapes {
 		// Create transformation matrix
 		// Order of operations: scale > rot_x > rot_y > rot_z > translate > project
 		// NB the default constructor creates identity matrices (diagonal is 1)
-		Matrix mat_rot_x, mat_rot_y, mat_rot_z, mat_translate;
+		Matrix4D mat_rot_x, mat_rot_y, mat_rot_z, mat_translate;
 
 		mat_scale(1, 1) = mat_scale(2, 2) = mat_scale(3, 3) = scale;
 
@@ -47,8 +60,8 @@ namespace shapes {
 		return mat_rot_x * mat_rot_y * mat_rot_z * mat_translate * projection;
 	}
 
-	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection) {
-		Matrix mat_scale, mat;
+	Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection) {
+		Matrix4D mat_scale, mat;
 		mat = transform_from_conf(conf, projection, mat_scale);
 		return mat_scale * mat;
 	}
@@ -95,26 +108,22 @@ namespace shapes {
 			auto a = points[f.a];
 			auto b = points[f.b];
 			auto c = points[f.c];
-			auto n = (b - a).cross(c - a);
-			n.normalise();
-			normals.push_back(n);
+			normals.push_back((b - a).cross(c - a).normalize());
 		}
 		return normals;
 	}
 
-	void platonic(const FigureConfiguration &conf, vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len) {
+	void platonic(const FigureConfiguration &conf, vector<Line3D> &lines, const Point3D *points, unsigned int points_len, const Edge *edges, unsigned int edges_len) {
 		auto mat = transform_from_conf(conf.section, conf.eye);
 		auto color = color_from_conf(conf.section);
 
-		for (auto p = points; p != points + points_len; p++) {
-			*p *= mat;
-		}
 		lines.reserve(lines.size() + edges_len);
 		for (auto c = edges; c != edges + edges_len; c++) {
 			assert(c->a < points_len);
 			assert(c->b < points_len);
-			auto a = points[c->a];
-			auto b = points[c->b];
+			// TODO avoid redundant transforms
+			auto a = points[c->a] * mat;
+			auto b = points[c->b] * mat;
 			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color.to_img_color()});
 		}
 	}
@@ -125,7 +134,6 @@ namespace shapes {
 		fig.points = points;
 		fig.faces = faces;
 		assert(conf.face_normals && "TODO: vertex normals");
-		fig.normals = calculate_face_normals(points, faces);
 		fig.face_normals = conf.face_normals;
 		if (conf.with_lighting) {
 			fig.ambient = try_color_from_conf(conf.section["ambientReflection"]);
@@ -141,20 +149,42 @@ namespace shapes {
 			fig.ambient = color_from_conf(conf.section);
 		}
 		fig.can_cull = true; // All platonics are solid (& other generated meshes are too)
+		fig.clipped = false;
 
-		Matrix mat_scale;
-		auto mat = transform_from_conf(conf.section, conf.eye, mat_scale);
+		// Load texture, if any
+		string tex_path;
+		if (conf.section["texture"].as_string_if_exists(tex_path)) {
+			ifstream f(tex_path);
+			Texture tex;
+			f >> tex.image;
+			fig.texture = tex;
 
-		// Without scale
-		for (auto &n : fig.normals) {
-			n *= mat;
+			// Generate UVs (flat mapping by default)
+			Point2D uv_min, uv_max;
+			uv_min.x = uv_min.y = +numeric_limits<double>::infinity();
+			uv_max.x = uv_max.y = -numeric_limits<double>::infinity();
+			fig.uv.reserve(fig.points.size());
+			for (auto &p : fig.points) {
+				Point2D uv(p.x, p.z);
+				fig.uv.push_back(uv);
+				uv_min.x = min(uv_min.x, uv.x);
+				uv_min.y = min(uv_min.y, uv.y);
+				uv_max.x = max(uv_max.x, uv.x);
+				uv_max.y = max(uv_max.y, uv.y);
+			}
+			for (auto &uv : fig.uv) {
+				uv.x = (uv.x - uv_min.x) / (uv_max.x - uv_min.x);
+				uv.y = (uv.y - uv_min.y) / (uv_max.y - uv_min.y);
+			}
 		}
 
-		// With scale
-		mat = mat_scale * mat;
+		auto mat = transform_from_conf(conf.section, conf.eye);
+
 		for (auto &p : fig.points) {
 			p *= mat;
 		}
+
+		fig.normals = calculate_face_normals(fig.points, fig.faces);
 
 		return fig;
 	}
@@ -165,11 +195,47 @@ namespace shapes {
 		bool use;
 	};
 
+	static Matrix4D look_direction(Point3D pos, Vector3D dir, Matrix4D &inv) {
+		auto r = dir.length();
+		auto theta = atan2(-dir.y, -dir.x);
+		auto phi = acos(-dir.z / r);
+
+		Matrix4D mat_tr;
+
+		mat_tr(4, 1) = -pos.x;
+		mat_tr(4, 2) = -pos.y;
+		mat_tr(4, 3) = -pos.z;
+		auto mat_rot = Rotation(-(theta + M_PI / 2)).z() * Rotation(-phi).x();
+
+		// A regular view matrix is composed as T * Rz * Rx, hence the inverse
+		// matrix is Rx^-1 * Rz^-1 * T^-1.
+		//
+		// A rotation matrix can simply be transposed to get the inverse.
+		//
+		// The inverse translation is simply the negated original translation.
+		//
+		// Calculating this is *much* faster than inverting an arbitrary matrix. It should
+		// be more precise too.
+		Matrix4D inv_mat_tr;
+		inv_mat_tr(4, 1) = pos.x;
+		inv_mat_tr(4, 2) = pos.y;
+		inv_mat_tr(4, 3) = pos.z;
+		inv = mat_rot.transpose() * inv_mat_tr;
+
+		return mat_tr * mat_rot;
+	}
+
+	static Matrix4D look_direction(Point3D pos, Vector3D dir) {
+		Matrix4D stub;
+		return look_direction(pos, dir, stub);
+	}
+
 	static void common_conf(
 		const ini::Configuration &conf,
 		img::Color &background,
 		int &size,
-		Matrix &mat_eye,
+		Matrix4D &mat_eye,
+		Matrix4D &mat_inv_eye,
 		int &nr_fig,
 		Frustum &frustum
 	) {
@@ -191,30 +257,18 @@ namespace shapes {
 			frustum.aspect = conf["General"]["aspectRatio"].as_double_or_die();
 		} else {
 			frustum.use = false;
-			dir = -eye;
+			dir = Point3D() - eye;
 		}
 
-		auto r = dir.length();
-		auto theta = atan2(-dir.y, -dir.x);
-		auto phi = acos(-dir.z / r);
-
-		Matrix mat_tr, mat_rot_z, mat_rot_x;
-
-		mat_tr(4, 1) = -eye.x;
-		mat_tr(4, 2) = -eye.y;
-		mat_tr(4, 3) = -eye.z;
-		mat_rot_z = Rotation(-(theta + M_PI / 2)).z();
-		mat_rot_x = Rotation(-phi).x();
-
-		mat_eye = mat_tr * mat_rot_z * mat_rot_x;
+		mat_eye = look_direction(eye, dir, mat_inv_eye);
 	}
 
 	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		img::Color bg;
 		int size, nr_fig;
-		Matrix mat_eye;
+		Matrix4D mat_eye, mat_inv_eye;
 		Frustum frustum;
-		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
+		common_conf(conf, bg, size, mat_eye, mat_inv_eye, nr_fig, frustum);
 
 		// Parse figures
 		vector<Line3D> lines;
@@ -319,6 +373,7 @@ namespace shapes {
 			if (disable_cull) {
 				f.can_cull = false;
 			}
+			f.clipped = true;
 		};
 		auto split = [&proj, &f, &added, disable_cull](auto i, auto &out, auto inl, auto inr) {
 			auto p = proj(out, inl);
@@ -331,6 +386,7 @@ namespace shapes {
 			if (disable_cull) {
 				f.can_cull = false;
 			}
+			f.clipped = true;
 		};
 		for (size_t i = 0; i < faces_count; i++) {
 			auto &t = f.faces[i];
@@ -352,14 +408,17 @@ namespace shapes {
 			case 0b011:
 				t.b = proj(t.b, t.a);
 				t.c = proj(t.c, t.a);
+				f.clipped = true;
 				break;
 			case 0b101:
 				t.c = proj(t.c, t.b);
 				t.a = proj(t.a, t.b);
+				f.clipped = true;
 				break;
 			case 0b110:
 				t.a = proj(t.a, t.c);
 				t.b = proj(t.b, t.c);
+				f.clipped = true;
 				break;
 			// Remove triangle
 			case 0b111:
@@ -390,14 +449,66 @@ namespace shapes {
 	img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		img::Color bg;
 		int size, nr_fig;
-		Matrix mat_eye;
+		Matrix4D mat_eye;
 		Frustum frustum;
 		Lights lights;
 
-		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
+		common_conf(conf, bg, size, mat_eye, lights.inv_eye, nr_fig, frustum);
 
-#if GRAPHICS_DEBUG > 0
-		lights.eye = mat_eye;
+		// Parse lights
+		if (with_lighting) {
+			lights.eye = mat_eye;
+			lights.shadows = conf["General"]["shadowEnabled"].as_bool_or_default(false);
+			lights.shadow_mask = lights.shadows ? conf["General"]["shadowMask"].as_int_or_die(): 0;
+
+			int nr_light = conf["General"]["nrLights"];
+			for (int i = 0; i < nr_light; i++) {
+				auto section = conf[string("Light") + to_string(i)];
+				lights.ambient += color_from_conf(section["ambientLight"]);
+				vector<double> diffuse, specular;
+				if (section["diffuseLight"].as_double_tuple_if_exists(diffuse)
+					| section["specularLight"].as_double_tuple_if_exists(specular)) {
+					if (section["infinity"].as_bool_or_default(false)) {
+						lights.directional.push_back({
+							tup_to_vector3d(section["direction"].as_double_tuple_or_die()).normalize() * mat_eye,
+							try_color_from_conf(diffuse),
+							try_color_from_conf(specular),
+						});
+					} else {
+						auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
+						auto a = deg2rad(section["spotAngle"].as_double_or_default(90)); // 91 to ensure >= 1.0 works
+						d *= mat_eye;
+						lights.point.push_back({
+							d,
+							try_color_from_conf(diffuse),
+							try_color_from_conf(specular),
+							cos(a),
+							{ Matrix4D(), ZBuffer(0, 0), NAN, NAN, NAN },
+						});
+					}
+				}
+			}
+		} else {
+			lights.ambient = { 1, 1, 1 };
+			lights.shadows = false;
+		}
+#if GRAPHICS_DEBUG_LIGHT > 0
+		{
+			lights.ambient = { 1, 1, 1 };
+			lights.shadows = false;
+			for (auto &p : lights.point) {
+				auto pt = p.point * Matrix::inv(mat_eye);
+				mat_eye = look_direction(pt, -(pt - Point3D()));
+				break;
+			}
+			if (lights.shadows) {
+				size = lights.shadow_mask;
+			}
+			size = lights.shadow_mask;
+			lights.directional.clear();
+			lights.point.clear();
+			lights.shadows = false;
+		}
 #endif
 
 		// Parse figures
@@ -456,38 +567,9 @@ namespace shapes {
 			figures.push_back(fig);
 		}
 
-		if (with_lighting) {
-			int nr_light = conf["General"]["nrLights"];
-			for (int i = 0; i < nr_light; i++) {
-				auto section = conf[string("Light") + to_string(i)];
-				lights.ambient += color_from_conf(section["ambientLight"]);
-				vector<double> diffuse, specular;
-				if (section["diffuseLight"].as_double_tuple_if_exists(diffuse)
-					| section["specularLight"].as_double_tuple_if_exists(specular)) {
-					if (section["infinity"].as_bool_or_default(false)) {
-						auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
-						d.normalise();
-						d *= mat_eye;
-						lights.directional.push_back({
-							d,
-							try_color_from_conf(diffuse),
-							try_color_from_conf(specular),
-						});
-					} else {
-						auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
-						auto a = deg2rad(section["spotAngle"].as_double_or_default(90)); // 91 to ensure >= 1.0 works
-						d *= mat_eye;
-						lights.point.push_back({
-							d,
-							try_color_from_conf(diffuse),
-							try_color_from_conf(specular),
-							cos(a),
-						});
-					}
-				}
-			}
-		} else {
-			lights.ambient = { 1, 1, 1 };
+		if (lights.shadows) {
+			// We need the full objects for shadowing
+			lights.zfigures = ZBufferTriangleFigure::convert(figures);
 		}
 
 		// Clipping
@@ -508,13 +590,13 @@ namespace shapes {
 					switch (plane) {
 						case NEAR : return -p.z < frustum.near;
 						case FAR  : return -p.z > frustum.far;
-						case RIGHT: return p.x * frustum.near / -p.z > v;
-						case LEFT : return p.x * frustum.near / -p.z < v;
-						case TOP  : return p.y * frustum.near / -p.z > v;
-						case DOWN : return p.y * frustum.near / -p.z < v;
+						case RIGHT: return p.x * frustum.near > v * -p.z;
+						case LEFT : return p.x * frustum.near < v * -p.z;
+						case TOP  : return p.y * frustum.near > v * -p.z;
+						case DOWN : return p.y * frustum.near < v * -p.z;
 						default:
-									assert(!"Invalid direction");
-									return false;
+							assert(!"Invalid direction");
+							return false;
 					}
 				};
 				auto outside_mask = [&f, &outside](Face &t, int plane, double v) {
@@ -589,62 +671,117 @@ namespace shapes {
 			}
 		}
 
-		// Cull based on direction
-		for (auto &f : figures) {
-			if (!f.can_cull) {
-				continue;
-			}
-			assert(f.normals.size() == f.faces.size() && "Normals don't match face count");
-			size_t i = f.normals.size();
-			auto swap_remove = [&f, &i]() {
-				f.faces[i] = f.faces.back();
-				f.normals[i] = f.normals.back();
-				f.faces.pop_back();
-				f.normals.pop_back();
-			};
-			while (i --> 0) {
-				if (f.normals[i].z <= 0) {
-					swap_remove();
-				}
-			}
-		}
-
 		// Draw
 		return draw(figures, lights, size, bg);
 	}
 
-	img::EasyImage draw(std::vector<TriangleFigure> figures, const Lights &lights, unsigned int size, img::Color background) {
-		// TODO wdym "unitialized", GCC?
-		double d = NAN, offset_x = NAN, offset_y = NAN;
+	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights lights, unsigned int size, img::Color background) {
 
 		if (figures.empty()) {
 			return img::EasyImage(0, 0);
 		}
 
-		Point3D a, b, c;
-		auto f2p = [&a, &b, &c](auto &f, auto &t) {
-			a = f.points[t.a];
-			b = f.points[t.b];
-			c = f.points[t.c];
+		struct Tri {
+			Point3D a, b, c;
 		};
+		auto f2p = [](auto &f, auto &t) {
+			return Tri {
+				f.points[t.a],
+				f.points[t.b],
+				f.points[t.c],
+			};
+		};
+
+		// Process point light shadows first
+		// FIXME we need the original figures *before* clipping
+		if (lights.shadows) {
+			auto &inv_project = lights.inv_eye;
+
+			for (size_t pi = 0; pi < lights.point.size(); pi++) {
+				auto &p = lights.point[pi];
+
+				// Project from camera perspective & determine bounds
+				auto pt = p.point * inv_project;
+				p.cached.eye = inv_project * look_direction(pt, -(pt - Point3D()));
+
+				vector<ZBufferTriangleFigure> zfigs;
+				if (pi < lights.point.size() - 1) {
+					zfigs = lights.zfigures;
+				} else {
+					zfigs.swap(lights.zfigures);
+				}
+
+				double min_x, max_x, min_y, max_y;
+				min_x = min_y = +numeric_limits<double>::infinity();
+				max_x = max_y = -numeric_limits<double>::infinity();
+
+				for (auto &f : zfigs) {
+					for (auto &a : f.points) {
+						a *= p.cached.eye;
+						assert(a.z != 0 && "division by 0");
+						min_x = min(min_x, a.x / -a.z);
+						min_y = min(min_y, a.y / -a.z);
+						max_x = max(max_x, a.x / -a.z);
+						max_y = max(max_y, a.y / -a.z);
+					}
+				}
+
+				// Create ZBuffer
+				double d = NAN, dx = NAN, dy = NAN, img_x, img_y;
+				calc_image_parameters(min_x, min_y, max_x, max_y, lights.shadow_mask, d, dx, dy, img_x, img_y);
+				p.cached.zbuf = ZBuffer(img_x, img_y);
+				p.cached.d = d;
+				p.cached.dx = dx;
+				p.cached.dy = dy;
+
+				// Fill in ZBuffer with figure & triangle IDs
+				assert(figures.size() < UINT16_MAX);
+				for (u_int16_t i = 0; i < zfigs.size(); i++) {
+					auto &f = zfigs[i];
+					assert(f.faces.size() < UINT32_MAX);
+					for (u_int32_t k = 0; k < f.faces.size(); k++) {
+						auto &t = f.faces[k];
+						auto abc = f2p(f, t);
+						auto a = abc.a, b = abc.b, c = abc.c;
+						auto norm = (b - a).cross(c - a);
+						if (!f.can_cull || norm.dot(abc.a - Point3D()) <= 0) {
+							p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.dx, p.cached.dy, 1);
+						}
+					}
+				}
+			}
+		}
 
 		// Determine bounds
 		double min_x, max_x, min_y, max_y;
 		min_x = min_y = +numeric_limits<double>::infinity();
 		max_x = max_y = -numeric_limits<double>::infinity();
 		for (auto &f : figures) {
-			for (auto &t : f.faces) {
-				f2p(f, t);
-				assert(a.z != 0 && "division by 0");
-				assert(b.z != 0 && "division by 0");
-				assert(c.z != 0 && "division by 0");
-				min_x = min(min(min_x, a.x / -a.z), min(b.x / -b.z, c.x / -c.z));
-				min_y = min(min(min_y, a.y / -a.z), min(b.y / -b.z, c.y / -c.z));
-				max_x = max(max(max_x, a.x / -a.z), max(b.x / -b.z, c.x / -c.z));
-				max_y = max(max(max_y, a.y / -a.z), max(b.y / -b.z, c.y / -c.z));
+			if (f.clipped) {
+				for (auto &t : f.faces) {
+					auto abc = f2p(f, t);
+					auto a = abc.a, b = abc.b, c = abc.c;
+					assert(a.z != 0 && "division by 0");
+					assert(b.z != 0 && "division by 0");
+					assert(c.z != 0 && "division by 0");
+					min_x = min(min(min_x, a.x / -a.z), min(b.x / -b.z, c.x / -c.z));
+					min_y = min(min(min_y, a.y / -a.z), min(b.y / -b.z, c.y / -c.z));
+					max_x = max(max(max_x, a.x / -a.z), max(b.x / -b.z, c.x / -c.z));
+					max_y = max(max(max_y, a.y / -a.z), max(b.y / -b.z, c.y / -c.z));
+				}
+			} else {
+				for (auto &a : f.points) {
+					assert(a.z != 0 && "division by 0");
+					min_x = min(min_x, a.x / -a.z);
+					min_y = min(min_y, a.y / -a.z);
+					max_x = max(max_x, a.x / -a.z);
+					max_y = max(max_y, a.y / -a.z);
+				}
 			}
 		}
 
+		// TODO wdym "unitialized", GCC?
+		double d = NAN, offset_x = NAN, offset_y = NAN;
 		auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
 
 		assert(!isnan(d));
@@ -656,7 +793,7 @@ namespace shapes {
 			f.ambient *= lights.ambient;
 		}
 
-		ZBuffer zbuf(img.get_width(), img.get_height());
+		TaggedZBuffer zbuf(img.get_width(), img.get_height());
 
 		// Fill in ZBuffer with figure & triangle IDs
 		assert(figures.size() < UINT16_MAX);
@@ -665,8 +802,15 @@ namespace shapes {
 			assert(f.faces.size() < UINT32_MAX);
 			for (u_int32_t k = 0; k < f.faces.size(); k++) {
 				auto &t = f.faces[k];
-				f2p(f, t);
-				zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k, NAN});
+				auto abc = f2p(f, t);
+				auto a = abc.a, b = abc.b, c = abc.c;
+#if GRAPHICS_DEBUG_Z == 2
+				if (!f.can_cull || f.normals[k].dot(abc.a - Point3D()) <= 0) {
+#else
+				{
+#endif
+					zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k, NAN}, Z_BIAS);
+				}
 			}
 		}
 
@@ -692,6 +836,27 @@ namespace shapes {
 		const size_t color_pool_size = sizeof(colors_pool) / sizeof(*colors_pool);
 #endif
 
+#if GRAPHICS_DEBUG_Z > 0
+		auto &_dbg_zb = zbuf;
+#if GRAPHICS_DEBUG_Z == 2
+		for (auto &p : lights.point) {
+			_dbg_zb = p.cached.zbuf;
+			break;
+		}
+#endif
+		auto max_inv_z = -numeric_limits<double>::infinity();
+		auto min_inv_z = numeric_limits<double>::infinity();
+		for (unsigned int y = 0; y < _dbg_zb.get_height(); y++) {
+			for (unsigned int x = 0; x < _dbg_zb.get_width(); x++) {
+				auto inv_z = _dbg_zb.get(x, y).inv_z;
+				if (isinf(inv_z))
+					continue;
+				max_inv_z = max(max_inv_z, inv_z);
+				min_inv_z = min(min_inv_z, inv_z);
+			}
+		}
+#endif
+
 		// Draw triangle colors
 		// A custom iterator would be neat but C++'s iterators are cursed so nah.
 		for (unsigned int y = 0; y < img.get_height(); y++) {
@@ -702,11 +867,9 @@ namespace shapes {
 
 				auto &f = figures[pair.figure_id];
 
-				auto color = f.ambient;
-
 				// Apply lights
 				// TODO this assumes face normals
-				auto n = f.normals.empty() ? Vector3D::vector(0, 0, 0) : f.normals[pair.triangle_id];
+				auto n = f.normals.empty() ? Vector3D() : f.normals[pair.triangle_id];
 
 				// Invert perspective projection
 				// Given: x', y', 1/z, dx, dy
@@ -716,10 +879,14 @@ namespace shapes {
 					(y - offset_y) / (d * -pair.inv_z),
 					1 / pair.inv_z
 				);
-				auto cam_dir = point - Point3D();
-				cam_dir.normalise();
+				auto cam_dir = (point - Point3D()).normalize();
 
 				n = n.dot(cam_dir) > 0 ? -n : n;
+
+				auto color = f.ambient;
+#if GRAPHICS_DEBUG_Z > 0
+				color = Color();
+#endif
 
 				for (auto &d : lights.directional) {
 					assert(!f.normals.empty());
@@ -744,12 +911,57 @@ namespace shapes {
 				}
 				for (auto &p : lights.point) {
 					assert(!f.normals.empty());
-					auto direction = point - p.point;
-					direction.normalise();
+					auto direction = (point - p.point).normalize();
 					assert(f.faces.size() == f.normals.size() && "No normals");
 					auto dot = n.dot(-direction);
 					if (dot > 0) {
-					// Diffuse
+
+						// Check if shadowed
+						if (lights.shadows) {
+							auto l = point * p.cached.eye;
+							auto lx = l.x / -l.z * p.cached.d + p.cached.dx;
+							auto ly = l.y / -l.z * p.cached.d + p.cached.dy;
+							assert(!isinf(lx) && !isnan(lx));
+							assert(!isinf(ly) && !isnan(ly));
+							auto fx = floor(lx);
+							auto fy = floor(ly);
+							auto cx = fx + 1;
+							auto cy = fy + 1;
+							auto get_z = [&p](unsigned int x, unsigned int y) {
+								return x < p.cached.zbuf.get_width() && y < p.cached.zbuf.get_height()
+									? ((const ZBuffer &)p.cached.zbuf)(x, y)
+									: numeric_limits<double>::infinity();
+							};
+							auto cxa = lx - fx;
+							auto cya = ly - fy;
+							auto fxa = 1 - cxa;
+							auto fya = 1 - cya;
+							assert(1 >= fxa && fxa >= 0);
+							assert(1 >= fya && fya >= 0);
+							assert(1 >= cxa && cxa >= 0);
+							assert(1 >= cya && cya >= 0);
+							auto inv_z = (
+								(
+									+ get_z(fx, fy) * fxa
+									+ get_z(cx, fy) * cxa
+								) * fya + (
+									+ get_z(fx, cy) * fxa
+									+ get_z(cx, cy) * cxa
+								) * cya
+							);
+							assert(!isnan(inv_z) && "shadow 1/z is NaN");
+#if GRAPHICS_DEBUG_Z == 2
+							if (!isinf(inv_z)) {
+								color = Color(1, 1, 1) * (inv_z - min_inv_z) / (max_inv_z - min_inv_z);
+							}
+							break;
+#endif
+							if (inv_z + Z_SHADOW_BIAS < 1 / l.z) {
+								continue;
+							}
+						}
+
+						// Diffuse
 						auto s = max(1 - (1 - dot) / (1 - p.spot_angle_cos), 0.0);
 						color += (f.diffuse * p.diffuse) * s;
 						// Specular
@@ -763,6 +975,60 @@ namespace shapes {
 						}
 					}
 				}
+
+				// Apply texture
+				if (f.texture.has_value()) {
+					auto t = f.faces[pair.triangle_id];
+					auto abc = f2p(f, t);
+					auto a = abc.a;
+					auto ba = abc.b - a;
+					auto ca = abc.c - a;
+
+					Matrix2D m_xy {{ ba.x, ca.x }, { ba.y, ca.y }};
+					Matrix2D m_yz {{ ba.y, ca.y }, { ba.z, ca.z }};
+					Matrix2D m_xz {{ ba.x, ca.x }, { ba.z, ca.z }};
+
+					Point2D p_xy { point.x - a.x, point.y - a.y };
+					Point2D p_yz { point.y - a.y, point.z - a.z };
+					Point2D p_xz { point.x - a.x, point.z - a.z };
+
+					// Find out which matrix will result in the least precision loss
+					// i.e. find the matrix with the highest determinant.
+					auto d_xy = abs(m_xy.determinant());
+					auto d_yz = abs(m_yz.determinant());
+					auto d_xz = abs(m_xz.determinant());
+
+					Matrix2D m;
+					Point2D p;
+
+					if (d_xy > d_yz) {
+						if (d_xy > d_xz) {
+							m = m_xy;
+							p = p_xy;
+						} else {
+							m = m_xz;
+							p = p_xz;
+						}
+					} else {
+						if (d_xy > d_yz) {
+							m = m_xy;
+							p = p_xy;
+						} else {
+							m = m_yz;
+							p = p_yz;
+						}
+					}
+
+					Point2D uv = p * m.inv();
+					uv = (1 - uv.x - uv.y) * f.uv[t.a].to_vector()
+						+ uv.x * f.uv[t.b].to_vector()
+						+ uv.y * f.uv[t.c].to_vector();
+					color *= Color(f.texture.value().get_clamped(uv));
+				}
+
+#if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
+				color = Color(1, 1, 1) * (pair.inv_z - min_inv_z) / (max_inv_z - min_inv_z);
+#endif
 
 				assert(color.r >= 0 && "Colors can't be negative");
 				assert(color.g >= 0 && "Colors can't be negative");
@@ -784,7 +1050,8 @@ namespace shapes {
 			if (f.face_normals) {
 				for (size_t i = 0; i < f.faces.size(); i++) {
 					auto &t = f.faces[i];
-					f2p(f, t);
+					auto abc = f2p(f, t);
+					auto a = abc.a, b = abc.b, c = abc.c;
 					auto from = Point3D::center({ a, b, c });
 					auto to = from + f.normals[i] * 0.1;
 					Point3D ft(from.x / -from.z * d + offset_x, from.y / -from.z * d + offset_y, from.z);
@@ -803,7 +1070,8 @@ namespace shapes {
 #if GRAPHICS_DEBUG > 1
 		for (auto &f : figures) {
 			for (auto &t : f.faces) {
-				f2p(f, t);
+				auto abc = f2p(f, t);
+				auto a = abc.a, b = abc.b, c = abc.c;
 				Point3D la(a.x / -a.z * d + offset_x, a.y / -a.z * d + offset_y, a.z);
 				Point3D lb(b.x / -b.z * d + offset_x, b.y / -b.z * d + offset_y, b.z);
 				Point3D lc(c.x / -c.z * d + offset_x, c.y / -c.z * d + offset_y, c.z);
@@ -821,9 +1089,9 @@ namespace shapes {
 		{
 			Point3D o;
 			o *= lights.eye;
-			auto ox = o + Vector3D::vector(1000, 0, 0) * lights.eye;
-			auto oy = o + Vector3D::vector(0, 1000, 0) * lights.eye;
-			auto oz = o + Vector3D::vector(0, 0, 1000) * lights.eye;
+			auto ox = o + Vector3D(1000, 0, 0) * lights.eye;
+			auto oy = o + Vector3D(0, 1000, 0) * lights.eye;
+			auto oz = o + Vector3D(0, 0, 1000) * lights.eye;
 			Point3D lo(o.x / -o.z * d + offset_x, o.y / -o.z * d + offset_y, o.z);
 			Point3D lox(ox.x / -ox.z * d + offset_x, ox.y / -ox.z * d + offset_y, ox.z);
 			Point3D loy(oy.x / -oy.z * d + offset_x, oy.y / -oy.z * d + offset_y, oy.z);
@@ -835,5 +1103,9 @@ namespace shapes {
 #endif
 
 		return img;
+	}
+
+	ostream &operator <<(ostream &o, const Color &c) {
+		return o << '(' << c.r << ", " << c.g << ", " << c.b << ')';
 	}
 }

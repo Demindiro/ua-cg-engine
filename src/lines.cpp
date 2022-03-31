@@ -10,6 +10,32 @@ using namespace std;
 
 typedef unsigned int uint;
 
+void calc_image_parameters(
+	double min_x, double min_y,
+	double max_x, double max_y,
+	uint size,
+	double &d,
+	double &offset_x, double &offset_y,
+	double &img_x, double &img_y
+) {
+	// Determine size, scale & offset
+	double size_x = max_x - min_x, size_y = max_y - min_y;
+
+	// Don't bother if the width or height is 0
+	if (size_x == 0 || size_y == 0) {
+		img_x = img_y = 0;
+		return;
+	}
+
+	double img_s = size / max(size_x, size_y);
+	img_x = size_x * img_s;
+	img_y = size_y * img_s;
+
+	d = img_x / size_x * 0.95;
+	offset_x = (img_x - d * (min_x + max_x)) / 2;
+	offset_y = (img_y - d * (min_y + max_y)) / 2;
+}
+
 img::EasyImage create_img(
 	double min_x, double min_y,
 	double max_x, double max_y,
@@ -18,26 +44,9 @@ img::EasyImage create_img(
 	double &d,
 	double &offset_x, double &offset_y
 ) {
-	// Determine size, scale & offset
-	double size_x = max_x - min_x, size_y = max_y - min_y;
-
-	// Don't bother if the width or height is 0
-	if (size_x == 0 || size_y == 0) {
-		return img::EasyImage(0, 0);
-	}
-
-	double img_s = size / max(size_x, size_y);
-	double img_x = size_x * img_s, img_y = size_y * img_s;
-
-	d = img_x / size_x * 0.95;
-	offset_x = (img_x - d * (min_x + max_x)) / 2;
-	offset_y = (img_y - d * (min_y + max_y)) / 2;
-
-	// Create image
-	img::EasyImage img(round_up(img_x), round_up(img_y));
-	img.clear(background);
-
-	return img;
+	double img_x, img_y;
+	calc_image_parameters(min_x, min_y, max_x, max_y, size, d, offset_x, offset_y, img_x, img_y);
+	return img::EasyImage(round_up(img_x), round_up(img_y), background);
 }
 
 void Line2D::draw(img::EasyImage &img) const {
