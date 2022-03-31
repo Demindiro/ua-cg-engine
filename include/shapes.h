@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <vector>
 #include "easy_image.h"
 #include "engine.h"
@@ -54,7 +56,7 @@ namespace shapes {
 		}
 
 		constexpr Color clamp() const {
-			return { ::clamp(r, 0.0, 1.0), ::clamp(g, 0.0, 1.0), ::clamp(b, 0.0, 1.0) };
+			return { std::clamp(r, 0.0, 1.0), std::clamp(g, 0.0, 1.0), std::clamp(b, 0.0, 1.0) };
 		}
 
 		inline img::Color to_img_color() const {
@@ -169,7 +171,17 @@ namespace shapes {
 	 */
 	std::vector<Vector3D> calculate_face_normals(const std::vector<Point3D> &points, const std::vector<Face> &faces);
 
-	void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len);
+	void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, const Point3D *points, unsigned int points_len, const Edge *edges, unsigned int edges_len);
+	
+	template<size_t points_size, size_t edges_size>
+	inline void platonic(
+		const FigureConfiguration &conf,
+		std::vector<Line3D> &lines,
+		const std::array<Point3D, points_size> &points,
+		const std::array<Edge, edges_size> &edges
+	) {
+		platonic(conf, lines, points.data(), points_size, edges.data(), edges_size);
+	}
 
 	inline void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, std::vector<Point3D> points, std::vector<Edge> edges) {
 		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());

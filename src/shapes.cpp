@@ -109,19 +109,17 @@ namespace shapes {
 		return normals;
 	}
 
-	void platonic(const FigureConfiguration &conf, vector<Line3D> &lines, Point3D *points, unsigned int points_len, Edge *edges, unsigned int edges_len) {
+	void platonic(const FigureConfiguration &conf, vector<Line3D> &lines, const Point3D *points, unsigned int points_len, const Edge *edges, unsigned int edges_len) {
 		auto mat = transform_from_conf(conf.section, conf.eye);
 		auto color = color_from_conf(conf.section);
 
-		for (auto p = points; p != points + points_len; p++) {
-			*p *= mat;
-		}
 		lines.reserve(lines.size() + edges_len);
 		for (auto c = edges; c != edges + edges_len; c++) {
 			assert(c->a < points_len);
 			assert(c->b < points_len);
-			auto a = points[c->a];
-			auto b = points[c->b];
+			// TODO avoid redundant transforms
+			auto a = points[c->a] * mat;
+			auto b = points[c->b] * mat;
 			lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color.to_img_color()});
 		}
 	}

@@ -281,7 +281,7 @@ static bool clip(
 	} else if (x0 > w) {
 		p = (x0 - w) / ((x0 - w) + (w - x1));
 	}
-	p = clamp(p, 0.0, 1.0);
+	p = std::clamp(p, 0.0, 1.0);
 	x0 = x0 * (1 - p) + x1 * p;
 	y0 = y0 * (1 - p) + y1 * p;
 	z0 = z0 * (1 - p) + z1 * p;
@@ -292,7 +292,7 @@ static bool clip(
 	} else if (y0 > h) {
 		p = (y0 - h) / ((y0 - h) + (h - y1));
 	}
-	p = clamp(p, 0.0, 1.0);
+	p = std::clamp(p, 0.0, 1.0);
 	x0 = x0 * (1 - p) + x1 * p;
 	y0 = y0 * (1 - p) + y1 * p;
 	z0 = z0 * (1 - p) + z1 * p;

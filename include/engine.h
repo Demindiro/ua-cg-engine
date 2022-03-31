@@ -52,15 +52,6 @@ static constexpr inline double deg2rad(double a) {
 	return a / 180 * M_PI;
 }
 
-#if __cplusplus < 201703L
-template <typename T>
-static constexpr inline double clamp(T v, T min, T max) {
-	if (min >= max)
-		UNREACHABLE;
-	return v < min ? min : (v > max ? max : v);
-}
-#endif
-
 static constexpr inline double pow_uint(double x, unsigned int y) {
 	double v = 1;
 	while (y > 0) {
