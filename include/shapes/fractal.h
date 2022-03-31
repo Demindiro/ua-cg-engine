@@ -4,7 +4,8 @@
 #include "ini_configuration.h"
 #include "lines.h"
 #include "shapes.h"
-#include "vector3d.h"
+#include "math/point3d.h"
+#include "math/vector3d.h"
 
 namespace shapes {
 	void fractal(std::vector<Point3D> &points, std::vector<Edge> &edges, double scale, unsigned int iterations);

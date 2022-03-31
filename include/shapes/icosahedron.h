@@ -4,7 +4,7 @@
 #include "ini_configuration.h"
 #include "lines.h"
 #include "shapes.h"
-#include "vector3d.h"
+#include "math/point3d.h"
 
 namespace shapes {
 	void icosahedron(Point3D points[12]);

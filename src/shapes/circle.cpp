@@ -1,7 +1,9 @@
-#include "shapes/circle.h"
+#include "shapes.h"
 #include <cmath>
 #include "engine.h"
 #include "lines.h"
+#include "math/point3d.h"
+#include "shapes/circle.h"
 
 using namespace std;
 

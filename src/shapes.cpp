@@ -4,7 +4,7 @@
 #include <vector>
 #include "engine.h"
 #include "ini_configuration.h"
-#include "vector3d.h"
+#include "math/vector3d.h"
 #include "shapes/buckyball.h"
 #include "shapes/circle.h"
 #include "shapes/cone.h"
@@ -31,7 +31,7 @@
 using namespace std;
 
 namespace shapes {
-	static Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection, Matrix &mat_scale) {
+	static Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection, Matrix4D &mat_scale) {
 		auto rot_x = conf["rotateX"].as_double_or_die() * M_PI / 180;
 		auto rot_y = conf["rotateY"].as_double_or_die() * M_PI / 180;
 		auto rot_z = conf["rotateZ"].as_double_or_die() * M_PI / 180;
@@ -41,7 +41,7 @@ namespace shapes {
 		// Create transformation matrix
 		// Order of operations: scale > rot_x > rot_y > rot_z > translate > project
 		// NB the default constructor creates identity matrices (diagonal is 1)
-		Matrix mat_rot_x, mat_rot_y, mat_rot_z, mat_translate;
+		Matrix4D mat_rot_x, mat_rot_y, mat_rot_z, mat_translate;
 
 		mat_scale(1, 1) = mat_scale(2, 2) = mat_scale(3, 3) = scale;
 
@@ -56,8 +56,8 @@ namespace shapes {
 		return mat_rot_x * mat_rot_y * mat_rot_z * mat_translate * projection;
 	}
 
-	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection) {
-		Matrix mat_scale, mat;
+	Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection) {
+		Matrix4D mat_scale, mat;
 		mat = transform_from_conf(conf, projection, mat_scale);
 		return mat_scale * mat;
 	}
@@ -104,9 +104,7 @@ namespace shapes {
 			auto a = points[f.a];
 			auto b = points[f.b];
 			auto c = points[f.c];
-			auto n = (b - a).cross(c - a);
-			n.normalise();
-			normals.push_back(n);
+			normals.push_back((b - a).cross(c - a).normalize());
 		}
 		return normals;
 	}
@@ -168,27 +166,47 @@ namespace shapes {
 		bool use;
 	};
 
-	static Matrix look_direction(Point3D pos, Vector3D dir) {
+	static Matrix4D look_direction(Point3D pos, Vector3D dir, Matrix4D &inv) {
 		auto r = dir.length();
 		auto theta = atan2(-dir.y, -dir.x);
 		auto phi = acos(-dir.z / r);
 
-		Matrix mat_tr, mat_rot_z, mat_rot_x;
+		Matrix4D mat_tr;
 
 		mat_tr(4, 1) = -pos.x;
 		mat_tr(4, 2) = -pos.y;
 		mat_tr(4, 3) = -pos.z;
-		mat_rot_z = Rotation(-(theta + M_PI / 2)).z();
-		mat_rot_x = Rotation(-phi).x();
+		auto mat_rot = Rotation(-(theta + M_PI / 2)).z() * Rotation(-phi).x();
 
-		return mat_tr * mat_rot_z * mat_rot_x;
+		// A regular view matrix is composed as T * Rz * Rx, hence the inverse
+		// matrix is Rx^-1 * Rz^-1 * T^-1.
+		//
+		// A rotation matrix can simply be transposed to get the inverse.
+		//
+		// The inverse translation is simply the negated original translation.
+		//
+		// Calculating this is *much* faster than inverting an arbitrary matrix. It should
+		// be more precise too.
+		Matrix4D inv_mat_tr;
+		inv_mat_tr(4, 1) = pos.x;
+		inv_mat_tr(4, 2) = pos.y;
+		inv_mat_tr(4, 3) = pos.z;
+		inv = mat_rot.transpose() * inv_mat_tr;
+
+		return mat_tr * mat_rot;
+	}
+
+	static Matrix4D look_direction(Point3D pos, Vector3D dir) {
+		Matrix4D stub;
+		return look_direction(pos, dir, stub);
 	}
 
 	static void common_conf(
 		const ini::Configuration &conf,
 		img::Color &background,
 		int &size,
-		Matrix &mat_eye,
+		Matrix4D &mat_eye,
+		Matrix4D &mat_inv_eye,
 		int &nr_fig,
 		Frustum &frustum
 	) {
@@ -210,18 +228,18 @@ namespace shapes {
 			frustum.aspect = conf["General"]["aspectRatio"].as_double_or_die();
 		} else {
 			frustum.use = false;
-			dir = -eye;
+			dir = Point3D() - eye;
 		}
 
-		mat_eye = look_direction(eye, dir);
+		mat_eye = look_direction(eye, dir, mat_inv_eye);
 	}
 
 	img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		img::Color bg;
 		int size, nr_fig;
-		Matrix mat_eye;
+		Matrix4D mat_eye, mat_inv_eye;
 		Frustum frustum;
-		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
+		common_conf(conf, bg, size, mat_eye, mat_inv_eye, nr_fig, frustum);
 
 		// Parse figures
 		vector<Line3D> lines;
@@ -402,11 +420,11 @@ namespace shapes {
 	img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		img::Color bg;
 		int size, nr_fig;
-		Matrix mat_eye;
+		Matrix4D mat_eye;
 		Frustum frustum;
 		Lights lights;
 
-		common_conf(conf, bg, size, mat_eye, nr_fig, frustum);
+		common_conf(conf, bg, size, mat_eye, lights.inv_eye, nr_fig, frustum);
 
 		// Parse lights
 		if (with_lighting) {
@@ -422,11 +440,8 @@ namespace shapes {
 				if (section["diffuseLight"].as_double_tuple_if_exists(diffuse)
 					| section["specularLight"].as_double_tuple_if_exists(specular)) {
 					if (section["infinity"].as_bool_or_default(false)) {
-						auto d = tup_to_vector3d(section["direction"].as_double_tuple_or_die());
-						d.normalise();
-						d *= mat_eye;
 						lights.directional.push_back({
-							d,
+							tup_to_vector3d(section["direction"].as_double_tuple_or_die()).normalize() * mat_eye,
 							try_color_from_conf(diffuse),
 							try_color_from_conf(specular),
 						});
@@ -439,7 +454,7 @@ namespace shapes {
 							try_color_from_conf(diffuse),
 							try_color_from_conf(specular),
 							cos(a),
-							{ Matrix(), ZBuffer(0, 0), NAN, NAN, NAN },
+							{ Matrix4D(), ZBuffer(0, 0), NAN, NAN, NAN },
 						});
 					}
 				}
@@ -651,7 +666,7 @@ namespace shapes {
 		// Process point light shadows first
 		// FIXME we need the original figures *before* clipping
 		if (lights.shadows) {
-			auto inv_project = Matrix::inv(lights.eye);
+			auto &inv_project = lights.inv_eye;
 
 			for (size_t pi = 0; pi < lights.point.size(); pi++) {
 				auto &p = lights.point[pi];
@@ -659,7 +674,6 @@ namespace shapes {
 				// Project from camera perspective & determine bounds
 				auto pt = p.point * inv_project;
 				p.cached.eye = inv_project * look_direction(pt, -(pt - Point3D()));
-				auto reproj = inv_project * p.cached.eye;
 
 				vector<ZBufferTriangleFigure> zfigs;
 				if (pi < lights.point.size() - 1) {
@@ -827,7 +841,7 @@ namespace shapes {
 
 				// Apply lights
 				// TODO this assumes face normals
-				auto n = f.normals.empty() ? Vector3D::vector(0, 0, 0) : f.normals[pair.triangle_id];
+				auto n = f.normals.empty() ? Vector3D() : f.normals[pair.triangle_id];
 
 				// Invert perspective projection
 				// Given: x', y', 1/z, dx, dy
@@ -837,8 +851,7 @@ namespace shapes {
 					(y - offset_y) / (d * -pair.inv_z),
 					1 / pair.inv_z
 				);
-				auto cam_dir = point - Point3D();
-				cam_dir.normalise();
+				auto cam_dir = (point - Point3D()).normalize();
 
 				n = n.dot(cam_dir) > 0 ? -n : n;
 
@@ -865,8 +878,7 @@ namespace shapes {
 				}
 				for (auto &p : lights.point) {
 					assert(!f.normals.empty());
-					auto direction = point - p.point;
-					direction.normalise();
+					auto direction = (point - p.point).normalize();
 					assert(f.faces.size() == f.normals.size() && "No normals");
 					auto dot = n.dot(-direction);
 					if (dot > 0) {

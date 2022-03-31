@@ -3,7 +3,9 @@
 #include <cmath>
 #include <vector>
 #include "easy_image.h"
-#include "vector3d.h"
+#include "math/vector3d.h"
+#include "math/vector4d.h"
+#include "math/matrix4d.h"
 
 #define UNREACHABLE assert(!"unreachable")
 
@@ -33,17 +35,17 @@ static inline img::Color tup_to_color(std::vector<double> v) {
 	return img::Color(round_up(v.at(0) * 255), round_up(v.at(1) * 255), round_up(v.at(2) * 255));
 }
 
-static inline Vector3D tup_to_point3d(std::vector<double> v) {
+static inline Point3D tup_to_point3d(std::vector<double> v) {
 	// Call v.at(2) first since it allows us to elide checks for the
 	// other positions.
 	auto z = v.at(2), y = v[1], x = v[0];
-	return Vector3D::point(x, y, z);
+	return Point3D(x, y, z);
 }
 
 static inline Vector3D tup_to_vector3d(std::vector<double> v) {
 	// Ditto
 	auto z = v.at(2), y = v[1], x = v[0];
-	return Vector3D::vector(x, y, z);
+	return Vector3D(x, y, z);
 }
 
 static constexpr inline double deg2rad(double a) {
@@ -88,29 +90,27 @@ struct Rotation {
 	}
 
 	constexpr Rotation operator *=(Rotation rhs) {
-		*this = *this * rhs;
-		return *this;
+		return *this = *this * rhs;
 	}
 
-	// TODO make matrix constructor & accessors constexpr
-	Matrix x() const {
-		Matrix m;
+	constexpr Matrix4D x() const {
+		Matrix4D m;
 		m(2, 2) = m(3, 3) = u;
 		m(2, 3) = v;
 		m(3, 2) = -m(2, 3);
 		return m;
 	}
 
-	Matrix y() const {
-		Matrix m;
+	constexpr Matrix4D y() const {
+		Matrix4D m;
 		m(1, 1) = m(3, 3) = u;
 		m(1, 3) = -v;
 		m(3, 1) = -m(1, 3);
 		return m;
 	}
 
-	Matrix z() const {
-		Matrix m;
+	constexpr Matrix4D z() const {
+		Matrix4D m;
 		m(1, 1) = m(2, 2) = u;
 		m(1, 2) = v;
 		m(2, 1) = -m(1, 2);

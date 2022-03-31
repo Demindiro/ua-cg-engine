@@ -30,6 +30,8 @@ set(engine_sources
 	src/lines.cpp
 	src/l_parser.cpp
 	src/l_system.cpp
+	src/math/matrix4d.cpp
+	src/math/vector4d.cpp
 	src/shapes.cpp
 	src/shapes/buckyball.cpp
 	src/shapes/cone.cpp
@@ -43,7 +45,6 @@ set(engine_sources
 	src/shapes/octahedron.cpp
 	src/shapes/sphere.cpp
 	src/shapes/torus.cpp
-	src/vector3d.cpp
 	src/wireframe.cpp
 	src/zbuffer.cpp
 )

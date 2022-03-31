@@ -2,6 +2,8 @@
 #include <vector>
 #include "ini_configuration.h"
 #include "shapes.h"
+#include "math/point3d.h"
+#include "math/vector3d.h"
 
 using namespace std;
 

@@ -5,7 +5,7 @@
 #include "shapes.h"
 #include "shapes/fractal.h"
 #include "shapes/icosahedron.h"
-#include "vector3d.h"
+#include "math/point3d.h"
 
 using namespace std;
 

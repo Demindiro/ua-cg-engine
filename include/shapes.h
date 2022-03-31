@@ -5,7 +5,8 @@
 #include "engine.h"
 #include "ini_configuration.h"
 #include "lines.h"
-#include "vector3d.h"
+#include "math/matrix4d.h"
+#include "math/vector3d.h"
 
 namespace shapes {
 	struct Edge {
@@ -98,7 +99,7 @@ namespace shapes {
 			: points(fig.points), faces(fig.faces), can_cull(fig.can_cull)
 		{}
 
-		ZBufferTriangleFigure(const TriangleFigure &fig, const Matrix &mat)
+		ZBufferTriangleFigure(const TriangleFigure &fig, const Matrix4D &mat)
 			: faces(fig.faces), can_cull(fig.can_cull)
 		{
 			points.reserve(fig.points.size());
@@ -116,7 +117,7 @@ namespace shapes {
 			return zfigs;
 		}
 
-		static std::vector<ZBufferTriangleFigure> convert(const std::vector<TriangleFigure> &figs, const Matrix &mat) {
+		static std::vector<ZBufferTriangleFigure> convert(const std::vector<TriangleFigure> &figs, const Matrix4D &mat) {
 			std::vector<ZBufferTriangleFigure> zfigs;
 			zfigs.reserve(figs.size());
 			for (auto &f : figs) {
@@ -128,7 +129,7 @@ namespace shapes {
 
 	struct FigureConfiguration {
 		ini::Section &section;
-		Matrix eye;
+		Matrix4D eye;
 		bool with_lighting;
 		bool face_normals;
 	};
@@ -143,7 +144,7 @@ namespace shapes {
 		Color diffuse, specular;
 		double spot_angle_cos;
 		struct {
-			Matrix eye;
+			Matrix4D eye;
 			ZBuffer zbuf;
 			double d, dx, dy;
 		} cached;
@@ -153,13 +154,13 @@ namespace shapes {
 		std::vector<DirectionalLight> directional;
 		std::vector<PointLight> point;
 		std::vector<ZBufferTriangleFigure> zfigures;
-		Matrix eye;
+		Matrix4D eye, inv_eye;
 		unsigned int shadow_mask;
 		Color ambient;
 		bool shadows;
 	};
 
-	Matrix transform_from_conf(const ini::Section &conf, const Matrix &projection);
+	Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection);
 
 	Color color_from_conf(const ini::Section &conf);
 

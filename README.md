@@ -25,12 +25,12 @@ X: Niet werkend of niet geïmplementeerd
 | 6 | 3D fractalen              | V |
 |   | BuckyBall                 | - |
 |   | Mengerspons               |   |
-|   | View Frustum              |   |
-| 7 | Ambient licht             |   |
-|   | Diffuus licht (oneindig)  |   |
-|   | Diffuus licht (puntbron)  |   |
-|   | Speculair licht           |   |
-| 8 | Schaduw                   |   |
+|   | View Frustum              | - |
+| 7 | Ambient licht             | V |
+|   | Diffuus licht (oneindig)  | V |
+|   | Diffuus licht (puntbron)  | V |
+|   | Speculair licht           | V |
+| 8 | Schaduw                   | V |
 |   | Texture mapping           |   |
 | 9 | Bollen en cylinders       |   |
 |   | UV-coordinaten            |   |
@@ -42,6 +42,7 @@ Geïmplementeerde vorm van texture mapping: N/A
 
 - Dodecahedron driehoeken zijn fout
 - BuckyBall faces zijn niet geïmplementeerd
+- View frustum clipt teveel + splitsing tussen edges.
 
 ## Niet-gequoteerde functionaliteit
 

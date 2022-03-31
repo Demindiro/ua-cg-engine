@@ -2,7 +2,7 @@
 
 #include <vector>
 #include "easy_image.h"
-#include "point3d.h"
+#include "math/point3d.h"
 #include "zbuffer.h"
 
 using Color = img::Color;

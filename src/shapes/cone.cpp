@@ -2,7 +2,8 @@
 #include <vector>
 #include "shapes.h"
 #include "shapes/circle.h"
-#include "vector3d.h"
+#include "math/point3d.h"
+#include "math/vector3d.h"
 
 using namespace std;
 
