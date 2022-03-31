@@ -31,7 +31,7 @@ X: Niet werkend of niet geïmplementeerd
 |   | Diffuus licht (puntbron)  | V |
 |   | Speculair licht           | V |
 | 8 | Schaduw                   | V |
-|   | Texture mapping           |   |
+|   | Texture mapping           | V |
 | 9 | Bollen en cylinders       |   |
 |   | UV-coordinaten            |   |
 |   | Cube mapping              |   |
