@@ -40,7 +40,6 @@ Geïmplementeerde vorm van texture mapping: N/A
 
 ## Gekende problemen 
 
-- Dodecahedron driehoeken zijn fout
 - BuckyBall faces zijn niet geïmplementeerd
 - View frustum clipt teveel + splitsing tussen edges.
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-make build
+echo make build -j$(nproc)
+make build -j$(nproc)
 
 cd assets
 

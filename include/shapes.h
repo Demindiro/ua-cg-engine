@@ -186,6 +186,15 @@ namespace shapes {
 	inline void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, std::vector<Point3D> points, std::vector<Edge> edges) {
 		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 	}
+	
+	template<size_t points_size, size_t faces_size>
+	inline TriangleFigure platonic(
+		const FigureConfiguration &conf,
+		const std::array<Point3D, points_size> &points,
+		const std::array<Face, faces_size> &faces
+	) {
+		return platonic(conf, { points.begin(), points.end() }, { faces.begin(), faces.end() });
+	}
 
 	TriangleFigure platonic(const FigureConfiguration &conf, std::vector<Point3D> points, std::vector<Face> faces);
 

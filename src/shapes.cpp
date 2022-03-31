@@ -773,7 +773,11 @@ namespace shapes {
 				auto &t = f.faces[k];
 				auto abc = f2p(f, t);
 				auto a = abc.a, b = abc.b, c = abc.c;
+#if GRAPHICS_DEBUG_Z == 2
 				if (!f.can_cull || f.normals[k].dot(abc.a - Point3D()) <= 0) {
+#else
+				{
+#endif
 					zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k, NAN}, Z_BIAS);
 				}
 			}

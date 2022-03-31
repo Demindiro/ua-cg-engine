@@ -1,4 +1,5 @@
 #include "shapes/dodecahedron.h"
+#include <array>
 #include <vector>
 #include "shapes.h"
 #include "shapes/fractal.h"
@@ -7,7 +8,8 @@
 using namespace std;
 
 namespace shapes {
-	static void dodecahedron(Point3D points[20]) {
+	constexpr static auto points = []() constexpr {
+		array<Point3D, 20> points = {};
 		Point3D ico[12];
 		icosahedron(ico);
 		for (unsigned int i = 0; i < 5; i++) {
@@ -19,9 +21,11 @@ namespace shapes {
 			points[10 + i] = Point3D::center({ ico[2 + i], ico[7 + i], ico[7 + j] });
 			points[15 + i] = Point3D::center({ ico[2 + i], ico[2 + j], ico[7 + j] });
 		}
-	}
+		return points;
+	}();
 
-	static void dodecahedron(Edge edges[30]) {
+	constexpr static auto edges = []() constexpr {
+		array<Edge, 30> edges = {};
 		for (unsigned int i = 0; i < 5; i++) {
 			unsigned int j = (i + 1) % 5;
 			// Top & bottom ring
@@ -34,67 +38,63 @@ namespace shapes {
 			edges[20 + i] = { 10 + i, 15 + i };
 			edges[25 + i] = { 10 + j, 15 + i };
 		}
-	}
+		return edges;
+	}();
 
-	static void dodecahedron(Face faces[36]) {
+	constexpr static auto faces = []() constexpr {
+		array<Face, 36> faces = {};
+
 		// FIXME Copied straight from cursus but we have different points so
 		// it resembles an eldritch horror.
 		// Deducing the points manually is currently very hard since we can't
 		// see the edges between faces. When lighting based on normals is
 		// implemented we can fix it more easily.
 		struct { unsigned int a, b, c, d, e; } fives[12] = {
-			{  1,  2,  3,  4,  5 },
-			{  1,  6,  7,  8,  2 },
-			{  2,  8,  9, 10,  3 },
-			{  3, 10, 11, 12,  4 },
-			{  4, 12, 13, 14,  5 },
-			{  5, 14, 15,  6,  1 },
-			{ 20, 19, 18, 17, 16 },
-			{ 20, 15, 14, 13, 19 },
-			{ 19, 13, 12, 11, 18 },
-			{ 18, 11, 10,  9, 17 },
-			{ 17,  9,  8,  7, 16 },
-			{ 16,  7,  6, 15, 20 },
+			// Top & bottom
+			{  0,  1,  2,  3,  4 },
+			{  9,  8,  7,  6,  5 },
+			// Top ring
+			{  0,  4, 19, 10, 15 },
+			{  1,  0, 15, 11, 16 },
+			{  2,  1, 16, 12, 17 },
+			{  3,  2, 17, 13, 18 },
+			{  4,  3, 18, 14, 19 },
+			// Bottom ring
+			{  9,  5, 10, 19, 14 },
+			{  5,  6, 11, 15, 10 },
+			{  6,  7, 12, 16, 11 },
+			{  7,  8, 13, 17, 12 },
+			{  8,  9, 14, 18, 13 },
 		};
 
 		for (unsigned int i = 0; i < 12; i++) {
-			faces[i * 3 + 0] = { fives[i].a - 1, fives[i].b - 1, fives[i].c - 1 };
-			faces[i * 3 + 1] = { fives[i].a - 1, fives[i].c - 1, fives[i].d - 1 };
-			faces[i * 3 + 2] = { fives[i].a - 1, fives[i].d - 1, fives[i].e - 1 };
+			faces[i * 3 + 0] = { fives[i].a, fives[i].b, fives[i].c };
+			faces[i * 3 + 1] = { fives[i].a, fives[i].c, fives[i].d };
+			faces[i * 3 + 2] = { fives[i].a, fives[i].d, fives[i].e };
 		}
-	}
+
+		return faces;
+	}();
 
 	void dodecahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {
-		Point3D points[20];
-		Edge edges[30];
-		dodecahedron(points);
-		dodecahedron(edges);
-		platonic(conf, lines, points, 20, edges, 30);
+		platonic(conf, lines, points, edges);
 	}
 
 	TriangleFigure dodecahedron(const FigureConfiguration &conf) {
-		vector<Point3D> points(20);
-		vector<Face> faces(36);
-		dodecahedron(points.data());
-		dodecahedron(faces.data());
 		return platonic(conf, points, faces);
 	}
 
 	void fractal_dodecahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {
-		vector<Point3D> points(20);
-		vector<Edge> edges(30);
-		dodecahedron(points.data());
-		dodecahedron(edges.data());
-		fractal(conf, points, edges);
-		platonic(conf, lines, points, edges);
+		vector p(points.begin(), points.end());
+		vector e(edges.begin(), edges.end());
+		fractal(conf, p, e);
+		platonic(conf, lines, p, e);
 	}
 
 	TriangleFigure fractal_dodecahedron(const FigureConfiguration &conf) {
-		vector<Point3D> points(20);
-		vector<Face> faces(36);
-		dodecahedron(points.data());
-		dodecahedron(faces.data());
-		fractal(conf, points, faces);
-		return platonic(conf, points, faces);
+		vector p(points.begin(), points.end());
+		vector f(faces.begin(), faces.end());
+		fractal(conf, p, f);
+		return platonic(conf, p, f);
 	}
 }

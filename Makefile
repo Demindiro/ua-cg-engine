@@ -7,11 +7,11 @@ ARCHIVE := s0215648
 
 build:
 	cmake -DCMAKE_BUILD_TYPE=Release -B $@
-	make -C $@
+	+make -C $@
 
 build-debug:
 	cmake -DCMAKE_BUILD_TYPE=Debug -B $@
-	make -C $@
+	+make -C $@
 
 #test: build-debug
 #	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
