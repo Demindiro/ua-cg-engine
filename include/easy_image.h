@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <vector>
 #include <iostream>
-#include "point3d.h"
+#include "math/point3d.h"
 #include "zbuffer.h"
 /**
  * \brief The namespace of the EasyImage class

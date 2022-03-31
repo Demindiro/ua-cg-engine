@@ -3,8 +3,9 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <vector>
-#include "point3d.h"
+#include "math/point3d.h"
 
 /**
  * \brief Depth buffer to figure out which pixels are closest to the camera.
@@ -94,7 +95,8 @@ public:
 		double inv_z;
 
 		constexpr bool is_valid() const {
-			return figure_id != UINT16_MAX && triangle_id != UINT32_MAX;
+			return figure_id != std::numeric_limits<u_int16_t>::max()
+				&& triangle_id != std::numeric_limits<u_int32_t>::max();
 		}
 
 		constexpr bool operator ==(const IdPair &rhs) {
@@ -109,8 +111,8 @@ public:
 	TaggedZBuffer(unsigned int width, unsigned int height) : ZBuffer(width, height) {
 		figure_ids.resize(width * height);
 		triangle_ids.resize(width * height);
-		for (auto &e : figure_ids) e = UINT16_MAX;
-		for (auto &e : triangle_ids) e = UINT32_MAX;
+		for (auto &e : figure_ids) e = std::numeric_limits<u_int16_t>::max();
+		for (auto &e : triangle_ids) e = std::numeric_limits<u_int32_t>::max();
 	}
 	
 	/**

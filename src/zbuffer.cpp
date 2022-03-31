@@ -1,7 +1,7 @@
 #include "zbuffer.h"
 #include "engine.h"
-#include "point3d.h"
-#include "vector3d.h"
+#include "math/point3d.h"
+#include "math/vector3d.h"
 
 using namespace std;
 
@@ -18,10 +18,8 @@ void ZBuffer::triangle(
 	double inv_g_z = (b.z * c.z + a.z * c.z + a.z * b.z) / (3 * a.z * b.z * c.z);
 	double dzdx, dzdy;
 	{
-		auto u = Vector3D::vector(b.x - a.x, b.y - a.y, b.z - a.z);
-		auto v = Vector3D::vector(c.x - a.x, c.y - a.y, c.z - a.z);
-		auto w = u.cross(v);
-		auto dk = d * w.dot(Vector3D::point(a.x, a.y, a.z));
+		auto w = (b - a).cross(c - a);
+		auto dk = d * w.dot(a.to_vector());
 		dzdx = -w.x / dk;
 		dzdy = -w.y / dk;
 	}

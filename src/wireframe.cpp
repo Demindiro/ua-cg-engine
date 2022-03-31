@@ -11,7 +11,8 @@
 #include "l_system.h"
 #include "l_parser.h"
 #include "lines.h"
-#include "vector3d.h"
+#include "math/vector3d.h"
+#include "math/matrix4d.h"
 #include "shapes.h"
 
 using namespace std;
@@ -19,13 +20,13 @@ using namespace shapes;
 
 namespace wireframe {
 
-	void line_drawing(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void line_drawing(ini::Section &conf, Matrix4D &mat_project, vector<Line3D> &lines) {
 		// Read transformation & color
 		auto mat = transform_from_conf(conf, mat_project);
 		auto color = color_from_conf(conf);
 
 		// Read points & transform
-		vector<Vector3D> points;
+		vector<Point3D> points;
 		auto points_n = (unsigned int)conf["nrPoints"].as_int_or_die();
 		points.reserve(points_n);
 		for (unsigned int i = 0; i < points_n; i++) {
@@ -44,13 +45,13 @@ namespace wireframe {
 	}
 
 	struct Cursor3D {
-		Vector3D pos;
-		Matrix rot;
+		Point3D pos;
+		Matrix4D rot;
 	};
 
 	struct DrawSystem3D {
 		LParser::LSystem3D sys;
-		Matrix project;
+		Matrix4D project;
 		Rotation drot;
 		Cursor3D current;
 		Cursor3D *saved;
@@ -106,7 +107,7 @@ namespace wireframe {
 					draw_sys(s, r.pick(rule), depth - 1);
 				} else if (s.sys.draw(c)) {
 					auto p = s.current.pos * s.project;
-					s.current.pos += Vector3D::point(1, 0, 0) * s.current.rot;
+					s.current.pos += Vector3D(1, 0, 0) * s.current.rot;
 					auto q = s.current.pos * s.project;
 					s.lines.push_back({{p.x, p.y, p.z}, {q.x, q.y, q.z}, s.color});
 				}
@@ -114,7 +115,7 @@ namespace wireframe {
 		}
 	}
 
-	void l_system(ini::Section &conf, Matrix &mat_project, vector<Line3D> &lines) {
+	void l_system(ini::Section &conf, Matrix4D &mat_project, vector<Line3D> &lines) {
 		DrawSystem3D s(lines);
 		Cursor3D saved[2048];
 		{
@@ -123,7 +124,7 @@ namespace wireframe {
 		}
 		s.project = transform_from_conf(conf, mat_project);
 		s.color = color_from_conf(conf).to_img_color();
-		s.current = { Vector3D::point(0, 0, 0), {} };
+		s.current = { Point3D(), {} };
 		s.drot = Rotation(s.sys.get_angle() / 180 * M_PI);
 		s.saved = saved;
 		draw_sys(s, s.sys.get_initiator(), s.sys.get_nr_iterations());
