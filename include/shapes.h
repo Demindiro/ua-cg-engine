@@ -2,12 +2,16 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
+#include <ostream>
 #include <vector>
 #include "easy_image.h"
 #include "engine.h"
 #include "ini_configuration.h"
 #include "lines.h"
 #include "math/matrix4d.h"
+#include "math/point2d.h"
+#include "math/point3d.h"
 #include "math/vector3d.h"
 
 namespace shapes {
@@ -30,6 +34,7 @@ namespace shapes {
 
 		constexpr Color() : r(0), g(0), b(0) {}
 		constexpr Color(double r, double g, double b) : r(r), g(g), b(b) {}
+		Color(img::Color c) : r(c.red / 255.0), g(c.green / 255.0), b(c.blue / 255.0) {}
 
 		constexpr Color operator +(Color rhs) const {
 			return Color { r + rhs.r, g + rhs.g, b + rhs.b };
@@ -65,18 +70,35 @@ namespace shapes {
 		}
 	};
 
+	struct Texture {
+		img::EasyImage image;
+
+		img::Color get_clamped(Point2D uv) {
+			unsigned int u = round_up((image.get_width() - 1) * std::clamp(uv.x, 0.0, 1.0));
+			unsigned int v = round_up((image.get_height() - 1) * std::clamp(uv.y, 0.0, 1.0));
+			return image(u, v);
+		}
+	};
+
+	enum TextureMapping {
+		FLAT,
+	};
+
 	struct TriangleFigure {
 		std::vector<Point3D> points;
+		std::vector<Point2D> uv;
 		/**
 		 * \brief Normals for calculating lighting. Empty if no lighting.
 		 */
 		std::vector<Vector3D> normals;
 		std::vector<Face> faces;
+		std::optional<Texture> texture;
 		Color ambient;
 		Color diffuse;
 		Color specular;
 		double reflection;
 		unsigned int reflection_int; // Not 0 if defined
+		TextureMapping texture_mapping;
 		/**
 		 * \brief Whether each normal is part of a face or a point.
 		 */
@@ -203,4 +225,6 @@ namespace shapes {
 	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
 
 	img::EasyImage draw(std::vector<TriangleFigure> figures, Lights lights, unsigned int size, img::Color background);
+
+	std::ostream &operator <<(std::ostream &o, const Color &c);
 }

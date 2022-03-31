@@ -1,9 +1,13 @@
 #include "shapes.h"
+#include <algorithm>
+#include <fstream>
 #include <initializer_list>
 #include <limits>
 #include <vector>
 #include "engine.h"
 #include "ini_configuration.h"
+#include "math/matrix2d.h"
+#include "math/matrix4d.h"
 #include "math/vector3d.h"
 #include "shapes/buckyball.h"
 #include "shapes/circle.h"
@@ -146,6 +150,33 @@ namespace shapes {
 		}
 		fig.can_cull = true; // All platonics are solid (& other generated meshes are too)
 		fig.clipped = false;
+
+		// Load texture, if any
+		string tex_path;
+		if (conf.section["texture"].as_string_if_exists(tex_path)) {
+			ifstream f(tex_path);
+			Texture tex;
+			f >> tex.image;
+			fig.texture = tex;
+
+			// Generate UVs (flat mapping by default)
+			Point2D uv_min, uv_max;
+			uv_min.x = uv_min.y = +numeric_limits<double>::infinity();
+			uv_max.x = uv_max.y = -numeric_limits<double>::infinity();
+			fig.uv.reserve(fig.points.size());
+			for (auto &p : fig.points) {
+				Point2D uv(p.x, p.z);
+				fig.uv.push_back(uv);
+				uv_min.x = min(uv_min.x, uv.x);
+				uv_min.y = min(uv_min.y, uv.y);
+				uv_max.x = max(uv_max.x, uv.x);
+				uv_max.y = max(uv_max.y, uv.y);
+			}
+			for (auto &uv : fig.uv) {
+				uv.x = (uv.x - uv_min.x) / (uv_max.x - uv_min.x);
+				uv.y = (uv.y - uv_min.y) / (uv_max.y - uv_min.y);
+			}
+		}
 
 		auto mat = transform_from_conf(conf.section, conf.eye);
 
@@ -836,11 +867,6 @@ namespace shapes {
 
 				auto &f = figures[pair.figure_id];
 
-				auto color = f.ambient;
-#if GRAPHICS_DEBUG_Z > 0
-				color = Color();
-#endif
-
 				// Apply lights
 				// TODO this assumes face normals
 				auto n = f.normals.empty() ? Vector3D() : f.normals[pair.triangle_id];
@@ -856,6 +882,11 @@ namespace shapes {
 				auto cam_dir = (point - Point3D()).normalize();
 
 				n = n.dot(cam_dir) > 0 ? -n : n;
+
+				auto color = f.ambient;
+#if GRAPHICS_DEBUG_Z > 0
+				color = Color();
+#endif
 
 				for (auto &d : lights.directional) {
 					assert(!f.normals.empty());
@@ -944,6 +975,57 @@ namespace shapes {
 						}
 					}
 				}
+
+				// Apply texture
+				if (f.texture.has_value()) {
+					auto t = f.faces[pair.triangle_id];
+					auto abc = f2p(f, t);
+					auto a = abc.a;
+					auto ba = abc.b - a;
+					auto ca = abc.c - a;
+
+					Matrix2D m_xy {{ ba.x, ca.x }, { ba.y, ca.y }};
+					Matrix2D m_yz {{ ba.y, ca.y }, { ba.z, ca.z }};
+					Matrix2D m_xz {{ ba.x, ca.x }, { ba.z, ca.z }};
+
+					Point2D p_xy { point.x - a.x, point.y - a.y };
+					Point2D p_yz { point.y - a.y, point.z - a.z };
+					Point2D p_xz { point.x - a.x, point.z - a.z };
+
+					// Find out which matrix will result in the least precision loss
+					// i.e. find the matrix with the highest determinant.
+					auto d_xy = abs(m_xy.determinant());
+					auto d_yz = abs(m_yz.determinant());
+					auto d_xz = abs(m_xz.determinant());
+
+					Matrix2D m;
+					Point2D p;
+
+					if (d_xy > d_yz) {
+						if (d_xy > d_xz) {
+							m = m_xy;
+							p = p_xy;
+						} else {
+							m = m_xz;
+							p = p_xz;
+						}
+					} else {
+						if (d_xy > d_yz) {
+							m = m_xy;
+							p = p_xy;
+						} else {
+							m = m_yz;
+							p = p_yz;
+						}
+					}
+
+					Point2D uv = p * m.inv();
+					uv = (1 - uv.x - uv.y) * f.uv[t.a].to_vector()
+						+ uv.x * f.uv[t.b].to_vector()
+						+ uv.y * f.uv[t.c].to_vector();
+					color *= Color(f.texture.value().get_clamped(uv));
+				}
+
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
 				color = Color(1, 1, 1) * (pair.inv_z - min_inv_z) / (max_inv_z - min_inv_z);
 #endif
@@ -1007,9 +1089,9 @@ namespace shapes {
 		{
 			Point3D o;
 			o *= lights.eye;
-			auto ox = o + Vector3D::vector(1000, 0, 0) * lights.eye;
-			auto oy = o + Vector3D::vector(0, 1000, 0) * lights.eye;
-			auto oz = o + Vector3D::vector(0, 0, 1000) * lights.eye;
+			auto ox = o + Vector3D(1000, 0, 0) * lights.eye;
+			auto oy = o + Vector3D(0, 1000, 0) * lights.eye;
+			auto oz = o + Vector3D(0, 0, 1000) * lights.eye;
 			Point3D lo(o.x / -o.z * d + offset_x, o.y / -o.z * d + offset_y, o.z);
 			Point3D lox(ox.x / -ox.z * d + offset_x, ox.y / -ox.z * d + offset_y, ox.z);
 			Point3D loy(oy.x / -oy.z * d + offset_x, oy.y / -oy.z * d + offset_y, oy.z);
@@ -1021,5 +1103,9 @@ namespace shapes {
 #endif
 
 		return img;
+	}
+
+	ostream &operator <<(ostream &o, const Color &c) {
+		return o << '(' << c.r << ", " << c.g << ", " << c.b << ')';
 	}
 }

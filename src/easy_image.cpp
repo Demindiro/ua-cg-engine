@@ -185,6 +185,7 @@ img::EasyImage::EasyImage(unsigned int width, unsigned int height, Color color) 
 }
 
 img::EasyImage::EasyImage(EasyImage const &img) : EasyImage(img.get_width(), img.get_height()) {
+	std::cerr << "copy ctor" << std::endl;
 	for (unsigned int y = 0; y < get_height(); y++) {
 		for (unsigned int x = 0; x < get_width(); x++) {
 			(*this)(x, y) = img(x, y);
@@ -192,12 +193,8 @@ img::EasyImage::EasyImage(EasyImage const &img) : EasyImage(img.get_width(), img
 	}
 }
 
-img::EasyImage::~EasyImage() {
-	assert(data != NULL && "data is NULL");
-	free(data);
-}
-
 img::EasyImage &img::EasyImage::operator=(img::EasyImage const &img) {
+	std::cerr << "copy assign" << std::endl;
 	*this = img::EasyImage(img);
 	return *this;
 }
@@ -224,8 +221,7 @@ img::Color &img::EasyImage::operator()(unsigned int x, unsigned int y) {
 	return ((Color *)((char *)data + calc_meta_size() + (size_t)row_size * y))[x];
 }
 
-img::Color const &img::EasyImage::operator()(unsigned int x,
-											 unsigned int y) const {
+img::Color const &img::EasyImage::operator()(unsigned int x, unsigned int y) const {
 	assert(x < get_width());
 	assert(y < get_height());
 	return ((Color *)((char *)data + calc_meta_size() + (size_t)row_size * y))[x];
@@ -413,7 +409,13 @@ std::istream &img::operator>>(std::istream &in, EasyImage &image) {
 	in.seekg(0, std::ios::beg);
 
 	free(image.data);
+	in.read((char *)d, size);
 	image.data = d;
+	image.row_size = (image.get_width() * 3 + 3) & ~3; // Round up to multiple of 4
 
-	return in.read((char *)d, size);
+	return in;
+}
+
+std::ostream &img::operator<<(std::ostream &o, const img::Color &c) {
+	return o << "(" << (int)c.red << ", " << (int)c.green << ", " << (int)c.blue << ")";
 }

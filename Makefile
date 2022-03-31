@@ -16,6 +16,9 @@ build-debug:
 #test: build-debug
 #	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
+test-intro: build-debug
+	cd assets && for f in Intro*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
 test-line-drawings: build-debug
 	cd assets && for f in line_*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
 
@@ -30,6 +33,12 @@ test-clipping: build-debug
 
 test-specular: build-debug
 	cd assets && for f in specular_light*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+
+test-texture: build-debug test-intro assets/honk.bmp
+	cd assets && ../$</engine texture*.ini
+
+assets/honk.bmp: assets/honk.webp
+	ffmpeg -y -i $< $@
 
 test: $(INI)
 

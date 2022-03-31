@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "easy_image.h"
+#include "math/point2d.h"
 #include "math/point3d.h"
 #include "zbuffer.h"
 
@@ -24,12 +25,6 @@ img::EasyImage create_img(
 	double &d,
 	double &offset_x, double &offset_y
 );
-
-struct Point2D {
-	double x, y;
-
-	Point2D(double x, double y) : x(x), y(y) {}
-};
 
 struct Line2D {
 	Point2D a, b;

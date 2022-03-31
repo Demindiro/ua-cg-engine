@@ -31,6 +31,7 @@ set(engine_sources
 	src/l_parser.cpp
 	src/l_system.cpp
 	src/math/matrix4d.cpp
+	src/math/point2d.cpp
 	src/math/vector4d.cpp
 	src/shapes.cpp
 	src/shapes/buckyball.cpp

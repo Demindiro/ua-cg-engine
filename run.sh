@@ -6,6 +6,8 @@ then
 	exit 1
 fi
 
-make -j$(nproc) build \
+(
+	make -j$(nproc) build \
 	&& cd assets \
-	&& perf stat ../build/engine "$1".ini \
+	&& perf stat ../build/engine "$1".ini
+) && ./feh.sh assets/"$1".bmp
