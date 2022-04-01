@@ -38,8 +38,12 @@ void ZBuffer::triangle(
 	// Y bounds
 	double y_min = min(min(a.y, b.y), c.y);
 	double y_max = max(max(a.y, b.y), c.y);
-	unsigned int from_y = round_up(y_min + 0.5);
-	unsigned int to_y   = round_up(y_max - 0.5);
+	// 1.0 --> round(1.5) --> 2.0
+	// 1.9 --> floor(2.9) --> 2.0
+	unsigned int from_y = (unsigned int)y_min + 1;
+	// 1.0 --> round(0.5) --> 1.0
+	// 1.0 --> floor(1.0) --> 1.0
+	unsigned int to_y = y_max;
 
 	for (unsigned int y = from_y; y <= to_y; y++) {
 		// Find intersections
@@ -57,8 +61,8 @@ void ZBuffer::triangle(
 		// X bounds
 		double x_min = min(xl, xr);
 		double x_max = max(xl, xr);
-		unsigned int from_x = round_up(x_min + 0.5);
-		unsigned int to_x   = round_up(x_max - 0.5);
+		unsigned int from_x = (unsigned int)x_min + 1;
+		unsigned int to_x   = x_max;
 
 		for (unsigned int x = from_x; x <= to_x; x++) {
 			auto inv_z = bias * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
