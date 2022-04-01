@@ -11,11 +11,6 @@ struct Face {
 	unsigned int a, b, c;
 };
 
-constexpr Point2D project(Point3D p) {
-	assert(p.z != 0 && "division by 0");
-	return { p.x / -p.z, p.y / -p.z };
-}
-
 struct TriangleFigure {
 	std::vector<Point3D> points;
 	std::vector<Point2D> uv;

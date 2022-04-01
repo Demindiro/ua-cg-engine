@@ -10,12 +10,10 @@
 
 namespace engine {
 namespace shapes {
-	void fractal(std::vector<Point3D> &points, std::vector<Edge> &edges, double scale, unsigned int iterations);
 
-	void fractal(std::vector<Point3D> &points, std::vector<render::Face> &faces, double scale, unsigned int iterations);
+void fractal(const ini::Section &, const ShapeTemplateAny &, EdgeShape &);
 
-	void fractal(const FigureConfiguration &, std::vector<Point3D> &points, std::vector<Edge> &edges);
+void fractal(const ini::Section &, const ShapeTemplateAny &, FaceShape &);
 
-	void fractal(const FigureConfiguration &, std::vector<Point3D> &points, std::vector<render::Face> &faces);
 }
 }

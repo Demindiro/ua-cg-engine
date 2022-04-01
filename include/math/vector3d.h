@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <ostream>
 
 struct Vector3D {
 
@@ -74,3 +75,5 @@ struct Vector3D {
 constexpr Vector3D operator *(double lhs, const Vector3D &rhs) {
 	return rhs * lhs;
 }
+
+std::ostream &operator <<(std::ostream &o, const Vector3D &m);

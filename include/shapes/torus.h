@@ -9,9 +9,9 @@
 namespace engine {
 namespace shapes {
 
-void torus(const FigureConfiguration &conf, std::vector<Line3D> &lines);
+void torus(const ini::Section &, EdgeShape &);
 
-render::TriangleFigure torus(const FigureConfiguration &conf);
+void torus(const ini::Section &, FaceShape &);
 
 }
 }

@@ -77,6 +77,18 @@ struct Rotation {
 	constexpr Rotation() : u(1), v(0) {}
 	constexpr Rotation(double a) : u(std::cos(a)), v(std::sin(a)) {}
 	constexpr Rotation(double u, double v) : u(u), v(v) {}
+	constexpr Rotation(Vector2D a, Vector2D b) : u(NAN), v(NAN) {
+		if (a == Vector2D() || b == Vector2D()) {
+			u = 1;
+			v = 0;
+		} else {
+			a = a.normalize();
+			b = b.normalize();
+			u = a.dot(b);
+			v = std::sqrt(1 - u * u);
+			v = a.cross(b) < 0 ? -v : v;
+		}
+	}
 
 	constexpr Rotation inv() const {
 		return { u, -v };

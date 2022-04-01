@@ -50,23 +50,22 @@ set(engine_sources
 	src/l_system.cpp
 	src/math/matrix4d.cpp
 	src/math/point2d.cpp
+	src/math/vector2d.cpp
+	src/math/vector3d.cpp
 	src/math/vector4d.cpp
 	src/render/color.cpp
 	src/render/fragment.cpp
+	src/render/fragment/edges.cpp
+	src/render/fragment/faces.cpp
 	src/render/geometry.cpp
 	src/render/triangle.cpp
 	src/shapes.cpp
-	src/shapes/buckyball.cpp
 	src/shapes/cone.cpp
 	src/shapes/circle.cpp
-	src/shapes/cube.cpp
 	src/shapes/cylinder.cpp
-	src/shapes/dodecahedron.cpp
 	src/shapes/fractal.cpp
-	src/shapes/icosahedron.cpp
-	src/shapes/tetrahedron.cpp
-	src/shapes/octahedron.cpp
 	src/shapes/sphere.cpp
+	src/shapes/thicken.cpp
 	src/shapes/torus.cpp
 	src/wireframe.cpp
 	src/zbuffer.cpp

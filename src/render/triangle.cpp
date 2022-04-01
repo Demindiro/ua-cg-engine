@@ -7,6 +7,7 @@
 #include "math/vector3d.h"
 #include "lines.h"
 #include "easy_image.h"
+#include "render/geometry.h"
 #include "render/rect.h"
 
 using namespace std;

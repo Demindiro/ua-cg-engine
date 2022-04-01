@@ -8,8 +8,8 @@
 
 namespace engine {
 namespace shapes {
-	void cone(const FigureConfiguration &conf, std::vector<Line3D> &lines);
+	void cone(const ini::Section &, EdgeShape &);
 
-	render::TriangleFigure cone(const FigureConfiguration &conf);
+	void cone(const ini::Section &, FaceShape &);
 }
 }

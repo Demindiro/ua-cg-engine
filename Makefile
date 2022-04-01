@@ -37,6 +37,9 @@ test-specular: build-debug
 test-texture: build-debug test-intro | assets/honk.bmp
 	cd assets && ../$</engine texture*.ini
 
+test-thicken: build-debug
+	cd assets && ../$</engine spheres_and_cylinders*.ini
+
 assets/%.bmp: assets/%.ini build
 	cd assets && ../build/engine $(patsubst assets/%,%,$<)
 
@@ -82,4 +85,13 @@ clean-images::
 	rm -rf assets/*.bmp
 
 loop::
-	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ src/render/ include/ include/shapes/ include/math/ include/render/; done
+	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt \
+		src/ \
+		src/shapes/ \
+		src/render/ \
+		src/render/fragment/ \
+		include/ \
+		include/shapes/ \
+		include/math/ \
+		include/render/\
+	; done

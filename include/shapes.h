@@ -14,67 +14,110 @@
 #include "math/point3d.h"
 #include "math/vector3d.h"
 #include "render/color.h"
+#include "render/lines.h"
 #include "render/triangle.h"
 
 namespace engine {
 namespace shapes {
 
-	struct Edge {
-		unsigned int a, b;
+template<unsigned int points_count, unsigned int edges_count, unsigned int faces_count>
+struct ShapeTemplate {
+	std::array<Point3D, points_count> points;
+	std::array<render::Edge, edges_count> edges;
+	std::array<render::Face, faces_count> faces;
 
-		bool operator<(const Edge &rhs) const {
-			auto ll = std::min(a, b), lh = std::max(a, b);
-			auto rl = std::min(rhs.a, rhs.b), rh = std::max(rhs.a, rhs.b);
-			return ll == rl ? lh < rh : ll < rl;
-		}
-	};
+	constexpr ShapeTemplate<points_count, edges_count, faces_count>(
+		std::array<Point3D, points_count> points,
+		std::array<render::Edge, edges_count> edges,
+		std::array<render::Face, faces_count> faces
+	) : points(points), edges(edges), faces(faces) {}
 
-	struct FigureConfiguration {
-		ini::Section &section;
-		Matrix4D eye;
-		bool with_lighting;
-		bool face_normals;
-	};
-
-	Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection);
-
-	render::Color color_from_conf(const ini::Section &conf);
-
-	/**
-	 * \brief Generic face normal calculator.
-	 */
-	std::vector<Vector3D> calculate_face_normals(const std::vector<Point3D> &points, const std::vector<render::Face> &faces);
-
-	void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, const Point3D *points, unsigned int points_len, const Edge *edges, unsigned int edges_len);
-	
-	template<size_t points_size, size_t edges_size>
-	inline void platonic(
-		const FigureConfiguration &conf,
-		std::vector<Line3D> &lines,
-		const std::array<Point3D, points_size> &points,
-		const std::array<Edge, edges_size> &edges
-	) {
-		platonic(conf, lines, points.data(), points_size, edges.data(), edges_size);
+	template<typename F, typename G, typename H>
+	constexpr ShapeTemplate<points_count, edges_count, faces_count>(F f, G g, H h) {
+		points = f();
+		edges = g(points);
+		faces = h(points, edges);
 	}
+};
 
-	inline void platonic(const FigureConfiguration &conf, std::vector<Line3D> &lines, std::vector<Point3D> points, std::vector<Edge> edges) {
-		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
+struct EdgeShape {
+	std::vector<Point3D> points;
+	std::vector<render::Edge> edges;
+
+	EdgeShape() {}
+
+	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>
+	EdgeShape(const ShapeTemplate<points_c, edges_c, faces_c> &t)
+		: points({ t.points.begin(), t.points.end() })
+		, edges({ t.edges.begin(), t.edges.end() })
+	{}
+
+	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>
+	EdgeShape &operator =(const ShapeTemplate<points_c, edges_c, faces_c> &t) {
+		points = { t.points.begin(), t.points.end() };
+		edges = { t.edges.begin(), t.edges.end() };
+		return *this;
 	}
-	
-	template<size_t points_size, size_t faces_size>
-	inline render::TriangleFigure platonic(
-		const FigureConfiguration &conf,
-		const std::array<Point3D, points_size> &points,
-		const std::array<render::Face, faces_size> &faces
-	) {
-		return platonic(conf, { points.begin(), points.end() }, { faces.begin(), faces.end() });
+};
+
+struct FaceShape {
+	std::vector<Point3D> points;
+	std::vector<render::Face> faces;
+
+	FaceShape() {}
+
+	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>
+	FaceShape(const ShapeTemplate<points_c, edges_c, faces_c> &t)
+		: points({ t.points.begin(), t.points.end() })
+		, faces({ t.faces.begin(), t.faces.end() })
+	{}
+
+	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>
+	FaceShape &operator =(const ShapeTemplate<points_c, edges_c, faces_c> &t) {
+		points = { t.points.begin(), t.points.end() };
+		faces = { t.faces.begin(), t.faces.end() };
+		return *this;
 	}
+};
 
-	render::TriangleFigure platonic(const FigureConfiguration &conf, std::vector<Point3D> points, std::vector<render::Face> faces);
+struct ShapeTemplateAny {
+	const Point3D *points;
+	const render::Edge *edges;
+	const render::Face *faces;
+	unsigned int points_size, edges_size, faces_size;
 
-	img::EasyImage wireframe(const ini::Configuration &, bool with_z);
+	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>
+	ShapeTemplateAny(const ShapeTemplate<points_c, edges_c, faces_c> &shape) 
+		: points(shape.points.data())
+		, edges(shape.edges.data())
+		, faces(shape.faces.data())
+		, points_size(shape.points.size())
+		, edges_size(shape.edges.size())
+		, faces_size(shape.faces.size())
+	{}
 
-	img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
+	ShapeTemplateAny(const EdgeShape &shape)
+		: points(shape.points.data())
+		, edges(shape.edges.data())
+		, faces(nullptr)
+		, points_size(shape.points.size())
+		, edges_size(shape.edges.size())
+		, faces_size(0)
+	{}
+};
+
+Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection);
+
+render::Color color_from_conf(const ini::Section &conf);
+
+/**
+ * \brief Generic face normal calculator.
+ */
+std::vector<Vector3D> calculate_face_normals(const std::vector<Point3D> &points, const std::vector<render::Face> &faces);
+
+img::EasyImage wireframe(const ini::Configuration &, bool with_z);
+
+img::EasyImage triangles(const ini::Configuration &, bool with_lighting);
 
 }
 }

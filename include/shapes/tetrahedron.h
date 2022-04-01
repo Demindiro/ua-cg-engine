@@ -9,13 +9,28 @@
 namespace engine {
 namespace shapes {
 
-void tetrahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
-
-render::TriangleFigure tetrahedron(const FigureConfiguration &conf);
-
-void fractal_tetrahedron(const FigureConfiguration &conf, std::vector<Line3D> &lines);
-
-render::TriangleFigure fractal_tetrahedron(const FigureConfiguration &conf);
+const ShapeTemplate<4, 6, 4> tetrahedron {
+	{{
+		{  1, -1, -1 },
+		{ -1,  1, -1 },
+		{  1,  1,  1 },
+		{ -1, -1,  1 },
+	}},
+	{{
+		{ 0, 1 },
+		{ 0, 2 },
+		{ 0, 3 },
+		{ 1, 2 },
+		{ 1, 3 },
+		{ 2, 3 },
+	}},
+	{{
+		{ 0, 1, 2 },
+		{ 0, 3, 1 },
+		{ 0, 2, 3 },
+		{ 2, 1, 3 },
+	}},
+};
 
 }
 }
