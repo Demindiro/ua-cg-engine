@@ -35,6 +35,7 @@ set(engine_sources
 	src/math/vector4d.cpp
 	src/render/color.cpp
 	src/render/fragment.cpp
+	src/render/triangle.cpp
 	src/shapes.cpp
 	src/shapes/buckyball.cpp
 	src/shapes/cone.cpp

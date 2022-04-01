@@ -6,6 +6,7 @@
 #include "math/vector3d.h"
 #include "lines.h"
 #include "easy_image.h"
+#include "render/rect.h"
 
 /** If something looks off (vs examples), try changing these values **/
 
@@ -91,28 +92,22 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 				zfigs.swap(lights.zfigures);
 			}
 
-			double min_x, max_x, min_y, max_y;
-			min_x = min_y = +numeric_limits<double>::infinity();
-			max_x = max_y = -numeric_limits<double>::infinity();
-
+			Rect rect;
+			rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
+			rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
 			for (auto &f : zfigs) {
 				for (auto &a : f.points) {
 					a *= p.cached.eye;
-					assert(a.z != 0 && "division by 0");
-					min_x = min(min_x, a.x / -a.z);
-					min_y = min(min_y, a.y / -a.z);
-					max_x = max(max_x, a.x / -a.z);
-					max_y = max(max_y, a.y / -a.z);
+					rect |= project(a);
 				}
 			}
 
 			// Create ZBuffer
-			double d = NAN, dx = NAN, dy = NAN, img_x, img_y;
-			calc_image_parameters(min_x, min_y, max_x, max_y, lights.shadow_mask, d, dx, dy, img_x, img_y);
-			p.cached.zbuf = ZBuffer(img_x, img_y);
-			p.cached.d = d;
-			p.cached.dx = dx;
-			p.cached.dy = dy;
+			{
+				Vector2D dim;
+				calc_image_parameters(rect, lights.shadow_mask, p.cached.d, p.cached.offset, dim);
+				p.cached.zbuf = ZBuffer(round_up(dim.x), round_up(dim.y));
+			}
 
 			// Fill in ZBuffer with figure & triangle IDs
 			assert(figures.size() < UINT16_MAX);
@@ -125,53 +120,32 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 					auto a = abc.a, b = abc.b, c = abc.c;
 					auto norm = (b - a).cross(c - a);
 					if (!f.can_cull || norm.dot(abc.a - Point3D()) <= 0) {
-						p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.dx, p.cached.dy, 1);
+						p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.offset, 1);
 					}
 				}
 			}
 		}
 	}
 
-	// Determine bounds
-	double min_x, max_x, min_y, max_y;
-	min_x = min_y = +numeric_limits<double>::infinity();
-	max_x = max_y = -numeric_limits<double>::infinity();
-	for (auto &f : figures) {
-		if (f.clipped) {
-			for (auto &t : f.faces) {
-				auto abc = f2p(f, t);
-				auto a = abc.a, b = abc.b, c = abc.c;
-				assert(a.z != 0 && "division by 0");
-				assert(b.z != 0 && "division by 0");
-				assert(c.z != 0 && "division by 0");
-				min_x = min(min(min_x, a.x / -a.z), min(b.x / -b.z, c.x / -c.z));
-				min_y = min(min(min_y, a.y / -a.z), min(b.y / -b.z, c.y / -c.z));
-				max_x = max(max(max_x, a.x / -a.z), max(b.x / -b.z, c.x / -c.z));
-				max_y = max(max(max_y, a.y / -a.z), max(b.y / -b.z, c.y / -c.z));
-			}
-		} else {
-			for (auto &a : f.points) {
-				assert(a.z != 0 && "division by 0");
-				min_x = min(min_x, a.x / -a.z);
-				min_y = min(min_y, a.y / -a.z);
-				max_x = max(max_x, a.x / -a.z);
-				max_y = max(max_y, a.y / -a.z);
-			}
-		}
-	}
-
-	// TODO wdym "unitialized", GCC?
-	double d = NAN, offset_x = NAN, offset_y = NAN;
-	auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
-
-	assert(!isnan(d));
-	assert(!isnan(offset_x));
-	assert(!isnan(offset_y));
-
 	// Preprocess figures to speed up some later operations
 	for (auto &f : figures) {
 		f.ambient *= lights.ambient;
 	}
+
+	Rect dim;
+	dim.min.x = dim.min.y = +numeric_limits<double>::infinity();
+	dim.max.x = dim.max.y = -numeric_limits<double>::infinity();
+	for (auto &f : figures) {
+		dim |= f.bounds_projected();
+	}
+
+	double d;
+	Vector2D offset;
+	auto img = create_img(dim, size, background, d, offset);
+
+	assert(!isnan(d));
+	assert(!isnan(offset.x));
+	assert(!isnan(offset.y));
 
 	TaggedZBuffer zbuf(img.get_width(), img.get_height());
 
@@ -185,11 +159,11 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			auto abc = f2p(f, t);
 			auto a = abc.a, b = abc.b, c = abc.c;
 #if GRAPHICS_DEBUG_Z == 2
-			if (!f.can_cull || f.normals[k].dot(abc.a - Point3D()) <= 0) {
-#else
 			{
+#else
+			if (!f.can_cull || f.normals[k].dot(a - Point3D()) <= 0) {
 #endif
-				zbuf.triangle(a, b, c, d, offset_x, offset_y, {i, k, NAN}, Z_BIAS);
+				zbuf.triangle(a, b, c, d, offset, {i, k, NAN}, Z_BIAS);
 			}
 		}
 	}
@@ -255,8 +229,8 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			// Given: x', y', 1/z, dx, dy
 			// x' = x / -z * d + dx => x = (x' - dx) * -z / d, ditto for y
 			Point3D point(
-				(x - offset_x) / (d * -pair.inv_z),
-				(y - offset_y) / (d * -pair.inv_z),
+				(x - offset.x) / (d * -pair.inv_z),
+				(y - offset.y) / (d * -pair.inv_z),
 				1 / pair.inv_z
 			);
 			auto cam_dir = (point - Point3D()).normalize();
@@ -299,8 +273,8 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 					// Check if shadowed
 					if (lights.shadows) {
 						auto l = point * p.cached.eye;
-						auto lx = l.x / -l.z * p.cached.d + p.cached.dx;
-						auto ly = l.y / -l.z * p.cached.d + p.cached.dy;
+						auto lx = l.x / -l.z * p.cached.d + p.cached.offset.x;
+						auto ly = l.y / -l.z * p.cached.d + p.cached.offset.y;
 						assert(!isinf(lx) && !isnan(lx));
 						assert(!isinf(ly) && !isnan(ly));
 						auto fx = floor(lx);

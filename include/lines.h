@@ -5,26 +5,25 @@
 #include "math/point2d.h"
 #include "math/point3d.h"
 #include "render/color.h"
+#include "render/rect.h"
 #include "zbuffer.h"
 
 namespace engine {
 
 void calc_image_parameters(
-	double min_x, double min_y,
-	double max_x, double max_y,
+	const render::Rect &bounds,
 	uint size,
 	double &d,
-	double &offset_x, double &offset_y,
-	double &img_x, double &img_y
+	Vector2D &offset,
+	Vector2D &dimensions
 );
 
 img::EasyImage create_img(
-	double min_x, double min_y,
-	double max_x, double max_y,
+	const render::Rect &bounds,
 	uint size,
-	render::Color background,
+	const render::Color &background,
 	double &d,
-	double &offset_x, double &offset_y
+	Vector2D &offset
 );
 
 struct Line2D {

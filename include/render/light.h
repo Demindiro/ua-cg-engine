@@ -20,7 +20,8 @@ struct PointLight {
 	struct {
 		Matrix4D eye;
 		ZBuffer zbuf;
-		double d, dx, dy;
+		double d;
+		Vector2D offset;
 	} cached;
 };
 

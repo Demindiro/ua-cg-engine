@@ -1,6 +1,7 @@
 #pragma once
 
 #include "render/color.h"
+#include "render/rect.h"
 #include "render/texture.h"
 
 namespace engine {
@@ -9,6 +10,11 @@ namespace render {
 struct Face {
 	unsigned int a, b, c;
 };
+
+constexpr Point2D project(Point3D p) {
+	assert(p.z != 0 && "division by 0");
+	return { p.x / -p.z, p.y / -p.z };
+}
 
 struct TriangleFigure {
 	std::vector<Point3D> points;
@@ -30,6 +36,8 @@ struct TriangleFigure {
 	bool face_normals;
 	bool can_cull;
 	bool clipped;
+
+	Rect bounds_projected() const;
 };
 
 /**
@@ -56,6 +64,8 @@ struct ZBufferTriangleFigure {
 			points.push_back(p * mat);
 		}
 	}
+
+	Rect bounds_projected() const;
 
 	static std::vector<ZBufferTriangleFigure> convert(const std::vector<TriangleFigure> &figs) {
 		std::vector<ZBufferTriangleFigure> zfigs;

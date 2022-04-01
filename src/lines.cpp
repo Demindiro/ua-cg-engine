@@ -5,7 +5,11 @@
 #include "easy_image.h"
 #include "engine.h"
 #include "render/color.h"
+#include "render/rect.h"
+#include "render/triangle.h"
 #include "zbuffer.h"
+
+#define MARGIN (0.95)
 
 namespace engine {
 
@@ -15,42 +19,36 @@ using namespace render;
 typedef unsigned int uint;
 
 void calc_image_parameters(
-	double min_x, double min_y,
-	double max_x, double max_y,
-	uint size,
+	const Rect &bounds,
+	const uint px_size,
 	double &d,
-	double &offset_x, double &offset_y,
-	double &img_x, double &img_y
+	Vector2D &offset,
+	Vector2D &dimensions
 ) {
-	// Determine size, scale & offset
-	double size_x = max_x - min_x, size_y = max_y - min_y;
+	auto size = bounds.size();
 
 	// Don't bother if the width or height is 0
-	if (size_x == 0 || size_y == 0) {
-		img_x = img_y = 0;
+	if (size.x == 0 || size.y == 0) {
+		dimensions.x = dimensions.y = 0;
 		return;
 	}
 
-	double img_s = size / max(size_x, size_y);
-	img_x = size_x * img_s;
-	img_y = size_y * img_s;
+	dimensions = size * px_size / max(size.x, size.y);
 
-	d = img_x / size_x * 0.95;
-	offset_x = (img_x - d * (min_x + max_x)) / 2;
-	offset_y = (img_y - d * (min_y + max_y)) / 2;
+	d = dimensions.x / size.x * MARGIN;
+	offset = (dimensions - d * (bounds.min.to_vector() + bounds.max.to_vector())) / 2;
 }
 
 img::EasyImage create_img(
-	double min_x, double min_y,
-	double max_x, double max_y,
-	uint size,
-	Color background,
+	const Rect &bounds,
+	const uint px_size,
+	const Color &background,
 	double &d,
-	double &offset_x, double &offset_y
+	Vector2D &offset
 ) {
-	double img_x, img_y;
-	calc_image_parameters(min_x, min_y, max_x, max_y, size, d, offset_x, offset_y, img_x, img_y);
-	return img::EasyImage(round_up(img_x), round_up(img_y), background.to_img_color());
+	Vector2D img;
+	calc_image_parameters(bounds, px_size, d, offset, img);
+	return img::EasyImage(round_up(img.x), round_up(img.y), background.to_img_color());
 }
 
 void Line2D::draw(img::EasyImage &img) const {
@@ -67,23 +65,21 @@ img::EasyImage Lines2D::draw(uint size, Color background) const {
 	}
 
 	// Determine bounds
-	double min_x, max_x, min_y, max_y;
-	min_x = min_y = +numeric_limits<double>::infinity();
-	max_x = max_y = -numeric_limits<double>::infinity();
+	Rect rect;
+	rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
+	rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
 	for (auto &l : lines) {
-		min_x = min(min(min_x, l.a.x), l.b.x);
-		max_x = max(max(max_x, l.a.x), l.b.x);
-		min_y = min(min(min_y, l.a.y), l.b.y);
-		max_y = max(max(max_y, l.a.y), l.b.y);
+		rect = rect | l.a | l.b;
 	}
 
-	double d, offset_x, offset_y;
-	auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
+	double d;
+	Vector2D offset;
+	auto img = create_img(rect, size, background, d, offset);
 
 	// Transform & draw lines
 	for (auto &l : this->lines) {
-		Point2D a(l.a.x * d + offset_x, l.a.y * d + offset_y);
-		Point2D b(l.b.x * d + offset_x, l.b.y * d + offset_y);
+		Point2D a(l.a.x * d + offset.x, l.a.y * d + offset.y);
+		Point2D b(l.b.x * d + offset.x, l.b.y * d + offset.y);
 		Line2D(a, b, l.color).draw(img);
 	}
 
@@ -109,32 +105,31 @@ img::EasyImage Lines3D::draw(uint size, Color background, bool with_z) const {
 	}
 
 	// Determine bounds
-	double min_x, max_x, min_y, max_y;
-	min_x = min_y = +numeric_limits<double>::infinity();
-	max_x = max_y = -numeric_limits<double>::infinity();
+	Rect rect;
+	rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
+	rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
 	for (auto &l : lines) {
-		min_x = min(min(min_x, l.a.x / -l.a.z), l.b.x / -l.b.z);
-		max_x = max(max(max_x, l.a.x / -l.a.z), l.b.x / -l.b.z);
-		min_y = min(min(min_y, l.a.y / -l.a.z), l.b.y / -l.b.z);
-		max_y = max(max(max_y, l.a.y / -l.a.z), l.b.y / -l.b.z);
+		rect |= project(l.a);
+		rect |= project(l.b);
 	}
 
-	double d, offset_x, offset_y;
-	auto img = create_img(min_x, min_y, max_x, max_y, size, background, d, offset_x, offset_y);
+	double d;
+	Vector2D offset;
+	auto img = create_img(rect, size, background, d, offset);
 
 	// Transform & draw lines
 	if (with_z) {
 		ZBuffer z(img.get_width(), img.get_height());
 		for (auto &l : this->lines) {
-			Point3D a(l.a.x / -l.a.z * d + offset_x, l.a.y / -l.a.z * d + offset_y, l.a.z);
-			Point3D b(l.b.x / -l.b.z * d + offset_x, l.b.y / -l.b.z * d + offset_y, l.b.z);
-			Line3D(a, b, l.color).draw(img, z);
+			auto a = project(l.a).to_vector() * d + offset;
+			auto b = project(l.b).to_vector() * d + offset;
+			Line3D(Point3D(a.x, a.y, l.a.z), Point3D(b.x, b.y, l.b.z), l.color).draw(img, z);
 		}
 	} else {
 		for (auto &l : this->lines) {
-			Point2D a(l.a.x / -l.a.z * d + offset_x, l.a.y / -l.a.z * d + offset_y);
-			Point2D b(l.b.x / -l.b.z * d + offset_x, l.b.y / -l.b.z * d + offset_y);
-			Line2D(a, b, l.color).draw(img);
+			auto a = project(l.a).to_vector() * d + offset;
+			auto b = project(l.b).to_vector() * d + offset;
+			Line2D(Point2D(a), Point2D(b), l.color).draw(img);
 		}
 	}
 

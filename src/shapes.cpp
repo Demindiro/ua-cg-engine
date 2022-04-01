@@ -445,7 +445,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 						try_color_from_conf(diffuse),
 						try_color_from_conf(specular),
 						cos(a),
-						{ Matrix4D(), ZBuffer(0, 0), NAN, NAN, NAN },
+						{ Matrix4D(), ZBuffer(0, 0), NAN, Vector2D() },
 					});
 				}
 			}

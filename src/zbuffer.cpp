@@ -10,7 +10,7 @@ using namespace std;
 template<typename F>
 void ZBuffer::triangle(
 	Point3D a, Point3D b, Point3D c,
-	double d, double dx, double dy,
+	double d, Vector2D offset,
 	double bias,
 	F callback
 ) {
@@ -27,9 +27,9 @@ void ZBuffer::triangle(
 	}
 	
 	// Project
-	a.x = a.x * (d / -a.z) + dx, a.y = a.y * (d / -a.z) + dy;
-	b.x = b.x * (d / -b.z) + dx, b.y = b.y * (d / -b.z) + dy;
-	c.x = c.x * (d / -c.z) + dx, c.y = c.y * (d / -c.z) + dy;
+	a.x = a.x * (d / -a.z) + offset.x, a.y = a.y * (d / -a.z) + offset.y;
+	b.x = b.x * (d / -b.z) + offset.x, b.y = b.y * (d / -b.z) + offset.y;
+	c.x = c.x * (d / -c.z) + offset.x, c.y = c.y * (d / -c.z) + offset.y;
 
 	// These center coordaintes must be projected.
 	double g_x = (a.x + b.x + c.x) / 3;
@@ -43,12 +43,12 @@ void ZBuffer::triangle(
 
 	for (unsigned int y = from_y; y <= to_y; y++) {
 		// Find intersections
-		auto f = [y](Point3D &p, Point3D &q, double def = INFINITY) {
+		auto f = [y](Point3D p, Point3D q, double def = INFINITY) {
 			return (y - p.y) * (y - q.y) <= 0
 				? q.x + (p.x - q.x) * (y - q.y) / (p.y - q.y)
 				: def;
 		};
-		auto g = [f](Point3D &p, Point3D &q) {
+		auto g = [f](Point3D p, Point3D q) {
 			return f(p, q, -INFINITY);
 		};
 		double xl = min(min(f(a, b), f(b, c)), f(c, a));
@@ -69,12 +69,12 @@ void ZBuffer::triangle(
 	}
 }
 
-void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, double bias) {
-	triangle(a, b, c, d, dx, dy, bias, [](auto, auto) {});
+void ZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, Vector2D offset, double bias) {
+	triangle(a, b, c, d, offset, bias, [](auto, auto) {});
 }
 
-void TaggedZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair pair, double bias) {
-	ZBuffer::triangle(a, b, c, d, dx, dy, bias, [this, &pair](auto x, auto y) {
+void TaggedZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, Vector2D offset, IdPair pair, double bias) {
+	ZBuffer::triangle(a, b, c, d, offset, bias, [this, &pair](auto x, auto y) {
 		figure_ids[x + y * get_width()] = pair.figure_id;
 		triangle_ids[x + y * get_width()] = pair.triangle_id;
 	});
