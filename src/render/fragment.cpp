@@ -4,6 +4,7 @@
 #include "math/matrix2d.h"
 #include "math/matrix4d.h"
 #include "math/vector3d.h"
+#include "engine.h"
 #include "lines.h"
 #include "easy_image.h"
 #include "render/rect.h"
@@ -56,6 +57,152 @@ Matrix4D look_direction(Point3D pos, Vector3D dir) {
 	return look_direction(pos, dir, stub);
 }
 
+/**
+ * \brief Apply specular light.
+ */
+static ALWAYS_INLINE optional<Color> specular(const TriangleFigure &f, Color c, double dot, Vector3D n, Vector3D cam_dir, Vector3D direction) {
+	auto r = 2 * dot * n + direction;
+	auto rdot = r.dot(-cam_dir);
+	if (rdot > 0) {
+		double v = f.reflection_int != 0
+			? pow_uint(rdot, f.reflection_int)
+			: pow(rdot, f.reflection);
+		return f.specular * c * v;
+	}
+	return optional<Color>();
+}
+
+/**
+ * \brief Apply directional light.
+ */
+static ALWAYS_INLINE optional<Color> directional_light(const TriangleFigure &f, const DirectionalLight &light, Vector3D n, Vector3D cam_dir) {
+	auto dot = n.dot(-light.direction);
+	if (dot > 0) {
+		// Diffuse
+		auto color = f.diffuse * light.diffuse * dot;
+		// Specular
+		auto s = specular(f, light.specular, dot, n, cam_dir, light.direction);
+		if (s.has_value()) {
+			color += *s;
+		}
+		return optional(color);
+	}
+	return optional<Color>();
+}
+
+/**
+ * \brief Determine if a shadow is cast at the given point.
+ */
+static ALWAYS_INLINE bool shadowed(const PointLight &p, Point3D point) {
+	auto l = point * p.cached.eye;
+	auto lx = l.x / -l.z * p.cached.d + p.cached.offset.x;
+	auto ly = l.y / -l.z * p.cached.d + p.cached.offset.y;
+	assert(!isinf(lx) && !isnan(lx));
+	assert(!isinf(ly) && !isnan(ly));
+	auto fx = floor(lx);
+	auto fy = floor(ly);
+	auto cx = fx + 1;
+	auto cy = fy + 1;
+	auto get_z = [&p](unsigned int x, unsigned int y) {
+		return x < p.cached.zbuf.get_width() && y < p.cached.zbuf.get_height()
+			? ((const ZBuffer &)p.cached.zbuf)(x, y)
+			: numeric_limits<double>::infinity();
+	};
+	auto cxa = lx - fx;
+	auto cya = ly - fy;
+	auto fxa = 1 - cxa;
+	auto fya = 1 - cya;
+	assert(1 >= fxa && fxa >= 0);
+	assert(1 >= fya && fya >= 0);
+	assert(1 >= cxa && cxa >= 0);
+	assert(1 >= cya && cya >= 0);
+	auto inv_z = (
+		(
+			+ get_z(fx, fy) * fxa
+			+ get_z(cx, fy) * cxa
+		) * fya + (
+			+ get_z(fx, cy) * fxa
+			+ get_z(cx, cy) * cxa
+		) * cya
+	);
+	assert(!isnan(inv_z) && "shadow 1/z is NaN");
+
+	return inv_z + Z_SHADOW_BIAS < 1 / l.z;
+}
+
+/**
+ * \brief Apply point light.
+ */
+static ALWAYS_INLINE optional<Color> point_light(const TriangleFigure &f, const PointLight &light, Point3D point, bool shadows, Vector3D n, Vector3D cam_dir) {
+	auto direction = (point - light.point).normalize();
+	auto dot = n.dot(-direction);
+	if (dot > 0) {
+		// Check if shadowed
+		if (shadows && shadowed(light, point)) {
+			return optional<Color>();
+		}
+		// Diffuse
+		auto color = f.diffuse * light.diffuse * max(1 - (1 - dot) / (1 - light.spot_angle_cos), 0.0);
+		// Specular
+		auto s = specular(f, light.specular, dot, n, cam_dir, direction);
+		if (s.has_value()) {
+			color += *s;
+		}
+		return optional(color);
+	}
+	return optional<Color>();
+}
+
+/**
+ * \brief Get the color at a point from an associated texture.
+ */
+static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Point3D point) {
+	auto a = f.points[t.a];
+	auto ba = f.points[t.b] - a;
+	auto ca = f.points[t.c] - a;
+
+	Matrix2D m_xy {{ ba.x, ca.x }, { ba.y, ca.y }};
+	Matrix2D m_yz {{ ba.y, ca.y }, { ba.z, ca.z }};
+	Matrix2D m_xz {{ ba.x, ca.x }, { ba.z, ca.z }};
+
+	Point2D p_xy { point.x - a.x, point.y - a.y };
+	Point2D p_yz { point.y - a.y, point.z - a.z };
+	Point2D p_xz { point.x - a.x, point.z - a.z };
+
+	// Find out which matrix will result in the least precision loss
+	// i.e. find the matrix with the highest determinant.
+	auto d_xy = abs(m_xy.determinant());
+	auto d_yz = abs(m_yz.determinant());
+	auto d_xz = abs(m_xz.determinant());
+
+	Matrix2D m;
+	Point2D p;
+
+	if (d_xy > d_yz) {
+		if (d_xy > d_xz) {
+			m = m_xy;
+			p = p_xy;
+		} else {
+			m = m_xz;
+			p = p_xz;
+		}
+	} else {
+		if (d_xy > d_yz) {
+			m = m_xy;
+			p = p_xy;
+		} else {
+			m = m_yz;
+			p = p_yz;
+		}
+	}
+
+	Point2D uv = p * m.inv();
+	uv = (1 - uv.x - uv.y) * f.uv[t.a].to_vector()
+		+ uv.x * f.uv[t.b].to_vector()
+		+ uv.y * f.uv[t.c].to_vector();
+	return Color(f.texture.value().get_clamped(uv));
+}
+
 img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background) {
 
 	if (figures.empty()) {
@@ -74,7 +221,6 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 	};
 
 	// Process point light shadows first
-	// FIXME we need the original figures *before* clipping
 	if (lights.shadows) {
 		auto &inv_project = lights.inv_eye;
 
@@ -243,141 +389,20 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 #endif
 
 			for (auto &d : lights.directional) {
-				assert(!f.normals.empty());
-				//auto n = f.normals[pair.triangle_id];
-				assert(f.faces.size() == f.normals.size() && "No normals");
-				auto dot = n.dot(-d.direction);
-				if (dot > 0) {
-					// Diffuse
-					color += (f.diffuse * d.diffuse) * dot;
-					// Specular
-					// Note to myself and future readers: make ABSOLUTELY sure r.dot(...) returns a **positive**
-					// number lest you'd have mysterious bugs when reflection switches between even and odd...
-					auto r = 2 * dot * n + d.direction;
-					auto rdot = r.dot(-cam_dir);
-					if (rdot > 0) {
-						double v = f.reflection_int != 0
-							? pow_uint(rdot, f.reflection_int)
-							: pow(rdot, f.reflection);
-						color += (f.specular * d.specular) * v;
-					}
+				auto c = directional_light(f, d, n, cam_dir);
+				if (c.has_value()) {
+					color += *c;
 				}
 			}
 			for (auto &p : lights.point) {
-				assert(!f.normals.empty());
-				auto direction = (point - p.point).normalize();
-				assert(f.faces.size() == f.normals.size() && "No normals");
-				auto dot = n.dot(-direction);
-				if (dot > 0) {
-
-					// Check if shadowed
-					if (lights.shadows) {
-						auto l = point * p.cached.eye;
-						auto lx = l.x / -l.z * p.cached.d + p.cached.offset.x;
-						auto ly = l.y / -l.z * p.cached.d + p.cached.offset.y;
-						assert(!isinf(lx) && !isnan(lx));
-						assert(!isinf(ly) && !isnan(ly));
-						auto fx = floor(lx);
-						auto fy = floor(ly);
-						auto cx = fx + 1;
-						auto cy = fy + 1;
-						auto get_z = [&p](unsigned int x, unsigned int y) {
-							return x < p.cached.zbuf.get_width() && y < p.cached.zbuf.get_height()
-								? ((const ZBuffer &)p.cached.zbuf)(x, y)
-								: numeric_limits<double>::infinity();
-						};
-						auto cxa = lx - fx;
-						auto cya = ly - fy;
-						auto fxa = 1 - cxa;
-						auto fya = 1 - cya;
-						assert(1 >= fxa && fxa >= 0);
-						assert(1 >= fya && fya >= 0);
-						assert(1 >= cxa && cxa >= 0);
-						assert(1 >= cya && cya >= 0);
-						auto inv_z = (
-							(
-								+ get_z(fx, fy) * fxa
-								+ get_z(cx, fy) * cxa
-							) * fya + (
-								+ get_z(fx, cy) * fxa
-								+ get_z(cx, cy) * cxa
-							) * cya
-						);
-						assert(!isnan(inv_z) && "shadow 1/z is NaN");
-#if GRAPHICS_DEBUG_Z == 2
-						if (!isinf(inv_z)) {
-							color = Color(1, 1, 1) * (inv_z - min_inv_z) / (max_inv_z - min_inv_z);
-						}
-						break;
-#endif
-						if (inv_z + Z_SHADOW_BIAS < 1 / l.z) {
-							continue;
-						}
-					}
-
-					// Diffuse
-					auto s = max(1 - (1 - dot) / (1 - p.spot_angle_cos), 0.0);
-					color += (f.diffuse * p.diffuse) * s;
-					// Specular
-					auto r = 2 * dot * n + direction;
-					auto rdot = r.dot(-cam_dir);
-					if (rdot > 0) {
-						double v = f.reflection_int != 0
-							? pow_uint(rdot, f.reflection_int)
-							: pow(rdot, f.reflection);
-						color += (f.specular * p.specular) * v;
-					}
+				auto c = point_light(f, p, point, lights.shadows, n, cam_dir);
+				if (c.has_value()) {
+					color += *c;
 				}
 			}
 
-			// Apply texture
 			if (f.texture.has_value()) {
-				auto t = f.faces[pair.triangle_id];
-				auto abc = f2p(f, t);
-				auto a = abc.a;
-				auto ba = abc.b - a;
-				auto ca = abc.c - a;
-
-				Matrix2D m_xy {{ ba.x, ca.x }, { ba.y, ca.y }};
-				Matrix2D m_yz {{ ba.y, ca.y }, { ba.z, ca.z }};
-				Matrix2D m_xz {{ ba.x, ca.x }, { ba.z, ca.z }};
-
-				Point2D p_xy { point.x - a.x, point.y - a.y };
-				Point2D p_yz { point.y - a.y, point.z - a.z };
-				Point2D p_xz { point.x - a.x, point.z - a.z };
-
-				// Find out which matrix will result in the least precision loss
-				// i.e. find the matrix with the highest determinant.
-				auto d_xy = abs(m_xy.determinant());
-				auto d_yz = abs(m_yz.determinant());
-				auto d_xz = abs(m_xz.determinant());
-
-				Matrix2D m;
-				Point2D p;
-
-				if (d_xy > d_yz) {
-					if (d_xy > d_xz) {
-						m = m_xy;
-						p = p_xy;
-					} else {
-						m = m_xz;
-						p = p_xz;
-					}
-				} else {
-					if (d_xy > d_yz) {
-						m = m_xy;
-						p = p_xy;
-					} else {
-						m = m_yz;
-						p = p_yz;
-					}
-				}
-
-				Point2D uv = p * m.inv();
-				uv = (1 - uv.x - uv.y) * f.uv[t.a].to_vector()
-					+ uv.x * f.uv[t.b].to_vector()
-					+ uv.y * f.uv[t.c].to_vector();
-				color *= Color(f.texture.value().get_clamped(uv));
+				color *= texture_color(f, f.faces[pair.triangle_id], point);
 			}
 
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0

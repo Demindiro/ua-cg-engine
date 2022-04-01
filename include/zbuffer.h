@@ -55,11 +55,11 @@ public:
 		return buffer.at(x + y * width);
 	}
 
-	constexpr unsigned int get_width() {
+	constexpr unsigned int get_width() const {
 		return width;
 	}
 
-	constexpr unsigned int get_height() {
+	constexpr unsigned int get_height() const {
 		return height;
 	}
 
