@@ -10,6 +10,7 @@
 #include "math/matrix4d.h"
 #include "math/vector3d.h"
 #include "render/fragment.h"
+#include "render/geometry.h"
 #include "render/light.h"
 #include "shapes/buckyball.h"
 #include "shapes/circle.h"
@@ -23,8 +24,6 @@
 #include "shapes/sphere.h"
 #include "shapes/torus.h"
 #include "wireframe.h"
-
-
 
 namespace engine {
 namespace shapes {
@@ -186,12 +185,6 @@ TriangleFigure platonic(const FigureConfiguration &conf, vector<Point3D> points,
 	return fig;
 }
 
-struct Frustum {
-	double near, far;
-	double fov, aspect;
-	bool use;
-};
-
 static void common_conf(
 	const ini::Configuration &conf,
 	Color &background,
@@ -199,7 +192,8 @@ static void common_conf(
 	Matrix4D &mat_eye,
 	Matrix4D &mat_inv_eye,
 	int &nr_fig,
-	Frustum &frustum
+	Frustum &frustum,
+	bool &frustum_use
 ) {
 	background = tup_to_color(conf["General"]["backgroundcolor"].as_double_tuple_or_die());
 	size = conf["General"]["size"].as_int_or_die();
@@ -212,13 +206,13 @@ static void common_conf(
 	Vector3D dir;
 	if (clipping) {
 		dir = tup_to_vector3d(conf["General"]["viewDirection"].as_double_tuple_or_die());
-		frustum.use = true;
+		frustum_use = true;
 		frustum.near = conf["General"]["dNear"].as_double_or_die();
 		frustum.far = conf["General"]["dFar"].as_double_or_die();
 		frustum.fov = deg2rad(conf["General"]["hfov"].as_double_or_die());
 		frustum.aspect = conf["General"]["aspectRatio"].as_double_or_die();
 	} else {
-		frustum.use = false;
+		frustum_use = false;
 		dir = Point3D() - eye;
 	}
 
@@ -230,7 +224,8 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 	int size, nr_fig;
 	Matrix4D mat_eye, mat_inv_eye;
 	Frustum frustum;
-	common_conf(conf, bg, size, mat_eye, mat_inv_eye, nr_fig, frustum);
+	bool frustum_use;
+	common_conf(conf, bg, size, mat_eye, mat_inv_eye, nr_fig, frustum, frustum_use);
 
 	// Parse figures
 	vector<Line3D> lines;
@@ -290,132 +285,15 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 	return Lines3D(lines).draw(size, bg, with_z);
 }
 
-/**
- * \brief Interpolate between two points
- */
-static Point3D interpolate(Point3D from, Point3D to, double p) {
-	// If two points are *very* close to a plane there may be significant imprecision
-	// that causes p to far exceed the value it should have.
-	// Clamping it works well enough as a workaround.
-	p = min(p, 1.0);
-	assert(p >= 0 && "p must be between 0 and 1");
-	assert(p <= 1 && "p must be between 0 and 1");
-	return Point3D(
-		from.x * p + to.x * (1 - p),
-		from.y * p + to.y * (1 - p),
-		from.z * p + to.z * (1 - p)
-	);
-}
-
-/**
- * \brief Apply frustum clipping.
- */
-template<typename B, typename P>
-static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable_cull) {
-	assert(f.normals.size() == 0 || (f.faces.size() == f.normals.size() && "faces & normals out of sync"));
-	size_t faces_count = f.faces.size();
-	size_t added = 0;
-	auto proj = [&f, &project](auto from_i, auto to_i) {
-		assert(from_i < f.points.size());
-		assert(to_i < f.points.size());
-		auto from = f.points[from_i];
-		auto to = f.points[to_i];
-		auto p = interpolate(from, to, project(from, to));
-		f.points.push_back(p);
-		return (unsigned int)(f.points.size() - 1);
-	};
-	auto swap_remove = [&f, &faces_count, disable_cull](size_t i) {
-		// Swap, then remove. This is always O(1)
-		if (i < faces_count) {
-			f.faces[i] = f.faces[faces_count - 1];
-			if (f.normals.size() > 0)
-				f.normals[i] = f.normals[faces_count - 1];
-		}
-		faces_count--;
-		if (disable_cull) {
-			f.can_cull = false;
-		}
-		f.clipped = true;
-	};
-	auto split = [&proj, &f, &added, disable_cull](auto i, auto &out, auto inl, auto inr) {
-		auto p = proj(out, inl);
-		auto q = proj(out, inr);
-		out = p;
-		f.faces.push_back({ p, q, inr });
-		if (f.normals.size() > 0)
-			f.normals.push_back(f.normals[i]);
-		added++;
-		if (disable_cull) {
-			f.can_cull = false;
-		}
-		f.clipped = true;
-	};
-	for (size_t i = 0; i < faces_count; i++) {
-		auto &t = f.faces[i];
-		switch(bitfield(t)) {
-		// Nothing to do
-		case 0b000:
-			break;
-		// Split triangle
-		case 0b100:
-			split(i, t.a, t.b, t.c);
-			break;
-		case 0b010:
-			split(i, t.b, t.c, t.a);
-			break;
-		case 0b001:
-			split(i, t.c, t.a, t.b);
-			break;
-		// Shrink triangle
-		case 0b011:
-			t.b = proj(t.b, t.a);
-			t.c = proj(t.c, t.a);
-			f.clipped = true;
-			break;
-		case 0b101:
-			t.c = proj(t.c, t.b);
-			t.a = proj(t.a, t.b);
-			f.clipped = true;
-			break;
-		case 0b110:
-			t.a = proj(t.a, t.c);
-			t.b = proj(t.b, t.c);
-			f.clipped = true;
-			break;
-		// Remove triangle
-		case 0b111:
-			swap_remove(i--);
-			break;
-		default:
-			UNREACHABLE;
-		}
-	}
-
-	// Copy added faces over deleted faces.
-	{
-		size_t i = faces_count, j = f.faces.size() - added;
-		size_t new_size = faces_count + added;
-		assert(i <= j);
-		while (added --> 0) {
-			f.faces[i] = f.faces[j];
-			if (f.normals.size() > 0)
-				f.normals[i] = f.normals[j];
-			i++, j++;
-		}
-		f.faces.resize(new_size);
-		if (f.normals.size() > 0)
-			f.normals.resize(new_size);
-	}
-}
-
 img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	Color bg;
 	int size, nr_fig;
 	Matrix4D mat_eye;
 	Frustum frustum;
+	bool frustum_use;
 	Lights lights;
 
-	common_conf(conf, bg, size, mat_eye, lights.inv_eye, nr_fig, frustum);
+	common_conf(conf, bg, size, mat_eye, lights.inv_eye, nr_fig, frustum, frustum_use);
 
 	// Parse lights
 	if (with_lighting) {
@@ -535,101 +413,9 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	}
 
 	// Clipping
-	if (frustum.use) {
-
-		// Near & far plane
-		// TODO experiment with loop order to see which is faster
+	if (frustum_use) {
 		for (auto &f : figures) {
-			enum Plane {
-				NEAR,
-				FAR,
-				RIGHT,
-				LEFT,
-				TOP,
-				DOWN,
-			};
-			auto outside = [&frustum](Point3D p, int plane, double v) {
-				switch (plane) {
-					case NEAR : return -p.z < frustum.near;
-					case FAR  : return -p.z > frustum.far;
-					case RIGHT: return p.x * frustum.near > v * -p.z;
-					case LEFT : return p.x * frustum.near < v * -p.z;
-					case TOP  : return p.y * frustum.near > v * -p.z;
-					case DOWN : return p.y * frustum.near < v * -p.z;
-					default:
-						assert(!"Invalid direction");
-						return false;
-				}
-			};
-			auto outside_mask = [&f, &outside](Face &t, int plane, double v) {
-				assert(t.a < f.points.size());
-				assert(t.b < f.points.size());
-				assert(t.c < f.points.size());
-				return (int)outside(f.points[t.a], plane, v) << 2
-					| (int)outside(f.points[t.b], plane, v) << 1
-					| (int)outside(f.points[t.c], plane, v);
-			};
-
-			// Near & far
-			auto dnear = frustum.near, dfar = frustum.far;
-			{
-				frustum_apply(f,
-					[&outside_mask](auto &t) { return outside_mask(t, NEAR, NAN); },
-					[dnear, dfar](Point3D from, Point3D to) {
-						return (-dnear - to.z) / (from.z - to.z);
-					},
-					true
-				);
-				frustum_apply(f,
-					[&outside_mask](auto &t) { return outside_mask(t, FAR, NAN); },
-					[dnear, dfar](Point3D from, Point3D to) {
-						return (-dfar - to.z) / (from.z - to.z);
-					},
-					false
-				);
-			}
-
-			// Left & right plane
-			auto right = dnear * tan(frustum.fov / 2);
-			{
-				frustum_apply(f,
-					[&outside_mask, right](auto &t) { return outside_mask(t, RIGHT, right); },
-					[dnear, right](Point3D from, Point3D to) {
-						return (to.x * dnear + to.z * right) /
-							((to.x - from.x) * dnear + (to.z - from.z) * right);
-					},
-					false
-				);
-				frustum_apply(f,
-					[&outside_mask, right](auto &t) { return outside_mask(t, LEFT, -right); },
-					[dnear, right](Point3D from, Point3D to) {
-						return (to.x * dnear + to.z * -right) /
-							((to.x - from.x) * dnear + (to.z - from.z) * -right);
-					},
-					false
-				);
-			}
-
-			// Top & down plane
-			auto top = right / frustum.aspect;
-			{
-				frustum_apply(f,
-					[&outside_mask, top](auto &t) { return outside_mask(t, TOP, top); },
-					[dnear, top](Point3D from, Point3D to) {
-						return (to.y * dnear + to.z * top) /
-							((to.y - from.y) * dnear + (to.z - from.z) * top);
-					},
-					false
-				);
-				frustum_apply(f,
-					[&outside_mask, top](auto &t) { return outside_mask(t, DOWN, -top); },
-					[dnear, top](Point3D from, Point3D to) {
-						return (to.y * dnear + to.z * -top) /
-							((to.y - from.y) * dnear + (to.z - from.z) * -top);
-					},
-					false
-				);
-			}
+			frustum.clip(f);
 		}
 	}
 
