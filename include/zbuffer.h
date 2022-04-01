@@ -7,6 +7,8 @@
 #include <vector>
 #include "math/point3d.h"
 
+namespace engine {
+
 /**
  * \brief Depth buffer to figure out which pixels are closest to the camera.
  *
@@ -155,3 +157,5 @@ public:
 	 */
 	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair, double bias);
 };
+
+}

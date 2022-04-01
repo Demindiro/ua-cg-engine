@@ -4,9 +4,10 @@
 #include "easy_image.h"
 #include "math/point2d.h"
 #include "math/point3d.h"
+#include "render/color.h"
 #include "zbuffer.h"
 
-using Color = img::Color;
+namespace engine {
 
 void calc_image_parameters(
 	double min_x, double min_y,
@@ -21,16 +22,16 @@ img::EasyImage create_img(
 	double min_x, double min_y,
 	double max_x, double max_y,
 	uint size,
-	Color background,
+	render::Color background,
 	double &d,
 	double &offset_x, double &offset_y
 );
 
 struct Line2D {
 	Point2D a, b;
-	Color color;
+	render::Color color;
 
-	Line2D(Point2D a, Point2D b, Color color) : a(a), b(b), color(color) {}
+	Line2D(Point2D a, Point2D b, render::Color color) : a(a), b(b), color(color) {}
 
 	void draw(img::EasyImage &) const;
 };
@@ -44,14 +45,14 @@ public:
 
 	void add(Line2D);
 	
-	img::EasyImage draw(unsigned int size, Color background) const;
+	img::EasyImage draw(unsigned int size, render::Color background) const;
 };
 
 struct Line3D {
 	Point3D a, b;
-	Color color;
+	render::Color color;
 
-	Line3D(Point3D a, Point3D b, Color color) : a(a), b(b), color(color) {}
+	Line3D(Point3D a, Point3D b, render::Color color) : a(a), b(b), color(color) {}
 
 	void draw(img::EasyImage &, ZBuffer &z) const;
 	void draw_clip(img::EasyImage &img, ZBuffer &z) const;
@@ -66,5 +67,7 @@ public:
 
 	void add(Line3D);
 	
-	img::EasyImage draw(unsigned int size, Color background, bool with_z) const;
+	img::EasyImage draw(unsigned int size, render::Color background, bool with_z) const;
 };
+
+}

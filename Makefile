@@ -79,4 +79,4 @@ clean-images::
 	rm -rf assets/*.bmp
 
 loop::
-	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/ include/math/; done
+	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ src/render/ include/ include/shapes/ include/math/ include/render/; done

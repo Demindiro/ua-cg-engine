@@ -5,12 +5,14 @@
 #include "lines.h"
 #include "shapes.h"
 
+namespace engine {
 namespace shapes {
 	void buckyball(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure buckyball(const FigureConfiguration &conf);
+	render::TriangleFigure buckyball(const FigureConfiguration &conf);
 
 	void fractal_buckyball(const FigureConfiguration &conf, std::vector<Line3D> &lines);
 
-	TriangleFigure fractal_buckyball(const FigureConfiguration &conf);
+	render::TriangleFigure fractal_buckyball(const FigureConfiguration &conf);
+}
 }

@@ -15,10 +15,11 @@
 #include "math/matrix4d.h"
 #include "shapes.h"
 
+namespace engine {
+namespace wireframe {
+
 using namespace std;
 using namespace shapes;
-
-namespace wireframe {
 
 	void line_drawing(ini::Section &conf, Matrix4D &mat_project, vector<Line3D> &lines) {
 		// Read transformation & color
@@ -129,4 +130,6 @@ namespace wireframe {
 		s.saved = saved;
 		draw_sys(s, s.sys.get_initiator(), s.sys.get_nr_iterations());
 	}
+
+}
 }

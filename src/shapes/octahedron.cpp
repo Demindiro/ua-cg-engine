@@ -3,9 +3,12 @@
 #include "shapes.h"
 #include "shapes/fractal.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
+
 	static void octahedron(Point3D points[6]) {
 		points[0] = Point3D( 1,  0,  0);
 		points[1] = Point3D(-1,  0,  0);
@@ -79,4 +82,6 @@ namespace shapes {
 		fractal(conf, points, faces);
 		return platonic(conf, points, faces);
 	}
+
+}
 }

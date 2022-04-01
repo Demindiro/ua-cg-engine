@@ -11,12 +11,15 @@
 #include "ini_configuration.h"
 #include "l_parser.h"
 #include "lines.h"
+#include "render/color.h"
 
 #define MAX_CURSOR_COUNT 2048
 
-using namespace std;
-
+namespace engine {
 namespace l_system {
+
+using namespace std;
+using namespace render;
 
 	struct Mat2D {
 		double x, y;
@@ -118,4 +121,6 @@ namespace l_system {
 
 		return draw_sys.lines.draw(size, bg);
 	}
+
+}
 }

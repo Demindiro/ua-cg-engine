@@ -6,9 +6,11 @@
 #include "shapes/fractal.h"
 #include "math/point3d.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
 
 	static void cube(Point3D points[8]) {
 		points[0] = {  1,  1,  1 };
@@ -90,4 +92,6 @@ namespace shapes {
 		fractal(conf, points, faces);
 		return platonic(conf, points, faces);
 	}
+
+}
 }

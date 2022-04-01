@@ -9,6 +9,8 @@
 
 #define UNREACHABLE assert(!"unreachable")
 
+namespace engine {
+
 class TypeException : public std::exception {
 	std::string type;
 	
@@ -108,3 +110,5 @@ struct Rotation {
 		return m;
 	}
 };
+
+}

@@ -30,6 +30,8 @@
 #define le32toh(x) (x)
 #endif
 
+using namespace engine;
+
 namespace {
 // structs borrowed from wikipedia's article on the BMP file format
 struct bmpfile_magic {

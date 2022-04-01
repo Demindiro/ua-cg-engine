@@ -10,6 +10,7 @@
 
 typedef unsigned int uint;
 
+namespace engine {
 namespace intro {
 
 	static img::EasyImage img_from_conf(const ini::Configuration &conf) {
@@ -112,4 +113,6 @@ namespace intro {
 
 		return img;
 	}
+
+}
 }

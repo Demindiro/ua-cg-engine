@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include <string>
 
+namespace engine {
+
 TypeException::TypeException(const std::string type) throw() : std::exception(), type(type) {}
 
 const char *TypeException::what() const throw() {
@@ -40,6 +42,8 @@ img::EasyImage generate_image(const ini::Configuration &conf) {
 	}
 }
 
+}
+
 int main(int argc, char const *argv[]) {
 	int retVal = 0;
 	try {
@@ -66,7 +70,7 @@ int main(int argc, char const *argv[]) {
 				continue;
 			}
 
-			img::EasyImage image = generate_image(conf);
+			auto image = engine::generate_image(conf);
 			if (image.get_height() > 0 && image.get_width() > 0) {
 				std::string::size_type pos = fileName.rfind('.');
 				if (pos == std::string::npos) {

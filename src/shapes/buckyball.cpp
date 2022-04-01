@@ -8,9 +8,11 @@
 #include "shapes/icosahedron.h"
 #include "math/point3d.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
 
 	constexpr static array<Point3D, 60> buckyball_points = []() constexpr {
 		// Trisect the edges of an icosahedron
@@ -76,4 +78,5 @@ namespace shapes {
 		fractal(conf, points, faces);
 		return platonic(conf, points, faces);
 	}
+}
 }

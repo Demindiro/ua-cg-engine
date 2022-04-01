@@ -3,6 +3,8 @@
 #include "math/point3d.h"
 #include "math/vector3d.h"
 
+namespace engine {
+
 using namespace std;
 
 template<typename F>
@@ -76,4 +78,6 @@ void TaggedZBuffer::triangle(Point3D a, Point3D b, Point3D c, double d, double d
 		figure_ids[x + y * get_width()] = pair.figure_id;
 		triangle_ids[x + y * get_width()] = pair.triangle_id;
 	});
+}
+
 }

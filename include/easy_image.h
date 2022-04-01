@@ -215,14 +215,14 @@ namespace img
 			 * \brief Draw a line accounting for depth
 			 */
 			void draw_zbuf_line(
-				ZBuffer &,
+				engine::ZBuffer &,
 				unsigned int x0, unsigned int y0, double z0,
 				unsigned int x1, unsigned int y1, double z1,
 				Color
 			);
 
 			void draw_zbuf_line_clip(
-				ZBuffer &,
+				engine::ZBuffer &,
 				double x0, double y0, double z0,
 				double x1, double y1, double z1,
 				Color

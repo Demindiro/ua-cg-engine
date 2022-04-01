@@ -33,6 +33,8 @@ set(engine_sources
 	src/math/matrix4d.cpp
 	src/math/point2d.cpp
 	src/math/vector4d.cpp
+	src/render/color.cpp
+	src/render/fragment.cpp
 	src/shapes.cpp
 	src/shapes/buckyball.cpp
 	src/shapes/cone.cpp

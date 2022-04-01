@@ -4,9 +4,13 @@
 #include <limits>
 #include "easy_image.h"
 #include "engine.h"
+#include "render/color.h"
 #include "zbuffer.h"
 
+namespace engine {
+
 using namespace std;
+using namespace render;
 
 typedef unsigned int uint;
 
@@ -46,11 +50,11 @@ img::EasyImage create_img(
 ) {
 	double img_x, img_y;
 	calc_image_parameters(min_x, min_y, max_x, max_y, size, d, offset_x, offset_y, img_x, img_y);
-	return img::EasyImage(round_up(img_x), round_up(img_y), background);
+	return img::EasyImage(round_up(img_x), round_up(img_y), background.to_img_color());
 }
 
 void Line2D::draw(img::EasyImage &img) const {
-	img.draw_line(round_up(a.x), round_up(a.y), round_up(b.x), round_up(b.y), color);
+	img.draw_line(round_up(a.x), round_up(a.y), round_up(b.x), round_up(b.y), color.to_img_color());
 }
 
 void Lines2D::add(Line2D line) {
@@ -87,11 +91,11 @@ img::EasyImage Lines2D::draw(uint size, Color background) const {
 }
 
 void Line3D::draw(img::EasyImage &img, ZBuffer &z) const {
-	img.draw_zbuf_line(z, round_up(a.x), round_up(a.y), a.z, round_up(b.x), round_up(b.y), b.z, color);
+	img.draw_zbuf_line(z, round_up(a.x), round_up(a.y), a.z, round_up(b.x), round_up(b.y), b.z, color.to_img_color());
 }
 
 void Line3D::draw_clip(img::EasyImage &img, ZBuffer &z) const {
-	img.draw_zbuf_line_clip(z, round_up(a.x), round_up(a.y), a.z, round_up(b.x), round_up(b.y), b.z, color);
+	img.draw_zbuf_line_clip(z, round_up(a.x), round_up(a.y), a.z, round_up(b.x), round_up(b.y), b.z, color.to_img_color());
 }
 
 void Lines3D::add(Line3D line) {
@@ -135,4 +139,6 @@ img::EasyImage Lines3D::draw(uint size, Color background, bool with_z) const {
 	}
 
 	return img;
+}
+
 }
