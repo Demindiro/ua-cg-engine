@@ -5,9 +5,13 @@
 #include "math/point3d.h"
 #include "math/vector3d.h"
 
-using namespace std;
+namespace engine {
+namespace shapes {
 
-void shapes::cone(const FigureConfiguration &conf, vector<Line3D> &lines) {
+using namespace std;
+using namespace render;
+
+void cone(const FigureConfiguration &conf, vector<Line3D> &lines) {
 	auto n = (unsigned int)conf.section["n"].as_int_or_die();
 	auto height = conf.section["height"].as_double_or_die();
 
@@ -25,7 +29,7 @@ void shapes::cone(const FigureConfiguration &conf, vector<Line3D> &lines) {
 	platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
 }
 
-shapes::TriangleFigure shapes::cone(const FigureConfiguration &conf) {
+TriangleFigure cone(const FigureConfiguration &conf) {
 	auto n = (unsigned int)conf.section["n"].as_int_or_die();
 	auto height = conf.section["height"].as_double_or_die();
 
@@ -44,3 +48,5 @@ shapes::TriangleFigure shapes::cone(const FigureConfiguration &conf) {
 	return platonic(conf, points, faces);
 }
 
+}
+}

@@ -14,28 +14,31 @@ build-debug:
 	+make -C $@
 
 #test: build-debug
-#	cd assets && for f in *.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+#	cd assets && for f in *.ini; do ../$</engine "$$f" || exit; done
 
 test-intro: build-debug
-	cd assets && for f in Intro*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+	cd assets && for f in Intro*.ini; do ../$</engine "$$f" || exit; done
 
 test-line-drawings: build-debug
-	cd assets && for f in line_*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+	cd assets && for f in line_*.ini; do ../$</engine "$$f" || exit; done
 
 test-zbuffering: build-debug
-	cd assets && for f in z_buffering*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+	cd assets && for f in z_buffering*.ini; do ../$</engine "$$f" || exit; done
 
 test-fractals: build-debug
-	cd assets && for f in 3d_fractals*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+	cd assets && for f in 3d_fractals*.ini; do ../$</engine "$$f" || exit; done
 
 test-clipping: build-debug
-	cd assets && for f in clipping*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+	cd assets && for f in clipping*.ini; do ../$</engine "$$f" || exit; done
 
 test-specular: build-debug
-	cd assets && for f in specular_light*.ini; do echo "$$f"; ../$</engine "$$f" || exit; done
+	cd assets && for f in specular_light*.ini; do ../$</engine "$$f" || exit; done
 
-test-texture: build-debug test-intro assets/honk.bmp
+test-texture: build-debug test-intro | assets/honk.bmp
 	cd assets && ../$</engine texture*.ini
+
+assets/%.bmp: assets/%.ini build
+	cd assets && ../build/engine $(patsubst assets/%,%,$<)
 
 assets/honk.bmp: assets/honk.webp
 	ffmpeg -y -i $< $@
@@ -52,16 +55,16 @@ bench-sep: $(patsubst %.ini,bench-sep-%,$(INI))
 bench-sep-%: build
 	cd assets && ../$</engine "$(patsubst bench-sep-%,%.ini,$@)"
 
-bench-batch: build
+bench-batch: build | assets/honk.bmp assets/Intro2_Blocks.bmp
 	cd assets && perf stat ../$</engine *.ini
 
-bench-batch-%: build
+bench-batch-%: build | assets/honk.bmp
 	cd assets && perf stat ../$</engine $(patsubst bench-batch-%,%*.ini,$@)
 
-gen: build
+gen: build | assets/honk.bmp
 	make -C . $(patsubst %,_gen-%,$(INI))
 
-gen-%: build
+gen-%: build | assets/honk.bmp
 	make -C . $(patsubst _%,%,$@)
 
 _gen-%:
@@ -79,4 +82,4 @@ clean-images::
 	rm -rf assets/*.bmp
 
 loop::
-	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ include/ include/shapes/ include/math/; done
+	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt src/ src/shapes/ src/render/ include/ include/shapes/ include/math/ include/render/; done

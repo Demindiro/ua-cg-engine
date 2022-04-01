@@ -4,9 +4,12 @@
 #include "shapes.h"
 #include "shapes/fractal.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
+
 	void icosahedron(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		Point3D points[12];
 		Edge edges[30];
@@ -40,4 +43,6 @@ namespace shapes {
 		fractal(conf, points, faces);
 		return platonic(conf, points, faces);
 	}
+
+}
 }

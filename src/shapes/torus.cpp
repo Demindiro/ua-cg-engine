@@ -4,9 +4,12 @@
 #include "engine.h"
 #include "shapes/circle.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
+
 	static void torus(ini::Section &conf, vector<Point3D> &points, unsigned int &n, unsigned int &m) {
 		auto mr = conf["R"].as_double_or_die();
 		auto sr = conf["r"].as_double_or_die();
@@ -65,4 +68,6 @@ namespace shapes {
 		}
 		return platonic(conf, points, faces);
 	}
+
+}
 }

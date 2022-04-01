@@ -7,7 +7,14 @@
 #include "math/vector4d.h"
 #include "math/matrix4d.h"
 
+#ifdef __GNUC__
+# define ALWAYS_INLINE inline __attribute__((always_inline))
+#else
+# define ALWAYS_INLINE inline
+#endif
 #define UNREACHABLE assert(!"unreachable")
+
+namespace engine {
 
 class TypeException : public std::exception {
 	std::string type;
@@ -108,3 +115,5 @@ struct Rotation {
 		return m;
 	}
 };
+
+}

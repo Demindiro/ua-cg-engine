@@ -3,9 +3,12 @@
 #include "shapes.h"
 #include "shapes/circle.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
+
 	void cylinder(const FigureConfiguration &conf, vector<Line3D> &lines) {
 		auto n = (unsigned int)conf.section["n"].as_int_or_die();
 		auto height = conf.section["height"].as_double_or_die();
@@ -46,4 +49,6 @@ namespace shapes {
 
 		return platonic(conf, points, faces);
 	}
+
+}
 }

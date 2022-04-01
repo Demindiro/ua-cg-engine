@@ -5,9 +5,12 @@
 #include "math/point3d.h"
 #include "math/vector3d.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
+
 	/**
 	 * \brief Generate points to create a fractal.
 	 */
@@ -89,4 +92,6 @@ namespace shapes {
 		auto iterations = (unsigned int)conf.section["nrIterations"].as_int_or_die();
 		fractal(points, faces, scale, iterations);
 	}
+
+}
 }

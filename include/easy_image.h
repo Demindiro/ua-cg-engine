@@ -15,8 +15,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef EASY_IMAGE_INCLUDED
-#define EASY_IMAGE_INCLUDED
+
+#pragma once
+
 #include <stdint.h>
 #include <vector>
 #include <iostream>
@@ -30,47 +31,23 @@ namespace img
 	/**
 	 * \brief This class represents the color of a pixel in an img::EasyImage object
 	 */
-	class Color
-	{
+	struct Color {
 		//a safety warning to all of you: Do *NOT* rearrange the 'color components' in this class
 		//easyimage expects these three fields to be the *first* fields in the class AND expects
 		//them to be in *this* order
 		//if you alter the arrangement, the generated BMP files will contain garbage
-		public:
-			/**
-			 * \brief The intensity of the blue color component
-			 */
-			uint8_t blue;
+		uint8_t b, g, r;
 
-			/**
-			 * \brief The intensity of the green color component
-			 */
-			uint8_t green;
+		constexpr Color() : b(0), g(0), r(0) {}
 
-			/**
-			 * \brief The intensity of the red color component
-			 */
-			uint8_t red;
-
-			/**
-			 * \brief Default Constructor
-			 */
-			Color();
-
-			/**
-			 * \brief Constructs a Color with the given intensities
-			 *
-			 * \param r	The red color component
-			 * \param g	The green color component
-			 * \param b	The blue color component
-			 *
-			 */
-			Color(uint8_t r, uint8_t g, uint8_t b);
-
-			/**
-			 * Destructor
-			 */
-			~Color();
+		/**
+		 * \brief Constructs a Color with the given intensities
+		 *
+		 * \param r	The red color component
+		 * \param g	The green color component
+		 * \param b	The blue color component
+		 */
+		constexpr Color(uint8_t r, uint8_t g, uint8_t b) : b(b), g(g), r(r) {}
 	};
 
 	std::ostream &operator<<(std::ostream &o, const Color &c);
@@ -127,8 +104,7 @@ namespace img
 	/**
 	 * \brief This class implements a 'minor' image-library that supports basic operations such as setting and retrieving a pixel, and drawing a line.
 	 */
-	class EasyImage
-	{
+	class EasyImage {
 		friend std::istream& operator>>(std::istream& in, EasyImage & image);
 		friend std::ostream& operator<<(std::ostream& out, EasyImage const& image);
 
@@ -239,37 +215,17 @@ namespace img
 			 * \brief Draw a line accounting for depth
 			 */
 			void draw_zbuf_line(
-				ZBuffer &,
+				engine::ZBuffer &,
 				unsigned int x0, unsigned int y0, double z0,
 				unsigned int x1, unsigned int y1, double z1,
 				Color
 			);
 
 			void draw_zbuf_line_clip(
-				ZBuffer &,
+				engine::ZBuffer &,
 				double x0, double y0, double z0,
 				double x1, double y1, double z1,
 				Color
-			);
-
-			/**
-			 * \brief Draw a triangle accounting for depth
-			 *
-			 * \param zbuffer The Z-buffer storing the depth
-			 * \param a       An *unprojected* corner of the triangle
-			 * \param b       An *unprojected* corner of the triangle
-			 * \param c       An *unprojected* corner of the triangle
-			 * \param d       The distance to the projection surface
-			 * \param dx      The offset of the pixels along the X axis
-			 * \param dy      The offset of the pixels along the Y axis
-			 * \param color   The color of the triangle
-			 */
-			void draw_zbuf_triag(
-				ZBuffer &zbuffer,
-				Point3D a, Point3D b, Point3D c,
-				double d,
-				double dx, double dy,
-				Color color
 			);
 	};
 
@@ -282,6 +238,7 @@ namespace img
 	 * \return		a reference to the output stream the image was written to
 	 */
 	std::ostream& operator<<(std::ostream& out, EasyImage const& image);
+
 	/**
 	 * \brief Reads an img::EasyImage from an input stream.
 	 *
@@ -300,4 +257,3 @@ namespace img
 	std::istream& operator>>(std::istream& in, EasyImage& image);
 
 }
-#endif /* EASY_IMAGE_INCLUDED */

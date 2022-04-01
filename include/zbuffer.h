@@ -6,6 +6,9 @@
 #include <limits>
 #include <vector>
 #include "math/point3d.h"
+#include "math/vector2d.h"
+
+namespace engine {
 
 /**
  * \brief Depth buffer to figure out which pixels are closest to the camera.
@@ -35,7 +38,7 @@ protected:
 	template<typename F>
 	void triangle(
 		Point3D a, Point3D b, Point3D c,
-		double d, double dx, double dy,
+		double d, Vector2D offset,
 		double bias,
 		F callback
 	);
@@ -52,11 +55,11 @@ public:
 		return buffer.at(x + y * width);
 	}
 
-	constexpr unsigned int get_width() {
+	constexpr unsigned int get_width() const {
 		return width;
 	}
 
-	constexpr unsigned int get_height() {
+	constexpr unsigned int get_height() const {
 		return height;
 	}
 
@@ -74,14 +77,9 @@ public:
 	/**
 	 * \brief Place a triangle in the ZBuffer.
 	 *
-	 * \param a Point A of the triangle.
-	 * \param b Point B of the triangle.
-	 * \param c Point C of the triangle.
 	 * \param d Scale factor.
-	 * \param dx Offset along X axis.
-	 * \param dy Offset along Y axis.
 	 */
-	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, double bias);
+	void triangle(Point3D a, Point3D b, Point3D c, double d, Vector2D offset, double bias);
 };
 
 class TaggedZBuffer : public ZBuffer {
@@ -145,13 +143,10 @@ public:
 	/**
 	 * \brief Place a triangle in the ZBuffer.
 	 *
-	 * \param a Point A of the triangle.
-	 * \param b Point B of the triangle.
-	 * \param c Point C of the triangle.
 	 * \param d Scale factor.
-	 * \param dx Offset along X axis.
-	 * \param dy Offset along Y axis.
 	 * \param pair Pair of figure-triangle IDs. It's inv_z value is ignored.
 	 */
-	void triangle(Point3D a, Point3D b, Point3D c, double d, double dx, double dy, IdPair, double bias);
+	void triangle(Point3D a, Point3D b, Point3D c, double d, Vector2D offset, IdPair, double bias);
 };
+
+}

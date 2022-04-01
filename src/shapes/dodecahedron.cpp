@@ -5,9 +5,12 @@
 #include "shapes/fractal.h"
 #include "shapes/icosahedron.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
+
 	constexpr static auto points = []() constexpr {
 		array<Point3D, 20> points = {};
 		Point3D ico[12];
@@ -97,4 +100,6 @@ namespace shapes {
 		fractal(conf, p, f);
 		return platonic(conf, p, f);
 	}
+
+}
 }

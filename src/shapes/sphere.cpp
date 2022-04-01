@@ -4,9 +4,12 @@
 #include "shapes/icosahedron.h"
 #include "math/vector3d.h"
 
-using namespace std;
-
+namespace engine {
 namespace shapes {
+
+using namespace std;
+using namespace render;
+
 	static void bisect(vector<Point3D> &points, vector<Edge> &edges, vector<Face> &faces) {
 		vector<Edge> new_edges;
 		vector<Face> new_faces;
@@ -78,4 +81,6 @@ namespace shapes {
 		sphere(conf.section, points, edges, faces);
 		return platonic(conf, points, faces);
 	}
+
+}
 }
