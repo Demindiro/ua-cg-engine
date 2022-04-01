@@ -25,6 +25,7 @@ void ZBuffer::triangle(
 		dzdx = -w.x / dk;
 		dzdy = -w.y / dk;
 	}
+	inv_g_z *= bias;
 	
 	// Project
 	a.x = a.x * (d / -a.z) + offset.x, a.y = a.y * (d / -a.z) + offset.y;
@@ -64,8 +65,9 @@ void ZBuffer::triangle(
 		unsigned int from_x = (unsigned int)x_min + 1;
 		unsigned int to_x   = x_max;
 
+		auto dy = (y - g_y) * dzdy;
 		for (unsigned int x = from_x; x <= to_x; x++) {
-			auto inv_z = bias * inv_g_z + (x - g_x) * dzdx + (y - g_y) * dzdy;
+			auto inv_z = inv_g_z + dy + (x - g_x) * dzdx;
 			if (replace(x, y, inv_z)) {
 				callback(x, y);
 			}
