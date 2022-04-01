@@ -126,27 +126,24 @@ namespace img
 			 */
 			EasyImage(unsigned int width, unsigned int height, Color color = Color());
 
-			/**
-			 * \brief Copy Constructor
-			 *
-			 * \param img		the image to be copied
-			 */
-			EasyImage(EasyImage const& img);
+			EasyImage(EasyImage const& img) = delete;
 
 			EasyImage(EasyImage &&img) : data(img.data), row_size(img.row_size) {
-				img.data = NULL; // Avoid double free
+				img.data = nullptr;
 			}
 
 			~EasyImage() {
 				free(data);
 			}
 
-			/**
-			 * \brief Assignment operator. Allows an easyImage to be assigned to another easyImage
-			 *
-			 * \param img	The image to be assigned to this image
-			 */
-			EasyImage& operator=(EasyImage const& img);
+			EasyImage& operator=(EasyImage const& img) = delete;
+
+			EasyImage& operator=(EasyImage &&img) {
+				row_size = img.row_size;
+				data = img.data;
+				img.data = nullptr;
+				return *this;
+			}
 
 			/**
 			 * \brief Returns the width of the image

@@ -182,26 +182,13 @@ img::EasyImage::EasyImage(unsigned int width, unsigned int height, Color color) 
 	clear(color);
 }
 
-img::EasyImage::EasyImage(EasyImage const &img) : EasyImage(img.get_width(), img.get_height()) {
-	std::cerr << "copy ctor" << std::endl;
-	for (unsigned int y = 0; y < get_height(); y++) {
-		for (unsigned int x = 0; x < get_width(); x++) {
-			(*this)(x, y) = img(x, y);
-		}
-	}
-}
-
-img::EasyImage &img::EasyImage::operator=(img::EasyImage const &img) {
-	std::cerr << "copy assign" << std::endl;
-	*this = img::EasyImage(img);
-	return *this;
-}
-
 unsigned int img::EasyImage::get_width() const {
+	assert(data != nullptr && "Image was moved");
 	return le32toh(((bmp_header *)((char *)data + sizeof(bmpfile_magic) + sizeof(bmpfile_header)))->width);
 }
 
 unsigned int img::EasyImage::get_height() const {
+	assert(data != nullptr && "Image was moved");
 	return le32toh(((bmp_header *)((char *)data + sizeof(bmpfile_magic) + sizeof(bmpfile_header)))->height);
 }
 

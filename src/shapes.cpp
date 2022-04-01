@@ -150,10 +150,12 @@ TriangleFigure platonic(const FigureConfiguration &conf, vector<Point3D> points,
 	// Load texture, if any
 	string tex_path;
 	if (conf.section["texture"].as_string_if_exists(tex_path)) {
-		ifstream f(tex_path);
-		Texture tex;
-		f >> tex.image;
-		fig.texture = tex;
+		{
+			ifstream f(tex_path);
+			Texture tex;
+			f >> tex.image;
+			fig.texture.emplace(std::move(tex));
+		}
 
 		// Generate UVs (flat mapping by default)
 		Point2D uv_min, uv_max;
@@ -404,7 +406,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		} else {
 			throw TypeException(type);
 		}
-		figures.push_back(fig);
+		figures.push_back(std::move(fig));
 	}
 
 	if (lights.shadows) {
@@ -420,7 +422,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	}
 
 	// Draw
-	return draw(figures, lights, size, bg);
+	return draw(std::move(figures), lights, size, bg);
 }
 
 }
