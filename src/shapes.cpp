@@ -161,6 +161,8 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 
 	auto mat = transform_from_conf(section, eye);
 
+	fig.center = shape.center * mat;
+
 	for (auto &p : fig.points) {
 		p *= mat;
 	}
@@ -415,33 +417,49 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	for (int i = 0; i < nr_fig; i++) {
 		auto section = conf[string("Figure") + to_string(i)];
 		auto type = section["type"].as_string_or_die();
-		FaceShape shape;
 		bool nogen = true;
-		auto f_b = [&](auto s, const auto &t) {
+
+		auto push = [&](FaceShape &&shape) {
+			figures.push_back(convert(shape, section, with_lighting, mat_eye));
+		};
+
+		auto f_b = [&](auto s, auto t) {
 			if (type == s) {
 				assert(nogen);
-				shape = t;
+				FaceShape s = t;
+				push(std::move(s));
+				figures.push_back(convert(s, section, with_lighting, mat_eye));
 				nogen = false;
 			}
 		};
 		auto f_g = [&](auto s, void (*g)(const ini::Section &, FaceShape &)) {
 			if (type == s) {
 				assert(nogen);
+				FaceShape shape;
 				g(section, shape);
+				figures.push_back(convert(shape, section, with_lighting, mat_eye));
 				nogen = false;
 			}
 		};
 		auto f_f = [&](auto s, const auto &t) {
 			if (type == s) {
 				assert(nogen);
+				vector<FaceShape> shape;
 				fractal(section, t, shape);
+				for (auto &&s : shape) {
+					figures.push_back(convert(s, section, with_lighting, mat_eye));
+				}
 				nogen = false;
 			}
 		};
 		auto f_t = [&](auto s, const auto &f) {
 			if (type == s) {
 				assert(nogen);
+				vector<FaceShape> shape;
 				thicken(section, f, shape);
+				for (auto &&s : shape) {
+					figures.push_back(convert(s, section, with_lighting, mat_eye));
+				}
 				nogen = false;
 			}
 		};
@@ -475,13 +493,21 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		if (type == "ThickLineDrawing") {
 			EdgeShape templ;
 			wireframe::line_drawing(section, templ);
+			vector<FaceShape> shape;
 			thicken(section, ShapeTemplateAny(templ), shape);
+			for (auto &&s : shape) {
+				figures.push_back(convert(s, section, with_lighting, mat_eye));
+			}
 			nogen = false;
 		}
 		if (type == "Thick3DLSystem") {
 			EdgeShape templ;
 			wireframe::l_system(section, templ);
+			vector<FaceShape> shape;
 			thicken(section, ShapeTemplateAny(templ), shape);
+			for (auto &&s : shape) {
+				figures.push_back(convert(s, section, with_lighting, mat_eye));
+			}
 			nogen = false;
 		}
 		f_t("ThickBuckyBall", buckyball);
@@ -495,7 +521,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 			throw TypeException(type);
 		}
 
-		figures.push_back(convert(shape, section, with_lighting, mat_eye));
+		//figures.push_back(convert(shape, section, with_lighting, mat_eye));
 	}
 
 	if (lights.shadows) {
@@ -513,6 +539,13 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	// Draw
 	return draw(std::move(figures), lights, size, bg);
 }
+
+
+
+FaceShape::FaceShape(const ShapeTemplateAny &t)
+	: points({ t.points, t.points + t.points_size })
+	, faces({ t.faces, t.faces + t.faces_size })
+{}
 
 }
 }
