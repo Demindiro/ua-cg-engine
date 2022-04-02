@@ -9,7 +9,6 @@
 #include "easy_image.h"
 #include "render/geometry.h"
 #include "render/rect.h"
-#include "util.h"
 
 /** If something looks off (vs examples), try changing these values **/
 
@@ -213,12 +212,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 					a *= p.cached.eye;
 					rect |= project(a);
 				}
-				f.center *= p.cached.eye;
 			}
-			// Sort to reduce amount of assignments done by zbuffer
-			sort(zfigs.begin(), zfigs.end(), [](const auto &a, const auto &b) {
-				return a.center.z > b.center.z;
-			});
 
 			// Create ZBuffer
 			{
@@ -248,12 +242,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 	// Preprocess figures to speed up some later operations
 	for (auto &f : figures) {
 		f.ambient *= lights.ambient;
-		zip r(pair(f.faces.begin(), f.normals.begin()), pair(f.faces.end(), f.normals.end()));
 	}
-	// Sort to reduce amount of assignments done by zbuffer
-	sort(figures.begin(), figures.end(), [](const auto &a, const auto &b) {
-		return a.center.z > b.center.z;
-	});
 
 	Rect dim;
 	dim.min.x = dim.min.y = +numeric_limits<double>::infinity();
@@ -274,11 +263,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 
 	// Fill in ZBuffer with figure & triangle IDs
 	assert(figures.size() < UINT16_MAX);
-#ifdef GRAPHICS_DEBUG_ORDER
-	for (u_int16_t i = 0; i < std::min(figures.size(), (size_t)GRAPHICS_DEBUG_ORDER); i++) {
-#else
 	for (u_int16_t i = 0; i < figures.size(); i++) {
-#endif
 		auto &f = figures[i];
 		assert(f.faces.size() < UINT32_MAX);
 		for (u_int32_t k = 0; k < f.faces.size(); k++) {

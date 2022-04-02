@@ -12,7 +12,7 @@ namespace shapes {
 
 void thicken(const ini::Section &, const ShapeTemplateAny &, EdgeShape &);
 
-void thicken(const ini::Section &, const ShapeTemplateAny &, std::vector<FaceShape> &);
+void thicken(const ini::Section &, const ShapeTemplateAny &, FaceShape &);
 
 }
 }

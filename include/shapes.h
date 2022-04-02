@@ -20,8 +20,6 @@
 namespace engine {
 namespace shapes {
 
-struct ShapeTemplateAny;
-
 template<unsigned int points_count, unsigned int edges_count, unsigned int faces_count>
 struct ShapeTemplate {
 	std::array<Point3D, points_count> points;
@@ -65,11 +63,8 @@ struct EdgeShape {
 struct FaceShape {
 	std::vector<Point3D> points;
 	std::vector<render::Face> faces;
-	Point3D center;
 
 	FaceShape() {}
-
-	FaceShape(const ShapeTemplateAny &t);
 
 	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>
 	FaceShape(const ShapeTemplate<points_c, edges_c, faces_c> &t)

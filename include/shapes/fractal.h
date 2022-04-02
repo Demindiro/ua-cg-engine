@@ -13,7 +13,7 @@ namespace shapes {
 
 void fractal(const ini::Section &, const ShapeTemplateAny &, EdgeShape &);
 
-void fractal(const ini::Section &, const ShapeTemplateAny &, std::vector<FaceShape> &);
+void fractal(const ini::Section &, const ShapeTemplateAny &, FaceShape &);
 
 }
 }

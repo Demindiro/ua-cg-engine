@@ -20,7 +20,6 @@ struct TriangleFigure {
 	std::vector<Vector3D> normals;
 	std::vector<Face> faces;
 	std::optional<Texture> texture;
-	Point3D center;
 	Color ambient;
 	Color diffuse;
 	Color specular;
@@ -42,7 +41,6 @@ struct TriangleFigure {
 struct ZBufferTriangleFigure {
 	std::vector<Point3D> points;
 	std::vector<Face> faces;
-	Point3D center;
 	bool can_cull;
 
 	ZBufferTriangleFigure(bool can_cull)
@@ -50,7 +48,7 @@ struct ZBufferTriangleFigure {
 	{}
 
 	ZBufferTriangleFigure(const TriangleFigure &fig)
-		: points(fig.points), faces(fig.faces), center(fig.center), can_cull(fig.can_cull)
+		: points(fig.points), faces(fig.faces), can_cull(fig.can_cull)
 	{}
 
 	ZBufferTriangleFigure(const TriangleFigure &fig, const Matrix4D &mat)
@@ -60,7 +58,6 @@ struct ZBufferTriangleFigure {
 		for (auto &p : fig.points) {
 			points.push_back(p * mat);
 		}
-		center = fig.center * mat;
 	}
 
 	Rect bounds_projected() const;

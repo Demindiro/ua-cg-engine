@@ -81,39 +81,31 @@ void thicken(
 void thicken(
 	const ini::Section &conf,
 	const ShapeTemplateAny &shape,
-	vector<FaceShape> &fv
+	FaceShape &f
 ) {
 	FaceShape sphere, cylinder;
 	init(conf, sphere, cylinder);
-	fv.reserve(shape.points_size + shape.edges_size);
+	f.points.reserve(shape.points_size * sphere.points.size() + shape.edges_size * cylinder.points.size());
+	f.faces.reserve(shape.points_size * sphere.faces.size() + shape.edges_size * cylinder.faces.size());
 
 	for (size_t ip = 0; ip < shape.points_size; ip++) {
-		fv.push_back(sphere);
 		const auto &p = shape.points[ip];
-		for (auto &q : fv.back().points) {
-			q += p.to_vector();
+		auto o = (unsigned int)f.points.size();
+		for (const auto &e : sphere.faces) {
+			f.faces.push_back({ e.a + o, e.b + o, e.c + o });
 		}
-		fv.back().center = p;
+		for (const auto &q : sphere.points) {
+			f.points.push_back(p + q.to_vector());
+		}
 	}
 
 	for (size_t ie = 0; ie < shape.edges_size; ie++) {
-		fv.push_back(cylinder);
 		const auto &e = shape.edges[ie];
-
-		auto a = shape.points[e.a];
-		auto b = shape.points[e.b];
-		auto d = b - a;
-		auto d_xy = Vector2D(d.x, d.y);
-		auto l = d.length();
-		Rotation r_z({ -1, 0 }, { d.x, d.y });
-		Rotation r_y({ 0, 1 }, { d_xy.length(), d.z });
-		auto r = r_y.y() * r_z.z();
-		for (auto &q : fv.back().points) {
-			auto v = q.to_vector();
-			v.z *= l;
-			q = Point3D(a + v * r);
+		auto o = (unsigned int)f.points.size();
+		for (const auto &g : cylinder.faces) {
+			f.faces.push_back({ g.a + o, g.b + o, g.c + o });
 		}
-		fv.back().center = Point3D::center({ a, b });
+		place_cylinder(shape, e, cylinder, f);
 	}
 }
 
