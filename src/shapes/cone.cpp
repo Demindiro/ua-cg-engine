@@ -30,14 +30,16 @@ void cone(const ini::Section &conf, FaceShape &shape) {
 	auto n = (unsigned int)conf["n"].as_int_or_die();
 	auto height = conf["height"].as_double_or_die();
 
+	auto &shape_faces = *shape.faces;
+
 	shape.points.reserve(n + 1);
-	shape.faces.reserve(n * 2);
+	shape_faces.reserve(n * 2);
 	circle(shape.points, n, 0);
-	circle(shape.faces, n, 0);
+	circle(shape_faces, n, 0);
 	shape.points.push_back({ 0, 0, height });
 
 	for (unsigned int i = 0; i < n; i++) {
-		shape.faces.push_back({ i, n, (i + 1) % n });
+		shape_faces.push_back({ i, n, (i + 1) % n });
 	}
 }
 

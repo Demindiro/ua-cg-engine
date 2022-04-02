@@ -10,8 +10,8 @@ namespace render {
  */
 template<typename B, typename P>
 static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable_cull) {
-	assert((f.faces.size() == f.normals.size() && "faces & normals out of sync"));
-	size_t faces_count = f.faces.size();
+	assert((f.faces->size() == f.normals.size() && "faces & normals out of sync"));
+	size_t faces_count = f.faces->size();
 	size_t added = 0;
 	auto proj = [&f, &project](auto from_i, auto to_i) {
 		assert(from_i < f.points.size());
@@ -23,9 +23,10 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		return (unsigned int)(f.points.size() - 1);
 	};
 	auto swap_remove = [&f, &faces_count, disable_cull](size_t i) {
+		auto &f_faces = *f.faces;
 		// Swap, then remove. This is always O(1)
 		if (i < faces_count) {
-			f.faces[i] = f.faces[faces_count - 1];
+			f_faces[i] = f_faces[faces_count - 1];
 			if (f.normals.size() > 0)
 				f.normals[i] = f.normals[faces_count - 1];
 		}
@@ -39,7 +40,7 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		auto p = proj(out, inl);
 		auto q = proj(out, inr);
 		out = p;
-		f.faces.push_back({ p, q, inr });
+		f.faces->push_back({ p, q, inr });
 		if (f.normals.size() > 0)
 			f.normals.push_back(f.normals[i]);
 		added++;
@@ -49,7 +50,7 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		f.clipped = true;
 	};
 	for (size_t i = 0; i < faces_count; i++) {
-		auto &t = f.faces[i];
+		auto &t = (*f.faces)[i];
 		switch(bitfield(t)) {
 		// Nothing to do
 		case 0b000:
@@ -90,17 +91,18 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 	}
 
 	// Copy added faces over deleted faces.
-	{
-		size_t i = faces_count, j = f.faces.size() - added;
+	if (added > 0) {
+		auto &f_faces = *f.faces;
+		size_t i = faces_count, j = f.faces->size() - added;
 		size_t new_size = faces_count + added;
 		assert(i <= j);
 		while (added --> 0) {
-			f.faces[i] = f.faces[j];
+			f_faces[i] = f_faces[j];
 			if (f.normals.size() > 0)
 				f.normals[i] = f.normals[j];
 			i++, j++;
 		}
-		f.faces.resize(new_size);
+		f_faces.resize(new_size);
 		if (f.normals.size() > 0)
 			f.normals.resize(new_size);
 	}

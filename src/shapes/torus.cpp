@@ -53,12 +53,13 @@ void torus(const ini::Section &conf, EdgeShape &f) {
 void torus(const ini::Section &conf, FaceShape &f) {
 	unsigned int n, m;
 	torus(conf, f.points, n, m);
+	auto &f_faces = *f.faces;
 	for (unsigned int i = 0; i < n; i++) {
 		for (unsigned int j = 0; j < m; j++) {
 			unsigned int k = (i + 1) % n;
 			unsigned int l = (j + 1) % m;
-			f.faces.push_back({ i * m + j, i * m + l, k * m + j });
-			f.faces.push_back({ k * m + l, k * m + j, i * m + l });
+			f_faces.push_back({ i * m + j, i * m + l, k * m + j });
+			f_faces.push_back({ k * m + l, k * m + j, i * m + l });
 		}
 	}
 }

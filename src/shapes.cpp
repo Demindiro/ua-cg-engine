@@ -147,13 +147,14 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 		Rect rect;
 		rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
 		rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
-		fig.uv.reserve(fig.points.size());
+		auto &fig_uv = *fig.uv;
+		fig_uv.reserve(fig.points.size());
 		for (auto &p : fig.points) {
 			Point2D uv(p.x, p.z);
 			rect |= uv;
-			fig.uv.push_back(uv);
+			fig_uv.push_back(uv);
 		}
-		for (auto &uv : fig.uv) {
+		for (auto &uv : fig_uv) {
 			uv.x = (uv.x - rect.min.x) / rect.size().x;
 			uv.y = (uv.y - rect.min.y) / rect.size().y;
 		}
@@ -161,13 +162,11 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 
 	auto mat = transform_from_conf(section, eye);
 
-	fig.center = shape.center * mat;
-
 	for (auto &p : fig.points) {
 		p *= mat;
 	}
 
-	fig.normals = calculate_face_normals(fig.points, fig.faces);
+	fig.normals = calculate_face_normals(fig.points, *fig.faces);
 
 	return fig;
 }
@@ -544,7 +543,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 
 FaceShape::FaceShape(const ShapeTemplateAny &t)
 	: points({ t.points, t.points + t.points_size })
-	, faces({ t.faces, t.faces + t.faces_size })
+	, faces(Cow<vector<Face>>::make({ t.faces, t.faces + t.faces_size }))
 {}
 
 }

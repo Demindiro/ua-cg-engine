@@ -67,7 +67,7 @@ void sphere(unsigned int n, EdgeShape &f) {
 
 void sphere(unsigned int n, FaceShape &f) {
 	vector<Edge> edges;
-	sphere(n, f.points, edges, f.faces);
+	sphere(n, f.points, edges, *f.faces);
 }
 
 void sphere(const ini::Section &conf, EdgeShape &f) {

@@ -40,17 +40,19 @@ void cylinder(const ini::Section &conf, FaceShape &f) {
 	auto n = (unsigned int)conf["n"].as_int_or_die();
 	auto height = conf["height"].as_double_or_die();
 
+	auto &f_faces = *f.faces;
+
 	f.points.reserve(n * 2);
-	f.faces.reserve(n * 4);
+	f_faces.reserve(n * 4);
 	circle(f.points, n, 0);
 	circle(f.points, n, height);
-	circle(f.faces, n, 0);
-	circle_reversed(f.faces, n, n);
+	circle(f_faces, n, 0);
+	circle_reversed(f_faces, n, n);
 
 	for (unsigned int i = 0; i < n; i++) {
 		unsigned int j = (i + 1) % n;
-		f.faces.push_back({ j, i, n + i });
-		f.faces.push_back({ j, n + i, n + j });
+		f_faces.push_back({ j, i, n + i });
+		f_faces.push_back({ j, n + i, n + j });
 	}
 }
 
@@ -59,11 +61,13 @@ void cylinder_sides(unsigned int n, double height, FaceShape &f) {
 	circle(f.points, n, 0);
 	circle(f.points, n, height);
 
-	f.faces.reserve(n * 2);
+	auto &f_faces = *f.faces;
+
+	f_faces.reserve(n * 2);
 	for (unsigned int i = 0; i < n; i++) {
 		unsigned int j = (i + 1) % n;
-		f.faces.push_back({ j, i, n + i });
-		f.faces.push_back({ j, n + i, n + j });
+		f_faces.push_back({ j, i, n + i });
+		f_faces.push_back({ j, n + i, n + j });
 	}
 }
 
