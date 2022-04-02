@@ -5,7 +5,6 @@
 #include <optional>
 #include <ostream>
 #include <vector>
-#include "cow.h"
 #include "easy_image.h"
 #include "engine.h"
 #include "ini_configuration.h"
@@ -65,7 +64,7 @@ struct EdgeShape {
 
 struct FaceShape {
 	std::vector<Point3D> points;
-	Cow<std::vector<render::Face>> faces;
+	std::vector<render::Face> faces;
 	Point3D center;
 
 	FaceShape() {}
@@ -75,7 +74,7 @@ struct FaceShape {
 	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>
 	FaceShape(const ShapeTemplate<points_c, edges_c, faces_c> &t)
 		: points({ t.points.begin(), t.points.end() })
-		, faces(Cow<std::vector<render::Face>>::make({ t.faces.begin(), t.faces.end() }))
+		, faces({ t.faces.begin(), t.faces.end() })
 	{}
 
 	template<unsigned int points_c, unsigned int edges_c, unsigned int faces_c>

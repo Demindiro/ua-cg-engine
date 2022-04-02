@@ -22,7 +22,7 @@ Rect TriangleFigure::bounds_projected() const {
 	if (clipped) {
 		// There may still be points that are now unused, so iterate over the triangles to find
 		// the active points.
-		for (auto &t : *faces) {
+		for (auto &t : faces) {
 			r = r | project(points[t.a]) | project(points[t.b]) | project(points[t.c]);
 		}
 	} else {

@@ -164,10 +164,9 @@ static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Point3
 	}
 
 	Point2D uv = p * m.inv();
-	const auto &f_uv = *f.uv;
-	uv = (1 - uv.x - uv.y) * f_uv[t.a].to_vector()
-		+ uv.x * f_uv[t.b].to_vector()
-		+ uv.y * f_uv[t.c].to_vector();
+	uv = (1 - uv.x - uv.y) * f.uv[t.a].to_vector()
+		+ uv.x * f.uv[t.b].to_vector()
+		+ uv.y * f.uv[t.c].to_vector();
 	return Color(f.texture.value().get_clamped(uv));
 }
 
@@ -214,7 +213,12 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 					a *= p.cached.eye;
 					rect |= project(a);
 				}
+				f.center *= p.cached.eye;
 			}
+			// Sort to reduce amount of assignments done by zbuffer
+			sort(zfigs.begin(), zfigs.end(), [](const auto &a, const auto &b) {
+				return a.center.z > b.center.z;
+			});
 
 			// Create ZBuffer
 			{
@@ -227,10 +231,9 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			assert(figures.size() < UINT16_MAX);
 			for (u_int16_t i = 0; i < zfigs.size(); i++) {
 				auto &f = zfigs[i];
-				const auto &f_faces = *f.faces;
-				assert(f_faces.size() < UINT32_MAX);
-				for (u_int32_t k = 0; k < f_faces.size(); k++) {
-					auto &t = f_faces[k];
+				assert(f.faces.size() < UINT32_MAX);
+				for (u_int32_t k = 0; k < f.faces.size(); k++) {
+					auto &t = f.faces[k];
 					auto abc = f2p(f, t);
 					auto a = abc.a, b = abc.b, c = abc.c;
 					auto norm = (b - a).cross(c - a);
@@ -245,7 +248,12 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 	// Preprocess figures to speed up some later operations
 	for (auto &f : figures) {
 		f.ambient *= lights.ambient;
+		zip r(pair(f.faces.begin(), f.normals.begin()), pair(f.faces.end(), f.normals.end()));
 	}
+	// Sort to reduce amount of assignments done by zbuffer
+	sort(figures.begin(), figures.end(), [](const auto &a, const auto &b) {
+		return a.center.z > b.center.z;
+	});
 
 	Rect dim;
 	dim.min.x = dim.min.y = +numeric_limits<double>::infinity();
@@ -272,10 +280,9 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 	for (u_int16_t i = 0; i < figures.size(); i++) {
 #endif
 		auto &f = figures[i];
-		const auto &f_faces = *f.faces;
-		assert(f_faces.size() < UINT32_MAX);
-		for (u_int32_t k = 0; k < f_faces.size(); k++) {
-			auto &t = f_faces[k];
+		assert(f.faces.size() < UINT32_MAX);
+		for (u_int32_t k = 0; k < f.faces.size(); k++) {
+			auto &t = f.faces[k];
 			auto abc = f2p(f, t);
 			auto a = abc.a, b = abc.b, c = abc.c;
 #if GRAPHICS_DEBUG_Z == 2
@@ -375,9 +382,8 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 				}
 			}
 
-			const auto &f_faces = *f.faces;
 			if (f.texture.has_value()) {
-				color *= texture_color(f, f_faces[pair.triangle_id], point);
+				color *= texture_color(f, f.faces[pair.triangle_id], point);
 			}
 
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
