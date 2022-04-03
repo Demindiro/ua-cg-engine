@@ -125,7 +125,7 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 		// integer powers are faster, so try to use that.
 		fig.reflection_int = fig.reflection;
 		if (fig.reflection_int != fig.reflection) {
-			fig.reflection_int = 0;
+			fig.reflection_int = numeric_limits<unsigned int>::max();
 		}
 	} else {
 		fig.ambient = color_from_conf(section);

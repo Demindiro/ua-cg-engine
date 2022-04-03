@@ -30,7 +30,7 @@ static ALWAYS_INLINE optional<Color> specular(const TriangleFigure &f, Color c, 
 	auto r = 2 * dot * n + direction;
 	auto rdot = r.dot(-cam_dir);
 	if (rdot > 0) {
-		double v = f.reflection_int != 0
+		double v = f.reflection_int != numeric_limits<unsigned int>::max()
 			? pow_uint(rdot, f.reflection_int)
 			: pow(rdot, f.reflection);
 		return f.specular * c * v;

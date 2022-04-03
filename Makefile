@@ -1,5 +1,19 @@
 CPUS  := $(shell nproc)
 INI   := $(patsubst assets/%,%,$(wildcard assets/*.ini))
+# Use perf list for more hardware events
+PERF_STAT := perf stat \
+	-e branch-instructions \
+	-e branch-misses \
+	-e cache-references \
+	-e cache-misses \
+	-e cpu-cycles \
+	-e instructions \
+	-e stalled-cycles-backend \
+	-e stalled-cycles-frontend \
+	-e context-switches \
+	-e cpu-clock \
+	-e cpu-migrations \
+	-e page-faults
 
 .PHONY: build build-debug $(INI) test
 
@@ -60,16 +74,28 @@ $(INI): build-debug
 	@cd assets && ../$</engine $@ > /dev/null || echo $@ failed with code $$? || exit 1
 
 bench-sep: $(patsubst %.ini,bench-sep-%,$(INI))
-	perf stat make -C . $^
+	$(PERF_STAT) make -C . $^
 
 bench-sep-%: build
 	cd assets && ../$</engine "$(patsubst bench-sep-%,%.ini,$@)"
 
 bench-batch: build | assets/honk.bmp assets/Intro2_Blocks.bmp
-	cd assets && perf stat ../$</engine *.ini
+	cd assets && $(PERF_STAT) ../$</engine *.ini
 
 bench-batch-%: build | assets/honk.bmp
-	cd assets && perf stat ../$</engine $(patsubst bench-batch-%,%*.ini,$@)
+	cd assets && $(PERF_STAT) ../$</engine $(patsubst bench-batch-%,%*.ini,$@)
+
+cachegrind-batch: build | assets/honk.bmp assets/Intro2_Blocks.bmp
+	cd assets && valgrind --tool=cachegrind ../$</engine *.ini
+
+cachegrind-%: build | assets/honk.bmp assets/Intro2_Blocks.bmp
+	cd assets && valgrind --tool=cachegrind ../$</engine $(patsubst cachegrind-%,%.ini,$@)
+
+callgrind-%: build | assets/honk.bmp assets/Intro2_Blocks.bmp
+	cd assets && valgrind --tool=callgrind \
+		--dump-instr=yes \
+		--collect-jumps=yes \
+		../$</engine $(patsubst callgrind-%,%.ini,$@)
 
 gen: build | assets/honk.bmp
 	make -C . $(patsubst %,_gen-%,$(INI))
@@ -85,11 +111,14 @@ $(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
 		CMakeLists.txt LICENSE README.md
 	tar czvf $@ $^
 
-clean:: clean-images
+clean:: clean-images clean-bench
 	rm -rf $(ARCHIVE) build/ build-debug/
 
 clean-images::
 	rm -rf assets/*.bmp
+
+clean-bench::
+	rm -rf assets/cachegrind.out.* assets/callgrind.out.*
 
 loop::
 	while true; do clear; make -C . build-debug; inotifywait -e CREATE CMakeLists.txt \

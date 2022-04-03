@@ -48,7 +48,7 @@ struct TriangleFigure {
 	Color diffuse;
 	Color specular;
 	double reflection;
-	unsigned int reflection_int; // Not 0 if defined
+	unsigned int reflection_int; // Not UINT_MAX if defined
 
 	TriangleFigureFlags flags;
 
