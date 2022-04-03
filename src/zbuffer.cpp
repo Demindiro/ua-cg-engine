@@ -69,9 +69,12 @@ void ZBuffer::triangle(
 			// X bounds
 			double x_min = b_left ? ab : ac;
 			double x_max = b_left ? ac : ab;
-			assert(x_min <= x_max);
 			unsigned int from_x = (unsigned int)x_min + 1;
 			unsigned int to_x   = x_max;
+			// If x_min and x_max are very close to each other (or even x_min > x_max
+			// by a small epsilon) from_x may be 1 higher than to_x. In this case nothing
+			// gets rendered which is the expected behaviour.
+			assert(from_x <= to_x + 1);
 
 			auto dy = (y - g_y) * dzdy;
 			for (unsigned int x = from_x; x <= to_x; x++) {
@@ -94,9 +97,9 @@ void ZBuffer::triangle(
 			// X bounds
 			double x_min = b_left ? bc : ac;
 			double x_max = b_left ? ac : bc;
-			assert(x_min <= x_max);
 			unsigned int from_x = (unsigned int)x_min + 1;
 			unsigned int to_x   = x_max;
+			assert(from_x <= to_x + 1); // Ditto
 
 			auto dy = (y - g_y) * dzdy;
 			for (unsigned int x = from_x; x <= to_x; x++) {
