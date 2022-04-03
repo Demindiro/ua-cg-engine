@@ -31,9 +31,9 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		}
 		faces_count--;
 		if (disable_cull) {
-			f.can_cull = false;
+			f.set_flag(TriangleFigure::can_cull, false);
 		}
-		f.clipped = true;
+		f.set_flag(TriangleFigure::clipped, true);
 	};
 	auto split = [&proj, &f, &added, disable_cull](auto i, auto &out, auto inl, auto inr) {
 		auto p = proj(out, inl);
@@ -44,9 +44,9 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 			f.normals.push_back(f.normals[i]);
 		added++;
 		if (disable_cull) {
-			f.can_cull = false;
+			f.set_flag(TriangleFigure::can_cull, false);
 		}
-		f.clipped = true;
+		f.set_flag(TriangleFigure::clipped, true);
 	};
 	for (size_t i = 0; i < faces_count; i++) {
 		auto &t = f.faces[i];
@@ -68,17 +68,17 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		case 0b011:
 			t.b = proj(t.b, t.a);
 			t.c = proj(t.c, t.a);
-			f.clipped = true;
+			f.set_flag(TriangleFigure::clipped, true);
 			break;
 		case 0b101:
 			t.c = proj(t.c, t.b);
 			t.a = proj(t.a, t.b);
-			f.clipped = true;
+			f.set_flag(TriangleFigure::clipped, true);
 			break;
 		case 0b110:
 			t.a = proj(t.a, t.c);
 			t.b = proj(t.b, t.c);
-			f.clipped = true;
+			f.set_flag(TriangleFigure::clipped, true);
 			break;
 		// Remove triangle
 		case 0b111:

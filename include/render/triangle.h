@@ -12,27 +12,38 @@ struct Face {
 };
 
 struct TriangleFigure {
+	const static int separate_normals = 0;
+	const static int separate_uv = 1;
+	const static int can_cull = 2;
+	const static int clipped = 3;
+
 	std::vector<Point3D> points;
-	std::vector<Point2D> uv;
-	/**
-	 * \brief Normals for calculating lighting. Empty if no lighting.
-	 */
 	std::vector<Vector3D> normals;
+	std::vector<Point2D> uv;
+
 	std::vector<Face> faces;
+	std::vector<Face> faces_normals;
+	std::vector<Face> faces_uv;
+
 	std::optional<Texture> texture;
 	Color ambient;
 	Color diffuse;
 	Color specular;
 	double reflection;
 	unsigned int reflection_int; // Not 0 if defined
-	/**
-	 * \brief Whether each normal is part of a face or a point.
-	 */
-	bool face_normals;
-	bool can_cull;
-	bool clipped;
+
+	unsigned int flags = 0;
 
 	Rect bounds_projected() const;
+
+	bool test_flag(unsigned int flag) const {
+		return (flags & (1 << flag)) > 0;
+	}
+
+	void set_flag(unsigned int flag, bool v) {
+		flags &= ~(1 << flag);
+		flags |= (unsigned int)v << flag;
+	}
 };
 
 /**

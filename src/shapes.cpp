@@ -116,7 +116,7 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 	TriangleFigure fig;
 	fig.points = shape.points;
 	fig.faces = shape.faces;
-	fig.face_normals = true;
+	fig.set_flag(TriangleFigure::separate_normals, false);
 	if (with_lighting) {
 		fig.ambient = try_color_from_conf(section["ambientReflection"]);
 		fig.diffuse = try_color_from_conf(section["diffuseReflection"]);
@@ -130,8 +130,9 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 	} else {
 		fig.ambient = color_from_conf(section);
 	}
-	fig.can_cull = true; // All platonics are solid (& other generated meshes are too)
-	fig.clipped = false;
+	// All platonics are solid (& other generated meshes are too)
+	fig.set_flag(TriangleFigure::can_cull, true);
+	fig.set_flag(TriangleFigure::clipped, false);
 
 	// Load texture, if any
 	string tex_path;
@@ -153,6 +154,22 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 			rect |= uv;
 			fig.uv.push_back(uv);
 		}
+		for (auto &uv : fig.uv) {
+			uv.x = (uv.x - rect.min.x) / rect.size().x;
+			uv.y = (uv.y - rect.min.y) / rect.size().y;
+		}
+	} else if (section["cubeMap"].as_bool_or_default(false)) {
+		// Generate UVs according to normals
+		Rect rect;
+		rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
+		rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
+		fig.uv.reserve(fig.points.size());
+		for (auto &p : fig.points) {
+			Point2D uv(p.x, p.z);
+			rect |= uv;
+			fig.uv.push_back(uv);
+		}
+
 		for (auto &uv : fig.uv) {
 			uv.x = (uv.x - rect.min.x) / rect.size().x;
 			uv.y = (uv.y - rect.min.y) / rect.size().y;
@@ -408,6 +425,17 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		lights.shadows = false;
 	}
 #endif
+
+	// Check for cubemap
+	optional<Texture> cubemap;
+	{
+		string path;
+		if (conf["General"]["cubeMap"].as_string_if_exists(path)) {
+			ifstream f(path);
+			cubemap.emplace(Texture());
+			f >> cubemap.value().image;
+		}
+	}
 
 	// Parse figures
 	vector<TriangleFigure> figures;

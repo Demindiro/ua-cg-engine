@@ -1,0 +1,38 @@
+mtllib colorrectangle.mtl
+usemtl colorrect
+# Vertexes
+v  1.0 -1.0 -1.0
+v -1.0  1.0 -1.0
+v  1.0  1.0  1.0
+v -1.0 -1.0  1.0
+v  1.0  1.0 -1.0
+v -1.0 -1.0 -1.0
+v  1.0 -1.0  1.0
+v -1.0  1.0  1.0
+# Vertex normals
+vn  1.0 -1.0 -1.0
+vn -1.0  1.0 -1.0
+vn  1.0  1.0  1.0
+vn -1.0 -1.0  1.0
+vn  1.0  1.0 -1.0
+vn -1.0 -1.0 -1.0
+vn  1.0 -1.0  1.0
+vn -1.0  1.0  1.0
+# (UV) Texture coordinates
+# Listed as pairs u (horizontal) and v (vertical)
+vt 0.0 0.0
+vt 0.0 1.0
+vt 1.0 1.0
+vt 1.0 0.0
+# Faces, lists the indexes of v/vt/vn
+# Also possible:
+#	v
+#	v/vt
+#	v//vn
+# Caution: these start from index 1!
+f 1/1/1 5/2/5 3/3/3 7/4/7
+f 5/1/5 2/2/2 8/3/8 3/4/3
+f 2/1/2 6/2/6 4/3/4 8/4/8
+f 6/1/6 1/2/1 7/3/7 4/4/4
+f 7/1/7 3/2/3 8/3/8 4/4/4
+f 1/1/1 6/2/6 2/3/2 5/4/5

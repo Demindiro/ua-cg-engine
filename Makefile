@@ -40,11 +40,18 @@ test-texture: build-debug test-intro | assets/honk.bmp
 test-thicken: build-debug
 	cd assets && ../$</engine spheres_and_cylinders*.ini
 
+test-cubemap: build-debug | assets/mountains.bmp
+	cd assets && ../$</engine cubemap*.ini
+
 assets/%.bmp: assets/%.ini build
 	cd assets && ../build/engine $(patsubst assets/%,%,$<)
 
 assets/honk.bmp: assets/honk.webp
 	ffmpeg -y -i $< $@
+
+mountain_images := posz.jpg negz.jpg posx.jpg negx.jpg posy.jpg negy.jpg
+assets/mountains.bmp: $(patsubst %,assets/cubemap/mountain-skyboxes/Maskonaive/%,$(mountain_images))
+	./mkcubemap.sh $^ $@
 
 test: $(INI)
 
