@@ -8,6 +8,13 @@ namespace engine {
 
 using namespace std;
 
+/**
+ * \brief Find intersections
+ */
+static ALWAYS_INLINE double f(double y, Point3D p, Point3D q) {
+	return q.x + (p.x - q.x) * (y - q.y) / (p.y - q.y);
+};
+
 template<typename F>
 void ZBuffer::triangle(
 	Point3D a, Point3D b, Point3D c,
@@ -48,11 +55,6 @@ void ZBuffer::triangle(
 	assert(isnan(p) || 0 <= p);
 	assert(isnan(p) || p <= 1);
 	bool b_left = b.x < a.x * (1 - p) + c.x * p;
-
-	auto f = [](auto y, Point3D p, Point3D q) {
-		// Find intersections
-		return q.x + (p.x - q.x) * (y - q.y) / (p.y - q.y);
-	};
 
 	// Start from bottom to middle
 	{
