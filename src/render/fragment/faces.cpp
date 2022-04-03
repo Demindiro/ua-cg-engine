@@ -273,7 +273,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 #if GRAPHICS_DEBUG_Z == 2
 			{
 #else
-			if (!f.can_cull || f.normals[k].dot(a - Point3D()) <= 0) {
+			if (!f.flags.can_cull() || f.normals[k].dot(a - Point3D()) <= 0) {
 #endif
 				zbuf.triangle(a, b, c, d, offset, {i, k, NAN}, Z_BIAS);
 			}

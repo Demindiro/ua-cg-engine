@@ -19,7 +19,7 @@ Rect TriangleFigure::bounds_projected() const {
 	Rect r;
 	r.min.x = r.min.y = +numeric_limits<double>::infinity();
 	r.max.x = r.max.y = -numeric_limits<double>::infinity();
-	if (clipped) {
+	if (flags.clipped()) {
 		// There may still be points that are now unused, so iterate over the triangles to find
 		// the active points.
 		for (auto &t : faces) {

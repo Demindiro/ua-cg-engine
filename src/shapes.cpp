@@ -116,7 +116,7 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 	TriangleFigure fig;
 	fig.points = shape.points;
 	fig.faces = shape.faces;
-	fig.set_flag(TriangleFigure::separate_normals, false);
+	fig.flags.separate_normals(false);
 	if (with_lighting) {
 		fig.ambient = try_color_from_conf(section["ambientReflection"]);
 		fig.diffuse = try_color_from_conf(section["diffuseReflection"]);
@@ -130,9 +130,8 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 	} else {
 		fig.ambient = color_from_conf(section);
 	}
-	// All platonics are solid (& other generated meshes are too)
-	fig.set_flag(TriangleFigure::can_cull, true);
-	fig.set_flag(TriangleFigure::clipped, false);
+	fig.flags.can_cull(true); // All platonics are solid (& other generated meshes are too)
+	fig.flags.clipped(false);
 
 	// Load texture, if any
 	string tex_path;

@@ -11,12 +11,30 @@ struct Face {
 	unsigned int a, b, c;
 };
 
-struct TriangleFigure {
-	const static int separate_normals = 0;
-	const static int separate_uv = 1;
-	const static int can_cull = 2;
-	const static int clipped = 3;
+class TriangleFigureFlags {
+	int flags = 0;
 
+	bool test_flag(unsigned int flag) const {
+		return (flags & (1 << flag)) > 0;
+	}
+
+	void set_flag(unsigned int flag, bool v) {
+		flags &= ~(1 << flag);
+		flags |= (unsigned int)v << flag;
+	}
+
+public:
+	bool separate_normals() const { return test_flag(0); };
+	void separate_normals(bool v) { return set_flag(0, v); };
+	bool separate_uv() const { return test_flag(1); };
+	void separate_uv(bool v) { return set_flag(1, v); };
+	bool can_cull() const { return test_flag(2); };
+	void can_cull(bool v) { return set_flag(2, v); };
+	bool clipped() const { return test_flag(3); };
+	void clipped(bool v) { return set_flag(3, v); };
+};
+
+struct TriangleFigure {
 	std::vector<Point3D> points;
 	std::vector<Vector3D> normals;
 	std::vector<Point2D> uv;
@@ -32,18 +50,9 @@ struct TriangleFigure {
 	double reflection;
 	unsigned int reflection_int; // Not 0 if defined
 
-	unsigned int flags = 0;
+	TriangleFigureFlags flags;
 
 	Rect bounds_projected() const;
-
-	bool test_flag(unsigned int flag) const {
-		return (flags & (1 << flag)) > 0;
-	}
-
-	void set_flag(unsigned int flag, bool v) {
-		flags &= ~(1 << flag);
-		flags |= (unsigned int)v << flag;
-	}
 };
 
 /**
@@ -59,11 +68,11 @@ struct ZBufferTriangleFigure {
 	{}
 
 	ZBufferTriangleFigure(const TriangleFigure &fig)
-		: points(fig.points), faces(fig.faces), can_cull(fig.can_cull)
+		: points(fig.points), faces(fig.faces), can_cull(fig.flags.can_cull())
 	{}
 
 	ZBufferTriangleFigure(const TriangleFigure &fig, const Matrix4D &mat)
-		: faces(fig.faces), can_cull(fig.can_cull)
+		: faces(fig.faces), can_cull(fig.flags.can_cull())
 	{
 		points.reserve(fig.points.size());
 		for (auto &p : fig.points) {
