@@ -270,7 +270,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			auto &t = f.faces[k];
 			auto abc = f2p(f, t);
 			auto a = abc.a, b = abc.b, c = abc.c;
-#if GRAPHICS_DEBUG_Z == 2
+#if GRAPHICS_DEBUG_Z == 2 || GRAPHICS_DEBUG_FACES == 2
 			{
 #else
 			if (!f.flags.can_cull() || f.normals[k].dot(a - Point3D()) <= 0) {

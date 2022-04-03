@@ -44,8 +44,9 @@ void ZBuffer::triangle(
 
 	// Determine if b is left or right to avoid min max inside loop
 	double p = (b.y - a.y) / (c.y - a.y);
-	assert(0 <= p);
-	assert(p <= 1);
+	// NaN is fine
+	assert(isnan(p) || 0 <= p);
+	assert(isnan(p) || p <= 1);
 	bool b_left = b.x < a.x * (1 - p) + c.x * p;
 
 	auto f = [](auto y, Point3D p, Point3D q) {

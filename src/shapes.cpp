@@ -472,6 +472,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 				nogen = false;
 			}
 		};
+		f_b("BuckyBall", buckyball);
 		f_b("Cube", cube);
 		f_b("Tetrahedron", tetrahedron);
 		f_b("Octahedron", octahedron);
@@ -481,19 +482,12 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		f_g("Cone", cone);
 		f_g("Sphere", sphere);
 		f_g("Torus", torus);
-		if (type == "BuckyBall") {
-			puts("TODO BuckyBall triangles");
-			continue;
-		}
+		f_f("FractalBuckyBall", buckyball);
 		f_f("FractalCube", cube);
 		f_f("FractalTetrahedron", tetrahedron);
 		f_f("FractalOctahedron", octahedron);
 		f_f("FractalIcosahedron", icosahedron);
 		f_f("FractalDodecahedron", dodecahedron);
-		if (type == "FractalBuckyBall") {
-			puts("TODO FractalBuckyBall triangles");
-			continue;
-		}
 		if (type == "MengerSponge") {
 			puts("TODO MengerSponge triangles");
 			continue;
