@@ -22,9 +22,9 @@ namespace shapes {
 
 template<unsigned int points_count, unsigned int edges_count, unsigned int faces_count>
 struct ShapeTemplate {
-	std::array<Point3D, points_count> points;
-	std::array<render::Edge, edges_count> edges;
-	std::array<render::Face, faces_count> faces;
+	std::array<Point3D, points_count> points = {};
+	std::array<render::Edge, edges_count> edges = {};
+	std::array<render::Face, faces_count> faces = {};
 
 	constexpr ShapeTemplate<points_count, edges_count, faces_count>(
 		std::array<Point3D, points_count> points,

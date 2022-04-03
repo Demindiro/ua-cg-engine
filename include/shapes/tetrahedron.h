@@ -9,7 +9,7 @@
 namespace engine {
 namespace shapes {
 
-const ShapeTemplate<4, 6, 4> tetrahedron {
+constexpr ShapeTemplate<4, 6, 4> tetrahedron {
 	{{
 		{  1, -1, -1 },
 		{ -1,  1, -1 },

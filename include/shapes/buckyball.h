@@ -10,11 +10,11 @@
 namespace engine {
 namespace shapes {
 
-const ShapeTemplate<60, 90, 32> buckyball(
+constexpr ShapeTemplate<60, 90, 32> buckyball(
 	[]() constexpr {
 		// Trisect the edges of an icosahedron
 		// The two middle points are the points of the buckyball
-		std::array<Point3D, 60> points;
+		std::array<Point3D, 60> points = {};
 		for (int i = 0; i < 30; i++) {
 			auto e = icosahedron.edges[i];
 			auto a = icosahedron.points[e.a];
@@ -25,7 +25,7 @@ const ShapeTemplate<60, 90, 32> buckyball(
 		return points;
 	},
 	[](auto points) constexpr {
-		std::array<render::Edge, 90> edges;
+		std::array<render::Edge, 90> edges = {};
 		const double limit = 0.3505; // "exact" length is 0.350487
 		unsigned int i = 0;
 		for (unsigned int u = 0; u < 60; u++) {
@@ -41,7 +41,7 @@ const ShapeTemplate<60, 90, 32> buckyball(
 		return edges;
 	},
 	[](auto, auto) constexpr {
-		std::array<render::Face, 32> faces;
+		std::array<render::Face, 32> faces = {};
 		return faces;
 	}
 );

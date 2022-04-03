@@ -9,7 +9,7 @@
 namespace engine {
 namespace shapes {
 
-const ShapeTemplate<8, 12, 12> cube {
+constexpr ShapeTemplate<8, 12, 12> cube {
 	{{
 		{  1,  1,  1 },
 		{  1,  1, -1 },

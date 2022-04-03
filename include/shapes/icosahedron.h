@@ -10,9 +10,9 @@
 namespace engine {
 namespace shapes {
 
-const auto icosahedron = ShapeTemplate<12, 30, 20>(
+constexpr ShapeTemplate<12, 30, 20> icosahedron(
 	[]() constexpr {
-		std::array<Point3D, 12> points;
+		std::array<Point3D, 12> points = {};
 		auto p = sqrtl(5) / 2;
 		auto inv_p = 2 / sqrtl(5);
 		points[0] = Point3D(0, 0,  p);
@@ -31,9 +31,9 @@ const auto icosahedron = ShapeTemplate<12, 30, 20>(
 			points[i].z *= inv_p;
 		}
 		return points;
-	},
-	[](auto) constexpr {
-		std::array<render::Edge, 30> edges;
+	}(),
+	[]() constexpr {
+		std::array<render::Edge, 30> edges = {};
 		for (unsigned int i = 0; i < 5; i++) {
 			// Top & bottom "hat"
 			edges[0 + i] = { 0, 2 + i };
@@ -46,9 +46,9 @@ const auto icosahedron = ShapeTemplate<12, 30, 20>(
 			edges[25 + i] = { 2 + i, 7 + (i + 1) % 5 };
 		}
 		return edges;
-	},
-	[](auto, auto) constexpr {
-		std::array<render::Face, 20> faces;
+	}(),
+	[]() constexpr {
+		std::array<render::Face, 20> faces = {};
 		for (unsigned int i = 0; i < 5; i++) {
 			// TODO double check order of vertices
 			unsigned int j = (i + 1) % 5;
@@ -60,7 +60,7 @@ const auto icosahedron = ShapeTemplate<12, 30, 20>(
 			faces[15 + i] = { 2 + j, 2 + i, 7 + j };
 		}
 		return faces;
-	}
+	}()
 );
 
 }

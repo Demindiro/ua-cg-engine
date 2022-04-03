@@ -9,7 +9,7 @@
 namespace engine {
 namespace shapes {
 
-const ShapeTemplate<20, 30, 36> dodecahedron(
+constexpr ShapeTemplate<20, 30, 36> dodecahedron(
 	[]() constexpr {
 		std::array<Point3D, 20> points = {};
 		auto &ico = icosahedron.points;
