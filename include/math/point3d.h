@@ -62,3 +62,5 @@ struct Point3D {
 		return Vector3D(x, y, z);
 	}
 };
+
+std::ostream &operator <<(std::ostream &o, const Point3D &m);

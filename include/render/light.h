@@ -1,8 +1,10 @@
 #pragma once
 
+#include <optional>
 #include "math/point3d.h"
 #include "math/matrix4d.h"
 #include "render/color.h"
+#include "render/texture.h"
 #include "render/triangle.h"
 
 namespace engine {
@@ -33,6 +35,7 @@ struct Lights {
 	unsigned int shadow_mask;
 	Color ambient;
 	bool shadows;
+	std::optional<Texture> cubemap;
 };
 
 }

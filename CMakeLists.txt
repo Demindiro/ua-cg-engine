@@ -50,11 +50,7 @@ set(engine_sources
 	src/lines.cpp
 	src/l_parser.cpp
 	src/l_system.cpp
-	src/math/matrix4d.cpp
-	src/math/point2d.cpp
-	src/math/vector2d.cpp
-	src/math/vector3d.cpp
-	src/math/vector4d.cpp
+	src/math.cpp
 	src/obj_parser.cpp
 	src/render/color.cpp
 	src/render/fragment.cpp

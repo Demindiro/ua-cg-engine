@@ -32,6 +32,8 @@ public:
 	void can_cull(bool v) { return set_flag(2, v); };
 	bool clipped() const { return test_flag(3); };
 	void clipped(bool v) { return set_flag(3, v); };
+	bool cubemap() const { return test_flag(4); };
+	void cubemap(bool v) { return set_flag(4, v); };
 };
 
 struct TriangleFigure {

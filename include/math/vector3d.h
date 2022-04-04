@@ -35,6 +35,14 @@ struct Vector3D {
 		return { x / f, y / f, z / f };
 	}
 
+	constexpr Vector3D operator *(Vector3D r) const {
+		return { x * r.x, y * r.y, z * r.z };
+	}
+
+	constexpr Vector3D operator /(Vector3D r) const {
+		return { x / r.x, y / r.y, z / r.z };
+	}
+
 	constexpr Vector3D &operator +=(const Vector3D &rhs) {
 		return *this = *this + rhs;
 	}
@@ -60,7 +68,7 @@ struct Vector3D {
 	}
 
 	constexpr double length_squared() const {
-		return x * x + y * y + z * z;
+		return dot(*this);
 	}
 
 	constexpr double length() const {
@@ -69,6 +77,30 @@ struct Vector3D {
 
 	constexpr Vector3D normalize() const {
 		return *this / length();
+	}
+
+	constexpr Vector3D max(Vector3D r) const {
+		return { std::max(x, r.x), std::max(y, r.y), std::max(z, r.z) };
+	}
+
+	constexpr double max() const {
+		return std::max(x, std::max(y, z));
+	}
+
+	constexpr Vector3D min(Vector3D r) const {
+		return { std::min(x, r.x), std::min(y, r.y), std::min(z, r.z) };
+	}
+
+	constexpr double min() const {
+		return std::min(x, std::min(y, z));
+	}
+
+	constexpr Vector3D abs() const {
+		return { std::abs(x), std::abs(y), std::abs(z) };
+	}
+
+	constexpr Vector3D sign() const {
+		return { std::copysign(1.0, x), std::copysign(1.0, y), std::copysign(1.0, z) };
 	}
 };
 

@@ -7,6 +7,7 @@
 #include "engine.h"
 #include "lines.h"
 #include "easy_image.h"
+#include "render/aabb.h"
 #include "render/geometry.h"
 #include "render/rect.h"
 
@@ -186,11 +187,8 @@ static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Vector
 /**
  * \brief Get the color of a cubemap texture at a pixel
  */
-/*
 static ALWAYS_INLINE Color cubemap_color(
-	const TriangleFigure &f,
-	Face t,
-	Face t_uv,
+	const Texture &tex,
 	Point3D point,
 	Vector3D normal
 ) {
@@ -199,72 +197,70 @@ static ALWAYS_INLINE Color cubemap_color(
 	//   T
 	//   F R B L
 	//   B
+	//
+	// Note that -Z is forward, Y is top and X is right
 	Point2D uv;
-	
-	auto nx = abs(normal.x);
-	auto ny = abs(normal.y);
-	auto nz = abs(normal.z);
 
-	// If Z is the largest component, use either top or bottom
-	int mask = 0; // ZYX
+	Aabb aabb {
+		Vector3D(-1,-1,-1) * 135,
+		Vector3D(1,1,1) * 135,
+	};
+	auto f3 = (
+		normal.sign().max(Vector3D()) * aabb.max.to_vector()
+		- normal.sign().min(Vector3D()) * aabb.min.to_vector()
+		- point.to_vector()
+	) / normal;
+
+	double f = f3.abs().min();
+	point += normal * f;
+
+	auto p3 = (point - aabb.min) / aabb.size();
+
+	Vector2D p;
 	bool inv = false;
 	bool inv_y = false;
-	if (nz > nx && nz > ny) {
-		inv_y = n.z < 0;
-		uv = { 0, n.z > 0 ? 2.0 / 3 : 0 };
-		mask = 0b011;
-	} else {
+	if (f == f3.abs().x) {
+		// Right / left
+		p = { p3.z, p3.y };
 		uv.y = 1.0 / 3;
-		// Front or back
-		if (nx > ny) {
-			inv = n.x < 0;
-			uv.x = inv ? 0.5 : 0;
-			uv.x += 0.25;
-			mask = 0b101;
-		} else {
-			inv = n.y > 0;
-			uv.x = inv ? 0.5 : 0;
-			mask = 0b110;
-		}
+		inv = normal.x > 0;
+		uv.x = !inv ? 0.5 : 0;
+		uv.x += 0.25;
+	} else if (f == f3.abs().y) {
+		// Top / bottom
+		p = { p3.x, p3.z };
+		inv_y = normal.y > 0;
+		uv = { 0, normal.y > 0 ? 2.0 / 3 : 0 };
+	} else {
+		// Back / front
+		p = { p3.x, p3.y };
+		uv.y = 1.0 / 3;
+		inv = normal.z < 0;
+		uv.x = inv ? 0.5 : 0;
 	}
 
-	auto apply = [&](auto i) {
-		auto a = fig.points[i];
-		auto m = aabb.min;
-		auto s = aabb.size();
-		Vector2D p;
-		switch (mask) {
-		case 0b011: p = { (a.x - m.x) / s.x, (a.y - m.y) / s.y }; break;
-		case 0b101: p = { (a.y - m.y) / s.y, (a.z - m.z) / s.z }; break;
-		case 0b110: p = { (a.x - m.x) / s.x, (a.z - m.z) / s.z }; break;
-		default: UNREACHABLE;
-		}
-		if (inv)
-			p.x = 1.0 - p.x;
-		if (inv_y)
-			p.y = 1.0 - p.y;
-		const auto e = 1e-3; // Hack to avoid white seams
-		p.x = clamp(p.x, e, 1.0 - e);
-		p.y = clamp(p.y, e, 1.0 - e);
-		p.x /= 4;
-		p.y /= 3;
-		auto q = uv + p;
-		q.x = clamp(q.x, 0.0, 1.0);
-		q.y = clamp(q.y, 0.0, 1.0);
-		assert(0 <= q.x);
-		assert(q.x <= 1);
-		assert(0 <= q.y);
-		assert(q.y <= 1);
-		fig.uv.push_back(q);
-	};
+	const auto e = 1e-3; // Hack to avoid white seams
+	assert(-e <= p.x);
+	assert(p.x <= 1 + e);
+	assert(-e <= p.y);
+	assert(p.y <= 1 + e);
+	if (inv)
+		p.x = 1.0 - p.x;
+	if (inv_y)
+		p.y = 1.0 - p.y;
+	p.x = clamp(p.x, e, 1.0 - e);
+	p.y = clamp(p.y, e, 1.0 - e);
+	p.x /= 4;
+	p.y /= 3;
+	uv += p;
 
-	auto o = (unsigned int)fig.uv.size();
-	fig.faces_uv.push_back({ o, o + 1, o + 2 });
-	apply(f.a);
-	apply(f.b);
-	apply(f.c);
+	assert(0 <= uv.x);
+	assert(0 <= uv.y);
+	assert(uv.x <= 1);
+	assert(uv.y <= 1);
+
+	return Color(tex.get_clamped(uv));
 }
-*/
 
 img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background) {
 
@@ -474,6 +470,10 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 
 			if (f.texture.has_value()) {
 				color *= texture_color(f, f.faces[pair.triangle_id], pq);
+			}
+
+			if (lights.cubemap.has_value()) {
+				color *= cubemap_color(*lights.cubemap, point, n);
 			}
 
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
