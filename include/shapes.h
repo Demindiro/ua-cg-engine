@@ -62,6 +62,7 @@ struct EdgeShape {
 
 struct FaceShape {
 	std::vector<Point3D> points;
+	std::vector<Vector3D> normals;
 	std::vector<render::Face> faces;
 
 	FaceShape() {}

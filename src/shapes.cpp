@@ -118,7 +118,6 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 	TriangleFigure fig;
 	fig.points = shape.points;
 	fig.faces = shape.faces;
-	fig.flags.separate_normals(false);
 	if (with_lighting) {
 		fig.ambient = try_color_from_conf(section["ambientReflection"]);
 		fig.diffuse = try_color_from_conf(section["diffuseReflection"]);
@@ -163,6 +162,7 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 	}
 
 	if (section["cubeMap"].as_bool_or_default(false)) {
+		assert(false && "TODO");
 
 		fig.normals = calculate_face_normals(fig.points, fig.faces);
 		// Generate UVs according to normals
@@ -177,7 +177,6 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 		}
 
 		fig.flags.separate_uv(true);
-		fig.faces_uv.reserve(fig.faces.size());
 		fig.uv.reserve(fig.faces.size() * 3);
 
 		assert(fig.normals.size() == fig.faces.size() && "normals don't match faces");
@@ -250,7 +249,6 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 			};
 
 			auto o = (unsigned int)fig.uv.size();
-			fig.faces_uv.push_back({ o, o + 1, o + 2 });
 			apply(f.a);
 			apply(f.b);
 			apply(f.c);
@@ -269,7 +267,13 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 		}
 	}
 
-	fig.normals = calculate_face_normals(fig.points, fig.faces);
+	if (shape.normals.empty()) {
+		fig.flags.separate_normals(false);
+		fig.normals = calculate_face_normals(fig.points, fig.faces);
+	} else {
+		fig.flags.separate_normals(true);
+		fig.normals = shape.normals;
+	}
 
 	return fig;
 }

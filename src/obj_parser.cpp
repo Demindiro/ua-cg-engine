@@ -1511,6 +1511,8 @@ void ObjectGroup::parse_obj_line(const std::string& line)
     parse_mtllib(tokens, line);
   } else if (is_ci_equal(prefix, "usemtl")) {
     parse_usemtl(tokens, line);
+  } else if (is_ci_equal(prefix, "s")) {
+	  // TODO handle this. We ignore it for now because damn you Blender
   } else {
     throw UnrecognizedType(line);
   }

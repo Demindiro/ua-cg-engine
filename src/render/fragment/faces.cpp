@@ -120,25 +120,22 @@ static ALWAYS_INLINE optional<Color> point_light(const TriangleFigure &f, const 
 }
 
 /**
- * \brief Get the color at a point from an associated texture.
+ * \brief Determine P and Q interpolation factors for BA and CA respectively for
+ * a triangle ABC.
  */
-static ALWAYS_INLINE Color texture_color(
-	const TriangleFigure &f,
-	Face t,
-	Face t_uv,
-	Point3D point
-) {
+static ALWAYS_INLINE Vector2D calc_pq(const TriangleFigure &f, Face t, Point3D point) {
 	auto a = f.points[t.a];
 	auto ba = f.points[t.b] - a;
 	auto ca = f.points[t.c] - a;
+	auto pa = point - a;
 
 	Matrix2D m_xy {{ ba.x, ca.x }, { ba.y, ca.y }};
 	Matrix2D m_yz {{ ba.y, ca.y }, { ba.z, ca.z }};
 	Matrix2D m_xz {{ ba.x, ca.x }, { ba.z, ca.z }};
 
-	Point2D p_xy { point.x - a.x, point.y - a.y };
-	Point2D p_yz { point.y - a.y, point.z - a.z };
-	Point2D p_xz { point.x - a.x, point.z - a.z };
+	Vector2D p_xy { pa.x, pa.y };
+	Vector2D p_yz { pa.y, pa.z };
+	Vector2D p_xz { pa.x, pa.z };
 
 	// Find out which matrix will result in the least precision loss
 	// i.e. find the matrix with the highest determinant.
@@ -147,7 +144,7 @@ static ALWAYS_INLINE Color texture_color(
 	auto d_xz = abs(m_xz.determinant());
 
 	Matrix2D m;
-	Point2D p;
+	Vector2D p;
 
 	if (d_xy > d_yz) {
 		if (d_xy > d_xz) {
@@ -167,10 +164,22 @@ static ALWAYS_INLINE Color texture_color(
 		}
 	}
 
-	Point2D uv = p * m.inv();
-	uv = (1 - uv.x - uv.y) * f.uv[t_uv.a].to_vector()
-		+ uv.x * f.uv[t_uv.b].to_vector()
-		+ uv.y * f.uv[t_uv.c].to_vector();
+	return p * m.inv();
+}
+
+/**
+ * \brief Interpolate between 3 points
+ */
+template<typename T>
+static ALWAYS_INLINE T interpolate(T a, T b, T c, Vector2D pq) {
+	return (1 - pq.x - pq.y) * a + pq.x * b + pq.y * c;
+}
+
+/**
+ * \brief Get the color at a point from an associated texture.
+ */
+static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Vector2D pq) {
+	auto uv = interpolate(f.uv[t.a].to_vector(), f.uv[t.b].to_vector(), f.uv[t.c].to_vector(), pq);
 	return Color(f.texture.value().get_clamped(uv));
 }
 
@@ -361,7 +370,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 #if GRAPHICS_DEBUG_Z == 2 || GRAPHICS_DEBUG_FACES == 2
 			{
 #else
-			if (!f.flags.can_cull() || f.normals[k].dot(a - Point3D()) <= 0) {
+			if (!f.flags.can_cull() || (b -a).cross(c - a).dot(a - Point3D()) <= 0) {
 #endif
 				zbuf.triangle(a, b, c, d, offset, {i, k, NAN}, Z_BIAS);
 			}
@@ -420,10 +429,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 				continue;
 
 			auto &f = figures[pair.figure_id];
-
-			// Apply lights
-			// TODO this assumes face normals
-			auto n = f.normals.empty() ? Vector3D() : f.normals[pair.triangle_id];
+			auto &t = f.faces[pair.triangle_id];
 
 			// Invert perspective projection
 			// Given: x', y', 1/z, dx, dy
@@ -433,7 +439,18 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 				(y - offset.y) / (d * -pair.inv_z),
 				1 / pair.inv_z
 			);
+
 			auto cam_dir = (point - Point3D()).normalize();
+
+			auto pq = calc_pq(f, t, point);
+
+			Vector3D n;
+			if (f.flags.separate_normals()) {
+				n = interpolate(f.normals[t.a], f.normals[t.b], f.normals[t.c], pq);
+				n = n.normalize();
+			} else if (!f.normals.empty()) {
+				n = f.normals[pair.triangle_id];
+			}
 
 			n = n.dot(cam_dir) > 0 ? -n : n;
 
@@ -456,10 +473,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			}
 
 			if (f.texture.has_value()) {
-				auto fp = f.faces[pair.triangle_id];
-				auto fuv = f.flags.separate_uv() ? f.faces_uv[pair.triangle_id] : fp;
-				assert(f.flags.separate_uv());
-				color *= texture_color(f, fp, fuv, point);
+				color *= texture_color(f, f.faces[pair.triangle_id], pq);
 			}
 
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0

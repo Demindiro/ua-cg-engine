@@ -40,8 +40,6 @@ struct TriangleFigure {
 	std::vector<Point2D> uv;
 
 	std::vector<Face> faces;
-	std::vector<Face> faces_normals;
-	std::vector<Face> faces_uv;
 
 	std::optional<Texture> texture;
 	Color ambient;
