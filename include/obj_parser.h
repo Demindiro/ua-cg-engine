@@ -733,13 +733,8 @@ class Polygon
   Polygon(const IntTuple& indexes, const IntTuple& texture_indexes, const IntTuple& normal_indexes);
 
   const IntTuple& get_indexes() const;
-  IntTuple get_indexes();
-
   const IntTuple& get_texture_indexes() const;
-  IntTuple get_texture_indexes();
-
   const IntTuple& get_normal_indexes() const;
-  IntTuple get_normal_indexes();
 
   bool has_texture_indexes() const;
   bool has_normal_indexes() const;
@@ -1432,30 +1427,11 @@ class ObjectGroup
   ObjectGroup(std::istream& input_stream);
 
   /**
-   * \brief Destructs a MTLLibrary and frees all entries stored in it.
-   */
-  ~ObjectGroup() = default;
-
-  /**
-   * \brief Retrieves the vertex coordinates for a mesh.
-   *
-   * \return Vector of vertex coordinates in {x,y,z[,w]} format. w is optional.
-   */
-  std::vector<DoubleTuple> get_vertexes();
-
-  /**
    * \brief Retrieves the vertex coordinates for a mesh.
    *
    * \return Vector of vertex coordinates in {x,y,z[,w]} format. w is optional.
    */
   const std::vector<DoubleTuple>& get_vertexes() const;
-
-  /**
-   * \brief Retrieves the texture coordinates for a mesh.
-   *
-   * \return Vector of texture coordinates in {u[,v,w]} format. v and w are optional.
-   */
-  std::vector<DoubleTuple> get_texture_coordinates();
 
   /**
    * \brief Retrieves the texture coordinates for a mesh.
@@ -1469,21 +1445,7 @@ class ObjectGroup
    *
    * \return Vector containing all vertex normals in {x,y,z} form. These might not be unit vectors.
    */
-  std::vector<DoubleTuple> get_vertex_normals();
-
-  /**
-   * \brief Retrieves the vertex normals from the obj file.
-   *
-   * \return Vector containing all vertex normals in {x,y,z} form. These might not be unit vectors.
-   */
   const std::vector<DoubleTuple>& get_vertex_normals() const;
-
-  /**
-   * \brief Retrieves the polygons from the obj file.
-   *
-   * \return Vector containing all polygonal faces.
-   */
-  std::vector<Polygon> get_polygons();
 
   /**
    * \brief Retrieves the polygons from the obj file.
@@ -1497,21 +1459,7 @@ class ObjectGroup
    *
    * \return The name of the mtl used for this group.
    */
-  std::string get_mtl_name();
-
-  /**
-   * \brief Retrieves the mtl name used for this group.
-   *
-   * \return The name of the mtl used for this group.
-   */
   const std::string& get_mtl_name() const;
-
-  /**
-   * \brief Retrieves the mtl name used for this group.
-   *
-   * \return The name of the mtl used for this group.
-   */
-  std::string get_mtllib_file_name();
 
   /**
    * \brief Retrieves the mtllib file name used for this group.

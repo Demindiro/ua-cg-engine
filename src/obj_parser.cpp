@@ -1385,13 +1385,8 @@ Polygon::Polygon(const IntTuple& indexes_init, const IntTuple& texture_indexes_i
 }
 
 const IntTuple& Polygon::get_indexes() const { return indexes; }
-IntTuple Polygon::get_indexes() { return indexes; }
-
 const IntTuple& Polygon::get_texture_indexes() const { return texture_indexes; }
-IntTuple Polygon::get_texture_indexes() { return texture_indexes; }
-
 const IntTuple& Polygon::get_normal_indexes() const { return normal_indexes; }
-IntTuple Polygon::get_normal_indexes() { return normal_indexes; }
 
 bool Polygon::has_texture_indexes() const { return !texture_indexes.empty(); }
 bool Polygon::has_normal_indexes() const { return !normal_indexes.empty(); }
@@ -1564,13 +1559,6 @@ void ObjectGroup::parse(std::istream& input_stream)
     throw;
   }
 }
-
-std::vector<DoubleTuple> ObjectGroup::get_vertexes() { return vertexes; }
-std::vector<DoubleTuple> ObjectGroup::get_vertex_normals() { return vertex_normals; }
-std::vector<DoubleTuple> ObjectGroup::get_texture_coordinates() { return texture_coordinates; }
-std::vector<Polygon> ObjectGroup::get_polygons() { return polygons; }
-std::string ObjectGroup::get_mtl_name() { return mtl_name; }
-std::string ObjectGroup::get_mtllib_file_name() { return mtllib_filename; }
 
 const std::vector<DoubleTuple>& ObjectGroup::get_vertexes() const { return vertexes; }
 const std::vector<DoubleTuple>& ObjectGroup::get_vertex_normals() const { return vertex_normals; }

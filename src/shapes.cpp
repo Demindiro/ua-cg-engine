@@ -26,6 +26,7 @@
 #include "shapes/sphere.h"
 #include "shapes/thicken.h"
 #include "shapes/torus.h"
+#include "shapes/wavefront.h"
 #include "wireframe.h"
 
 namespace engine {
@@ -599,6 +600,12 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		f_t("ThickIcosahedron", icosahedron);
 		f_t("ThickOctahedron", octahedron);
 		f_t("ThickTetrahedron", tetrahedron);
+
+		if (type == "Object") {
+			assert(nogen);
+			wavefront(section, shape);
+			nogen = false;
+		}
 
 		if (nogen) {
 			throw TypeException(type);

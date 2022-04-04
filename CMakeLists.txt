@@ -55,6 +55,7 @@ set(engine_sources
 	src/math/vector2d.cpp
 	src/math/vector3d.cpp
 	src/math/vector4d.cpp
+	src/obj_parser.cpp
 	src/render/color.cpp
 	src/render/fragment.cpp
 	src/render/fragment/edges.cpp
@@ -69,6 +70,7 @@ set(engine_sources
 	src/shapes/sphere.cpp
 	src/shapes/thicken.cpp
 	src/shapes/torus.cpp
+	src/shapes/wavefront.cpp
 	src/wireframe.cpp
 	src/zbuffer.cpp
 )
