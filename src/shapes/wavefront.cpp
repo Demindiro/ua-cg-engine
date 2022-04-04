@@ -13,8 +13,8 @@ namespace shapes {
 using namespace std;
 using namespace render;
 
-void wavefront(const ini::Section &conf, FaceShape &shape) {
-	ifstream f(conf["file"].as_string_or_die());
+void wavefront(const Configuration &conf, FaceShape &shape) {
+	ifstream f(conf.section["file"].as_string_or_die());
 	obj::ObjectGroup obj(f);
 
 	// Find all unique point/uv/normal triples & create points & faces
@@ -44,7 +44,7 @@ void wavefront(const ini::Section &conf, FaceShape &shape) {
 				);
 				*/
 				shape.normals.push_back(t.ni != -1
-					? -tup_to_vector3d(obj.get_vertex_normals().at(t.ni))
+					? tup_to_vector3d(obj.get_vertex_normals().at(t.ni))
 					: Vector3D()
 				);
 			}

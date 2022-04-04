@@ -202,8 +202,8 @@ static ALWAYS_INLINE Color cubemap_color(
 	Point2D uv;
 
 	Aabb aabb {
-		Vector3D(-1,-1,-1) * 135,
-		Vector3D(1,1,1) * 135,
+		Vector3D(-1,-1,-1) * 10000,
+		Vector3D(1,1,1) * 10000,
 	};
 	auto f3 = (
 		normal.sign().max(Vector3D()) * aabb.max.to_vector()
@@ -240,10 +240,12 @@ static ALWAYS_INLINE Color cubemap_color(
 	}
 
 	const auto e = 1e-3; // Hack to avoid white seams
+	/*
 	assert(-e <= p.x);
 	assert(p.x <= 1 + e);
 	assert(-e <= p.y);
 	assert(p.y <= 1 + e);
+	*/
 	if (inv)
 		p.x = 1.0 - p.x;
 	if (inv_y)
@@ -254,10 +256,12 @@ static ALWAYS_INLINE Color cubemap_color(
 	p.y /= 3;
 	uv += p;
 
+	/*
 	assert(0 <= uv.x);
 	assert(0 <= uv.y);
 	assert(uv.x <= 1);
 	assert(uv.y <= 1);
+	*/
 
 	return Color(tex.get_clamped(uv));
 }
@@ -444,11 +448,16 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			if (f.flags.separate_normals()) {
 				n = interpolate(f.normals[t.a], f.normals[t.b], f.normals[t.c], pq);
 				n = n.normalize();
+				if (f.flags.clipped()) {
+					auto m = f2p(f, t);
+					n = (m.b - m.a).cross(m.c - m.a).dot(cam_dir) > 0 ? -n : n;
+				}
 			} else if (!f.normals.empty()) {
 				n = f.normals[pair.triangle_id];
+				if (f.flags.clipped()) {
+					n = n.dot(cam_dir) > 0 ? -n : n;
+				}
 			}
-
-			n = n.dot(cam_dir) > 0 ? -n : n;
 
 			auto color = f.ambient;
 #if GRAPHICS_DEBUG_Z > 0
@@ -496,23 +505,35 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 
 #if GRAPHICS_DEBUG_NORMALS > 0
 	for (auto &f : figures) {
-		size_t color_i = 3; // Take an opposite color for clarity
-		if (f.face_normals) {
+		if (f.flags.separate_normals()) {
+			for (size_t i = 0; i < f.points.size(); i++) {
+				auto from = f.points[i];
+				auto to = from + f.normals[i] * 0.1;
+				Point3D ft(from.x / -from.z * d + offset.x, from.y / -from.z * d + offset.y, from.z);
+				Point3D tt(to.x / -to.z * d + offset.x, to.y / -to.z * d + offset.y, to.z);
+				img.draw_zbuf_line_clip(
+					zbuf,
+					round_up(ft.x), round_up(ft.y), ft.z,
+					round_up(tt.x), round_up(tt.y), tt.z,
+					{ 255, 255, 255 }
+				);
+			}
+		} else {
 			for (size_t i = 0; i < f.faces.size(); i++) {
 				auto &t = f.faces[i];
 				auto abc = f2p(f, t);
 				auto a = abc.a, b = abc.b, c = abc.c;
 				auto from = Point3D::center({ a, b, c });
 				auto to = from + f.normals[i] * 0.1;
-				Point3D ft(from.x / -from.z * d + offset_x, from.y / -from.z * d + offset_y, from.z);
-				Point3D tt(to.x / -to.z * d + offset_x, to.y / -to.z * d + offset_y, to.z);
-				auto clr = colors_pool[color_i++];
-				color_i %= color_pool_size;
-				clr = Color(1,1,1).to_img_color();
-				Line3D(ft, tt, clr).draw_clip(img, zbuf);
+				Point3D ft(from.x / -from.z * d + offset.x, from.y / -from.z * d + offset.y, from.z);
+				Point3D tt(to.x / -to.z * d + offset.x, to.y / -to.z * d + offset.y, to.z);
+				img.draw_zbuf_line_clip(
+					zbuf,
+					round_up(ft.x), round_up(ft.y), ft.z,
+					round_up(tt.x), round_up(tt.y), tt.z,
+					{ 255, 255, 255 }
+				);
 			}
-		} else {
-			assert(!"TODO vertex normals");
 		}
 	}
 #endif

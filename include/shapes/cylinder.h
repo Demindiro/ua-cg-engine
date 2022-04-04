@@ -11,11 +11,11 @@ namespace shapes {
 
 void cylinder_sides(unsigned int n, double height, EdgeShape &);
 
-void cylinder_sides(unsigned int n, double height, FaceShape &);
+void cylinder_sides(unsigned int n, double height, FaceShape &, bool point_normals);
 
-void cylinder(const ini::Section &, EdgeShape &);
+void cylinder(const Configuration &, EdgeShape &);
 
-void cylinder(const ini::Section &, FaceShape &);
+void cylinder(const Configuration &, FaceShape &);
 
 }
 }

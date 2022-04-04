@@ -21,6 +21,7 @@ class TriangleFigureFlags {
 	void set_flag(unsigned int flag, bool v) {
 		flags &= ~(1 << flag);
 		flags |= (unsigned int)v << flag;
+		assert(test_flag(flag) == v);
 	}
 
 public:

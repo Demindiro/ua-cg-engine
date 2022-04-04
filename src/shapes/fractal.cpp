@@ -14,7 +14,7 @@ using namespace render;
 /**
  * \brief Generate points to create a fractal.
  */
-static void fractal(vector<Point3D> &points, double inv_scale, unsigned int iterations) {
+static void fractal(vector<Point3D> &points, vector<Vector3D> &normals, double inv_scale, unsigned int iterations) {
 	// Operations:
 	// - scale original points & determine shift
 	// - place copy of original points at current points
@@ -52,12 +52,22 @@ static void fractal(vector<Point3D> &points, double inv_scale, unsigned int iter
 			s *= inv_scale;
 		}
 	}
+
+	// Copy normals
+	size_t old_ns = normals.size();
+	size_t ns = old_ns * cur_points.size() / points.size();
+	normals.reserve(ns);
+	while (normals.size() < ns) {
+		normals.push_back(normals[normals.size() - old_ns]);
+	}
+
 	points = cur_points;
 }
 
 void fractal(double scale, unsigned int iterations, EdgeShape &f) {
 	auto old_points_count = f.points.size();
-	fractal(f.points, 1 / scale, iterations);
+	vector<Vector3D> normals;
+	fractal(f.points, normals, 1 / scale, iterations);
 	auto old_edges_size = f.edges.size();
 	f.edges.reserve(f.edges.size() * f.points.size() / old_points_count);
 	for (unsigned int i = old_points_count; i < f.points.size(); i += old_points_count) {
@@ -70,7 +80,7 @@ void fractal(double scale, unsigned int iterations, EdgeShape &f) {
 
 void fractal(double scale, unsigned int iterations, FaceShape &f) {
 	auto old_points_count = f.points.size();
-	fractal(f.points, 1 / scale, iterations);
+	fractal(f.points, f.normals, 1 / scale, iterations);
 	auto old_faces_size = f.faces.size();
 	f.faces.reserve(f.faces.size() * f.points.size() / old_points_count);
 	for (unsigned int i = old_points_count; i < f.points.size(); i += old_points_count) {
@@ -81,19 +91,22 @@ void fractal(double scale, unsigned int iterations, FaceShape &f) {
 	}
 }
 
-void fractal(const ini::Section &conf, const ShapeTemplateAny &shape, EdgeShape &f) {
-	auto scale = conf["fractalScale"].as_double_or_die();
-	auto iterations = (unsigned int)conf["nrIterations"].as_int_or_die();
+void fractal(const Configuration &conf, const ShapeTemplateAny &shape, EdgeShape &f) {
+	auto scale = conf.section["fractalScale"].as_double_or_die();
+	auto iterations = (unsigned int)conf.section["nrIterations"].as_int_or_die();
 	f.points = { shape.points, shape.points + shape.points_size };
 	f.edges = { shape.edges, shape.edges + shape.edges_size };
 	fractal(scale, iterations, f);
 }
 
-void fractal(const ini::Section &conf, const ShapeTemplateAny &shape, FaceShape &f) {
-	auto scale = conf["fractalScale"].as_double_or_die();
-	auto iterations = (unsigned int)conf["nrIterations"].as_int_or_die();
+void fractal(const Configuration &conf, const ShapeTemplateAny &shape, FaceShape &f) {
+	auto scale = conf.section["fractalScale"].as_double_or_die();
+	auto iterations = (unsigned int)conf.section["nrIterations"].as_int_or_die();
 	f.points = { shape.points, shape.points + shape.points_size };
 	f.faces = { shape.faces, shape.faces + shape.faces_size };
+	f.normals = conf.point_normals
+		? vector(shape.point_normals, shape.point_normals + shape.point_normals_size)
+		: vector(shape.face_normals, shape.face_normals + shape.face_normals_size);
 	fractal(scale, iterations, f);
 }
 

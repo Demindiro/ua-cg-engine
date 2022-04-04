@@ -9,9 +9,9 @@
 namespace engine {
 namespace shapes {
 
-void torus(const ini::Section &, EdgeShape &);
+void torus(const Configuration &, EdgeShape &);
 
-void torus(const ini::Section &, FaceShape &);
+void torus(const Configuration &, FaceShape &);
 
 }
 }

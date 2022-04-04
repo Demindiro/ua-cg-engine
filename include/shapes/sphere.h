@@ -8,11 +8,11 @@ namespace shapes {
 
 void sphere(unsigned int n, EdgeShape &);
 
-void sphere(unsigned int n, FaceShape &);
+void sphere(unsigned int n, FaceShape &, bool point_normals);
 
-void sphere(const ini::Section &, EdgeShape &);
+void sphere(const Configuration &, EdgeShape &);
 
-void sphere(const ini::Section &, FaceShape &);
+void sphere(const Configuration &, FaceShape &);
 
 }
 }

@@ -11,9 +11,9 @@
 namespace engine {
 namespace shapes {
 
-void fractal(const ini::Section &, const ShapeTemplateAny &, EdgeShape &);
+void fractal(const Configuration &, const ShapeTemplateAny &, EdgeShape &);
 
-void fractal(const ini::Section &, const ShapeTemplateAny &, FaceShape &);
+void fractal(const Configuration &, const ShapeTemplateAny &, FaceShape &);
 
 }
 }

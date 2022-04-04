@@ -11,9 +11,9 @@ namespace shapes {
 using namespace std;
 using namespace render;
 
-void cone(const ini::Section &conf, EdgeShape &shape) {
-	auto n = (unsigned int)conf["n"].as_int_or_die();
-	auto height = conf["height"].as_double_or_die();
+void cone(const Configuration &conf, EdgeShape &shape) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
 
 	shape.points.reserve(n + 1);
 	circle(shape.points, n, 0);
@@ -26,9 +26,9 @@ void cone(const ini::Section &conf, EdgeShape &shape) {
 	}
 }
 
-void cone(const ini::Section &conf, FaceShape &shape) {
-	auto n = (unsigned int)conf["n"].as_int_or_die();
-	auto height = conf["height"].as_double_or_die();
+void cone(const Configuration &conf, FaceShape &shape) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
 
 	shape.points.reserve(n + 1);
 	shape.faces.reserve(n * 2);

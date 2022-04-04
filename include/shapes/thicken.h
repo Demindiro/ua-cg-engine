@@ -10,9 +10,9 @@
 namespace engine {
 namespace shapes {
 
-void thicken(const ini::Section &, const ShapeTemplateAny &, EdgeShape &);
+void thicken(const Configuration &, const ShapeTemplateAny &, EdgeShape &);
 
-void thicken(const ini::Section &, const ShapeTemplateAny &, FaceShape &);
+void thicken(const Configuration &, const ShapeTemplateAny &, FaceShape &);
 
 }
 }

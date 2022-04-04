@@ -9,9 +9,9 @@ namespace shapes {
 using namespace std;
 using namespace render;
 
-void cylinder(const ini::Section &conf, EdgeShape &shape) {
-	auto n = (unsigned int)conf["n"].as_int_or_die();
-	auto height = conf["height"].as_double_or_die();
+void cylinder(const Configuration &conf, EdgeShape &shape) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
 
 	shape.points.reserve(n * 2);
 	circle(shape.points, n, 0);
@@ -36,25 +36,46 @@ void cylinder_sides(unsigned int n, double height, EdgeShape &shape) {
 	}
 }
 
-void cylinder(const ini::Section &conf, FaceShape &f) {
-	auto n = (unsigned int)conf["n"].as_int_or_die();
-	auto height = conf["height"].as_double_or_die();
+void cylinder(const Configuration &conf, FaceShape &f) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
 
-	f.points.reserve(n * 2);
+	f.points.reserve(conf.point_normals ? n * 4 : n * 2);
 	f.faces.reserve(n * 4);
 	circle(f.points, n, 0);
 	circle(f.points, n, height);
-	circle(f.faces, n, 0);
-	circle_reversed(f.faces, n, n);
+	if (conf.point_normals) {
+		circle(f.points, n, 0);
+		circle(f.points, n, height);
+	}
 
 	for (unsigned int i = 0; i < n; i++) {
 		unsigned int j = (i + 1) % n;
 		f.faces.push_back({ j, i, n + i });
 		f.faces.push_back({ j, n + i, n + j });
 	}
+	unsigned int offset = conf.point_normals ? n * 2 : 0;
+	circle(f.faces, n, 0 + offset);
+	circle_reversed(f.faces, n, n + offset);
+	
+	if (conf.point_normals) {
+		f.normals.resize(n * 4);
+		Rotation d(-2 * M_PI / n), r;
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 0 * n] = { r.u, r.v, 0 };
+			f.normals[i + 1 * n] = { r.u, r.v, 0 };
+			r *= d;
+		}
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 2 * n] = { 0, 0, -1 };
+		}
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 3 * n] = { 0, 0, 1 };
+		}
+	}
 }
 
-void cylinder_sides(unsigned int n, double height, FaceShape &f) {
+void cylinder_sides(unsigned int n, double height, FaceShape &f, bool point_normals) {
 	f.points.reserve(n * 2);
 	circle(f.points, n, 0);
 	circle(f.points, n, height);
@@ -64,6 +85,16 @@ void cylinder_sides(unsigned int n, double height, FaceShape &f) {
 		unsigned int j = (i + 1) % n;
 		f.faces.push_back({ j, i, n + i });
 		f.faces.push_back({ j, n + i, n + j });
+	}
+	
+	if (point_normals) {
+		f.normals.resize(n * 2);
+		Rotation d(-2 * M_PI / n), r;
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 0 * n] = { r.u, r.v, 0 };
+			f.normals[i + 1 * n] = { r.u, r.v, 0 };
+			r *= d;
+		}
 	}
 }
 

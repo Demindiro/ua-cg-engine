@@ -65,17 +65,23 @@ void sphere(unsigned int n, EdgeShape &f) {
 	sphere(n, f.points, f.edges, faces);
 }
 
-void sphere(unsigned int n, FaceShape &f) {
+void sphere(unsigned int n, FaceShape &f, bool point_normals) {
 	vector<Edge> edges;
 	sphere(n, f.points, edges, f.faces);
+	if (point_normals) {
+		f.normals.reserve(f.points.size());
+		for (auto p : f.points) {
+			f.normals.push_back(p.to_vector());
+		}
+	}
 }
 
-void sphere(const ini::Section &conf, EdgeShape &f) {
-	sphere((unsigned int)conf["n"].as_int_or_die(), f);
+void sphere(const Configuration &conf, EdgeShape &f) {
+	sphere((unsigned int)conf.section["n"].as_int_or_die(), f);
 }
 
-void sphere(const ini::Section &conf, FaceShape &f) {
-	sphere((unsigned int)conf["n"].as_int_or_die(), f);
+void sphere(const Configuration &conf, FaceShape &f) {
+	sphere((unsigned int)conf.section["n"].as_int_or_die(), f, conf.point_normals);
 }
 
 }

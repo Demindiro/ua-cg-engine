@@ -6,7 +6,7 @@
 namespace engine {
 namespace shapes {
 
-void wavefront(const ini::Section &conf, FaceShape &shape);
+void wavefront(const Configuration &conf, FaceShape &shape);
 
 }
 }

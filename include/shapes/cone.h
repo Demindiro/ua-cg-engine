@@ -8,8 +8,8 @@
 
 namespace engine {
 namespace shapes {
-	void cone(const ini::Section &, EdgeShape &);
+	void cone(const Configuration &, EdgeShape &);
 
-	void cone(const ini::Section &, FaceShape &);
+	void cone(const Configuration &, FaceShape &);
 }
 }

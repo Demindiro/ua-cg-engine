@@ -113,8 +113,9 @@ vector<Vector3D> calculate_face_normals(const vector<Point3D> &points, const vec
 	return normals;
 }
 
-TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_lighting, const Matrix4D &eye) {
+TriangleFigure convert(FaceShape shape, const Configuration &conf, bool with_lighting, const Matrix4D &eye) {
 
+	const auto &section = conf.section;
 	TriangleFigure fig;
 	fig.points = shape.points;
 	fig.faces = shape.faces;
@@ -168,13 +169,18 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 		p *= mat;
 	}
 
-	if (shape.normals.empty()) {
-		fig.flags.separate_normals(false);
-		fig.normals = calculate_face_normals(fig.points, fig.faces);
-	} else {
-		fig.flags.separate_normals(true);
-		fig.normals = shape.normals;
+	fig.flags.separate_normals(conf.point_normals);
+	fig.normals = shape.normals;
+
+	for (auto &p : fig.normals) {
+		p *= mat;
 	}
+
+	if (!fig.flags.separate_normals() && shape.normals.empty()) { // TODO should already be done
+		fig.normals = calculate_face_normals(fig.points, fig.faces);
+	}
+
+	assert(!fig.normals.empty());
 
 	return fig;
 }
@@ -231,11 +237,11 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 
 		auto nogen = true;
 
-		auto f_g = [&](auto s, void (*g)(const ini::Section &, EdgeShape &)) {
+		auto f_g = [&](auto s, void (*g)(const Configuration &, EdgeShape &)) {
 			if (type == s) {
 				assert(nogen);
 				EdgeShape shape;
-				g(section, shape);
+				g({ section, false }, shape);
 				for (auto &p : shape.points) {
 					p *= mat;
 				}
@@ -266,7 +272,7 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 			if (type == s) {
 				assert(nogen);
 				EdgeShape shape;
-				fractal(section, t, shape);
+				fractal({ section, false }, t, shape);
 				for (auto &p : shape.points) {
 					p *= mat;
 				}
@@ -282,7 +288,7 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 			if (type == s) {
 				assert(nogen);
 				EdgeShape thick;
-				thicken(section, f, thick);
+				thicken({ section, false }, f, thick);
 				for (auto &p : thick.points) {
 					p *= mat;
 				}
@@ -298,12 +304,12 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		f_b("Octahedron", octahedron);
 		f_b("Tetrahedron", tetrahedron);
 
-		f_g("LineDrawing", wireframe::line_drawing);
+		f_g("LineDrawing", [](auto a, auto b) { return wireframe::line_drawing(a.section, b); });
 		f_g("Cylinder", cylinder);
 		f_g("Cone", cone);
 		f_g("Sphere", sphere);
 		f_g("Torus", torus);
-		f_g("3DLSystem", wireframe::l_system);
+		f_g("3DLSystem", [](auto a, auto b) { return wireframe::l_system(a.section, b); });
 
 		f_f("FractalCube", cube);
 		f_f("FractalOctahedron", octahedron);
@@ -319,7 +325,7 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		if (type == "ThickLineDrawing") {
 			EdgeShape templ, thick;
 			wireframe::line_drawing(section, templ);
-			thicken(section, ShapeTemplateAny(templ), thick);
+			thicken({ section, false }, ShapeTemplateAny(templ), thick);
 			for (auto &p : thick.points) {
 				p *= mat;
 			}
@@ -329,7 +335,7 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		if (type == "Thick3DLSystem") {
 			EdgeShape templ, thick;
 			wireframe::l_system(section, templ);
-			thicken(section, ShapeTemplateAny(templ), thick);
+			thicken({ section, false }, ShapeTemplateAny(templ), thick);
 			for (auto &p : thick.points) {
 				p *= mat;
 			}
@@ -436,35 +442,38 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		auto section = conf[string("Figure") + to_string(i)];
 		auto type = section["type"].as_string_or_die();
 		FaceShape shape;
+		auto smooth = section["smooth"].as_bool_or_default(false);
 		bool nogen = true;
+
 		auto f_b = [&](auto s, const auto &t) {
 			if (type == s) {
 				assert(nogen);
-				shape = t;
+				shape = FaceShape(t, smooth);
 				nogen = false;
 			}
 		};
-		auto f_g = [&](auto s, void (*g)(const ini::Section &, FaceShape &)) {
+		auto f_g = [&](auto s, void (*g)(const Configuration &, FaceShape &)) {
 			if (type == s) {
 				assert(nogen);
-				g(section, shape);
+				g({ section, smooth }, shape);
 				nogen = false;
 			}
 		};
 		auto f_f = [&](auto s, const auto &t) {
 			if (type == s) {
 				assert(nogen);
-				fractal(section, t, shape);
+				fractal({ section, smooth }, t, shape);
 				nogen = false;
 			}
 		};
 		auto f_t = [&](auto s, const auto &f) {
 			if (type == s) {
 				assert(nogen);
-				thicken(section, f, shape);
+				thicken({ section, smooth }, f, shape);
 				nogen = false;
 			}
 		};
+
 		f_b("BuckyBall", buckyball);
 		f_b("Cube", cube);
 		f_b("Tetrahedron", tetrahedron);
@@ -489,13 +498,13 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		if (type == "ThickLineDrawing") {
 			EdgeShape templ;
 			wireframe::line_drawing(section, templ);
-			thicken(section, ShapeTemplateAny(templ), shape);
+			thicken({ section, smooth }, ShapeTemplateAny(templ), shape);
 			nogen = false;
 		}
 		if (type == "Thick3DLSystem") {
 			EdgeShape templ;
 			wireframe::l_system(section, templ);
-			thicken(section, ShapeTemplateAny(templ), shape);
+			thicken({ section, smooth }, ShapeTemplateAny(templ), shape);
 			nogen = false;
 		}
 		f_t("ThickBuckyBall", buckyball);
@@ -507,7 +516,8 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 
 		if (type == "Object") {
 			assert(nogen);
-			wavefront(section, shape);
+			wavefront({ section, smooth }, shape);
+			smooth = true; // TODO technically not accurate and perhaps confusing...
 			nogen = false;
 		}
 
@@ -515,7 +525,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 			throw TypeException(type);
 		}
 
-		figures.push_back(convert(shape, section, with_lighting, mat_eye));
+		figures.push_back(convert(shape, { section, smooth }, with_lighting, mat_eye));
 	}
 
 	if (lights.shadows) {
