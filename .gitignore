@@ -6,4 +6,5 @@ perf.data.old
 flamegraph.svg
 *.tar.gz
 assets/filelist
-assets/cachegrind.out.*
+cachegrind.out.*
+callgrind.out.*

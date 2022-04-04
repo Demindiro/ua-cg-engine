@@ -9,6 +9,7 @@
 #include "math/matrix2d.h"
 #include "math/matrix4d.h"
 #include "math/vector3d.h"
+#include "render/aabb.h"
 #include "render/fragment.h"
 #include "render/geometry.h"
 #include "render/light.h"
@@ -111,7 +112,7 @@ vector<Vector3D> calculate_face_normals(const vector<Point3D> &points, const vec
 	return normals;
 }
 
-TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_lighting, const Matrix4D &eye) {
+TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_lighting, const Matrix4D &eye, const Texture *cubemap) {
 
 	TriangleFigure fig;
 	fig.points = shape.points;
@@ -138,8 +139,9 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 	if (section["texture"].as_string_if_exists(tex_path)) {
 		{
 			ifstream f(tex_path);
-			Texture tex;
-			f >> tex.image;
+			img::EasyImage img;
+			f >> img;
+			Texture tex(std::move(img));
 			fig.texture.emplace(std::move(tex));
 		}
 
@@ -157,28 +159,113 @@ TriangleFigure convert(FaceShape shape, const ini::Section &section, bool with_l
 			uv.x = (uv.x - rect.min.x) / rect.size().x;
 			uv.y = (uv.y - rect.min.y) / rect.size().y;
 		}
-	} else if (section["cubeMap"].as_bool_or_default(false)) {
+	}
+
+	if (section["cubeMap"].as_bool_or_default(false)) {
+
+		fig.normals = calculate_face_normals(fig.points, fig.faces);
 		// Generate UVs according to normals
-		Rect rect;
-		rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
-		rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
+	
+		// Bounds
+		Aabb aabb;
+		aabb.min.x = aabb.min.y = +numeric_limits<double>::infinity();
+		aabb.max.x = aabb.max.y = -numeric_limits<double>::infinity();
 		fig.uv.reserve(fig.points.size());
 		for (auto &p : fig.points) {
-			Point2D uv(p.x, p.z);
-			rect |= uv;
-			fig.uv.push_back(uv);
+			aabb |= p;
 		}
 
-		for (auto &uv : fig.uv) {
-			uv.x = (uv.x - rect.min.x) / rect.size().x;
-			uv.y = (uv.y - rect.min.y) / rect.size().y;
+		fig.flags.separate_uv(true);
+		fig.faces_uv.reserve(fig.faces.size());
+		fig.uv.reserve(fig.faces.size() * 3);
+
+		assert(fig.normals.size() == fig.faces.size() && "normals don't match faces");
+		for (size_t i = 0; i < fig.normals.size(); i++) {
+			// Determine UV offset to land in correct face.
+			auto &n = fig.normals[i];
+			auto &f = fig.faces[i];
+			auto nx = abs(n.x);
+			auto ny = abs(n.y);
+			auto nz = abs(n.z);
+
+			// Current layout of cubemap:
+			//
+			//   T
+			//   F R B L
+			//   B
+			Point2D uv;
+			
+			// If Z is the largest component, use either top or bottom
+			int mask = 0; // ZYX
+			bool inv = false;
+			bool inv_y = false;
+			if (nz > nx && nz > ny) {
+				inv_y = n.z < 0;
+				uv = { 0, n.z > 0 ? 2.0 / 3 : 0 };
+				mask = 0b011;
+			} else {
+				uv.y = 1.0 / 3;
+				// Front or back
+				if (nx > ny) {
+					inv = n.x < 0;
+					uv.x = inv ? 0.5 : 0;
+					uv.x += 0.25;
+					mask = 0b101;
+				} else {
+					inv = n.y > 0;
+					uv.x = inv ? 0.5 : 0;
+					mask = 0b110;
+				}
+			}
+
+			auto apply = [&](auto i) {
+				auto a = fig.points[i];
+				auto m = aabb.min;
+				auto s = aabb.size();
+				Vector2D p;
+				switch (mask) {
+				case 0b011: p = { (a.x - m.x) / s.x, (a.y - m.y) / s.y }; break;
+				case 0b101: p = { (a.y - m.y) / s.y, (a.z - m.z) / s.z }; break;
+				case 0b110: p = { (a.x - m.x) / s.x, (a.z - m.z) / s.z }; break;
+				default: UNREACHABLE;
+				}
+				if (inv)
+					p.x = 1.0 - p.x;
+				if (inv_y)
+					p.y = 1.0 - p.y;
+				const auto e = 1e-3; // Hack to avoid white seams
+				p.x = clamp(p.x, e, 1.0 - e);
+				p.y = clamp(p.y, e, 1.0 - e);
+				p.x /= 4;
+				p.y /= 3;
+				auto q = uv + p;
+				q.x = clamp(q.x, 0.0, 1.0);
+				q.y = clamp(q.y, 0.0, 1.0);
+				assert(0 <= q.x);
+				assert(q.x <= 1);
+				assert(0 <= q.y);
+				assert(q.y <= 1);
+				fig.uv.push_back(q);
+			};
+
+			auto o = (unsigned int)fig.uv.size();
+			fig.faces_uv.push_back({ o, o + 1, o + 2 });
+			apply(f.a);
+			apply(f.b);
+			apply(f.c);
+		}
+
+		if (cubemap != nullptr) {
+			Texture tex = *cubemap;
+			fig.texture.emplace(std::move(tex));
 		}
 	}
 
-	auto mat = transform_from_conf(section, eye);
-
-	for (auto &p : fig.points) {
-		p *= mat;
+	{
+		auto mat = transform_from_conf(section, eye);
+		for (auto &p : fig.points) {
+			p *= mat;
+		}
 	}
 
 	fig.normals = calculate_face_normals(fig.points, fig.faces);
@@ -431,8 +518,9 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		string path;
 		if (conf["General"]["cubeMap"].as_string_if_exists(path)) {
 			ifstream f(path);
-			cubemap.emplace(Texture());
-			f >> cubemap.value().image;
+			img::EasyImage img;
+			f >> img;
+			cubemap.emplace(Texture(std::move(img)));
 		}
 	}
 
@@ -516,7 +604,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 			throw TypeException(type);
 		}
 
-		figures.push_back(convert(shape, section, with_lighting, mat_eye));
+		figures.push_back(convert(shape, section, with_lighting, mat_eye, cubemap.has_value() ? &cubemap.value() : nullptr));
 	}
 
 	if (lights.shadows) {

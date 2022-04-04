@@ -122,7 +122,12 @@ static ALWAYS_INLINE optional<Color> point_light(const TriangleFigure &f, const 
 /**
  * \brief Get the color at a point from an associated texture.
  */
-static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Point3D point) {
+static ALWAYS_INLINE Color texture_color(
+	const TriangleFigure &f,
+	Face t,
+	Face t_uv,
+	Point3D point
+) {
 	auto a = f.points[t.a];
 	auto ba = f.points[t.b] - a;
 	auto ca = f.points[t.c] - a;
@@ -163,11 +168,94 @@ static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Point3
 	}
 
 	Point2D uv = p * m.inv();
-	uv = (1 - uv.x - uv.y) * f.uv[t.a].to_vector()
-		+ uv.x * f.uv[t.b].to_vector()
-		+ uv.y * f.uv[t.c].to_vector();
+	uv = (1 - uv.x - uv.y) * f.uv[t_uv.a].to_vector()
+		+ uv.x * f.uv[t_uv.b].to_vector()
+		+ uv.y * f.uv[t_uv.c].to_vector();
 	return Color(f.texture.value().get_clamped(uv));
 }
+
+/**
+ * \brief Get the color of a cubemap texture at a pixel
+ */
+/*
+static ALWAYS_INLINE Color cubemap_color(
+	const TriangleFigure &f,
+	Face t,
+	Face t_uv,
+	Point3D point,
+	Vector3D normal
+) {
+	// Current layout of cubemap:
+	//
+	//   T
+	//   F R B L
+	//   B
+	Point2D uv;
+	
+	auto nx = abs(normal.x);
+	auto ny = abs(normal.y);
+	auto nz = abs(normal.z);
+
+	// If Z is the largest component, use either top or bottom
+	int mask = 0; // ZYX
+	bool inv = false;
+	bool inv_y = false;
+	if (nz > nx && nz > ny) {
+		inv_y = n.z < 0;
+		uv = { 0, n.z > 0 ? 2.0 / 3 : 0 };
+		mask = 0b011;
+	} else {
+		uv.y = 1.0 / 3;
+		// Front or back
+		if (nx > ny) {
+			inv = n.x < 0;
+			uv.x = inv ? 0.5 : 0;
+			uv.x += 0.25;
+			mask = 0b101;
+		} else {
+			inv = n.y > 0;
+			uv.x = inv ? 0.5 : 0;
+			mask = 0b110;
+		}
+	}
+
+	auto apply = [&](auto i) {
+		auto a = fig.points[i];
+		auto m = aabb.min;
+		auto s = aabb.size();
+		Vector2D p;
+		switch (mask) {
+		case 0b011: p = { (a.x - m.x) / s.x, (a.y - m.y) / s.y }; break;
+		case 0b101: p = { (a.y - m.y) / s.y, (a.z - m.z) / s.z }; break;
+		case 0b110: p = { (a.x - m.x) / s.x, (a.z - m.z) / s.z }; break;
+		default: UNREACHABLE;
+		}
+		if (inv)
+			p.x = 1.0 - p.x;
+		if (inv_y)
+			p.y = 1.0 - p.y;
+		const auto e = 1e-3; // Hack to avoid white seams
+		p.x = clamp(p.x, e, 1.0 - e);
+		p.y = clamp(p.y, e, 1.0 - e);
+		p.x /= 4;
+		p.y /= 3;
+		auto q = uv + p;
+		q.x = clamp(q.x, 0.0, 1.0);
+		q.y = clamp(q.y, 0.0, 1.0);
+		assert(0 <= q.x);
+		assert(q.x <= 1);
+		assert(0 <= q.y);
+		assert(q.y <= 1);
+		fig.uv.push_back(q);
+	};
+
+	auto o = (unsigned int)fig.uv.size();
+	fig.faces_uv.push_back({ o, o + 1, o + 2 });
+	apply(f.a);
+	apply(f.b);
+	apply(f.c);
+}
+*/
 
 img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background) {
 
@@ -368,7 +456,10 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			}
 
 			if (f.texture.has_value()) {
-				color *= texture_color(f, f.faces[pair.triangle_id], point);
+				auto fp = f.faces[pair.triangle_id];
+				auto fuv = f.flags.separate_uv() ? f.faces_uv[pair.triangle_id] : fp;
+				assert(f.flags.separate_uv());
+				color *= texture_color(f, fp, fuv, point);
 			}
 
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
