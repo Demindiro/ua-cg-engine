@@ -21,6 +21,7 @@
 
 #include <array>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -1367,7 +1368,7 @@ class ObjectGroup
    *
    * \param line Complete line.
    */
-  void parse_vertex(const std::vector<std::string>& tokens, const std::string& line);
+  void parse_vertex(std::istream_iterator<std::string>& tokens, const std::string& line);
 
   /**
    * \brief Parse a line containing a vertex normal.
@@ -1376,7 +1377,7 @@ class ObjectGroup
    *
    * \param line Complete line.
    */
-  void parse_vertex_normal(const std::vector<std::string>& tokens, const std::string& line);
+  void parse_vertex_normal(std::istream_iterator<std::string>& tokens, const std::string& line);
 
   /**
    * \brief Parse a line containing texture coordinates.
@@ -1385,7 +1386,7 @@ class ObjectGroup
    *
    * \param line Complete line.
    */
-  void parse_texture_coordinates(const std::vector<std::string>& tokens, const std::string& line);
+  void parse_texture_coordinates(std::istream_iterator<std::string>& tokens, const std::string& line);
 
   /**
    * \brief Parse a line containing a polygon.
@@ -1394,7 +1395,7 @@ class ObjectGroup
    *
    * \param line Complete line.
    */
-  void parse_polygon(const std::vector<std::string>& tokens, const std::string& line);
+  void parse_polygon(std::istream_iterator<std::string>& tokens, const std::string& line);
 
   /**
    * \brief Parse a line containing a mtllib declaration.
@@ -1403,7 +1404,7 @@ class ObjectGroup
    *
    * \param line Complete line.
    */
-  void parse_mtllib(const std::vector<std::string>& tokens, const std::string& line);
+  void parse_mtllib(std::istream_iterator<std::string>& tokens, const std::string& line);
 
   /**
    * \brief Parse a line containing a usemtl declaration.
@@ -1412,7 +1413,7 @@ class ObjectGroup
    *
    * \param line Complete line.
    */
-  void parse_usemtl(const std::vector<std::string>& tokens, const std::string& line);
+  void parse_usemtl(std::istream_iterator<std::string>& tokens, const std::string& line);
 
   /**
    * \brief Parse a line of the obj file.

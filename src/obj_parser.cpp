@@ -16,6 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// References:
+//
+// https://raw.githubusercontent.com/Alhadis/language-wavefront/v1.0.2/docs/obj-spec.pdf
+// https://www.fileformat.info/format/wavefrontobj/egff.htm
+// https://www.fileformat.info/format/material/
+//
+// Some notes:
+// - I cannot find *any* source that says whether .obj files are case insensitive or not.
+//   Given that:
+//   - I personally have never seen an .obj file with upper-case letters.
+//   - My (NVim) syntax highlighter doesn't like uppercase letters in .obj files.
+//   I will assume it is case sensitive. That said, Blender is able to load .obj files with
+//   uppercase symbols.
+
 #include "obj_parser.h"
 
 #include <algorithm>
@@ -162,15 +176,9 @@ MalformedVertex::MalformedVertex(const std::string& line_init) throw() : ParseEx
 }
 
 MalformedVertex::MalformedVertex(const MalformedVertex& original) throw()
-    : ParseException(), line(original.line), message(original.message)
-{
-  // Does nothing...
-}
+    : ParseException(), line(original.line), message(original.message){}
 
-MalformedVertex::~MalformedVertex() throw()
-{
-  // Does nothing...
-}
+MalformedVertex::~MalformedVertex() throw() {}
 
 MalformedVertex& MalformedVertex::operator=(const MalformedVertex& original) throw()
 {
@@ -800,25 +808,6 @@ void skip_wspace(std::istream& input_stream)
   }
 }
 
-bool is_ci_equal(const std::string& lhs, const std::string& rhs)
-{
-  if (lhs.length() != rhs.length()) {
-    return false;
-  }
-
-  std::string::const_iterator i = lhs.begin();
-  std::string::const_iterator j = rhs.begin();
-  const std::string::const_iterator last = lhs.end();
-
-  while (i != last) {
-    if (std::tolower(*i++) != std::tolower(*j++)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 std::vector<std::string> split_wspace(const std::string& textline)
 {
   std::vector<std::string> tokens;
@@ -1314,7 +1303,7 @@ void MTLLibrary::parse(std::istream& input_stream)
       if (!line.empty()) {
         std::vector<std::string> tokens = split_wspace(line);
         std::string key = tokens.at(0);
-        if (is_ci_equal(key, "newmtl")) {
+        if (key == "newmtl") {
           const std::string name = tokens.at(1);
           const MTLValueMap mats = read_entries(name, input_stream);
 
@@ -1380,55 +1369,61 @@ const IntTuple& Polygon::get_normal_indexes() const { return normal_indexes; }
 bool Polygon::has_texture_indexes() const { return !texture_indexes.empty(); }
 bool Polygon::has_normal_indexes() const { return !normal_indexes.empty(); }
 
-void ObjectGroup::parse_vertex(const std::vector<std::string>& tokens, const std::string& line)
-{
-  const size_t num_tokens = tokens.size();
-  if (num_tokens == 4) {
-    const double x = std::stod(tokens.at(1));
-    const double y = std::stod(tokens.at(2));
-    const double z = std::stod(tokens.at(3));
-    vertexes.push_back({x, y, z});
-  } else if (num_tokens == 5) {
-    const double x = std::stod(tokens.at(1));
-    const double y = std::stod(tokens.at(2));
-    const double z = std::stod(tokens.at(3));
-    const double w = std::stod(tokens.at(4));
-    vertexes.push_back({x, y, z, w});
-  } else {
-    throw MalformedVertex(line);
-  }
-}
-void ObjectGroup::parse_vertex_normal(const std::vector<std::string>& tokens, const std::string& line)
-
-{
-  if (tokens.size() == 4) {
-    const double x = std::stod(tokens.at(1));
-    const double y = std::stod(tokens.at(2));
-    const double z = std::stod(tokens.at(3));
-    vertex_normals.push_back({x, y, z});
-  } else {
-    throw MalformedVertex(line);
-  }
-}
-void ObjectGroup::parse_texture_coordinates(const std::vector<std::string>& tokens, const std::string& line)
-{
-	auto def = std::numeric_limits<double>::signaling_NaN();
-	DoubleTuple tup = { def, def, def, def };
-	switch (tokens.size()) {
-	case 4: tup[2] = std::stod(tokens.at(3)); [[fallthrough]]
-	case 3: tup[1] = std::stod(tokens.at(2)); [[fallthrough]]
-	case 2: tup[0] = std::stod(tokens.at(1)); break;
-	default:
+static double next_vertex(istream_iterator<string> &it, const string &line) {
+	if (it == istream_iterator<string>()) {
 		throw MalformedVertex(line);
 	}
-	texture_coordinates.push_back(tup);
+	auto v = stod(*it);
+	++it;
+	return v;
 }
 
-void ObjectGroup::parse_polygon(const std::vector<std::string>& tokens, const std::string& line) {
+static double maybe_next_vertex(istream_iterator<string> &it) {
+	if (it == istream_iterator<string>()) {
+		return numeric_limits<double>::signaling_NaN();
+	}
+	auto v = stod(*it);
+	++it;
+	return v;
+}
+
+static void no_next_vertex(istream_iterator<string> &it, const string &line) {
+	if (it != istream_iterator<string>()) {
+		throw MalformedVertex(line);
+	}
+}
+
+void ObjectGroup::parse_vertex(istream_iterator<string> &it, const string &line) {
+	auto x = next_vertex(it, line);
+	auto y = next_vertex(it, line);
+	auto z = next_vertex(it, line);
+	auto w = maybe_next_vertex(it);
+	no_next_vertex(it, line);
+	vertexes.push_back({x, y, z, w});
+}
+
+void ObjectGroup::parse_vertex_normal(istream_iterator<string> &it, const string &line) {
+	auto x = next_vertex(it, line);
+	auto y = next_vertex(it, line);
+	auto z = next_vertex(it, line);
+	no_next_vertex(it, line);
+	vertex_normals.push_back({x, y, z, numeric_limits<double>::signaling_NaN()});
+}
+
+void ObjectGroup::parse_texture_coordinates(istream_iterator<string> &it, const std::string& line) {
+	auto def = numeric_limits<double>::signaling_NaN();
+	auto x = next_vertex(it, line);
+	auto y = maybe_next_vertex(it);
+	auto z = maybe_next_vertex(it);
+	no_next_vertex(it, line);
+	texture_coordinates.push_back({x, y, z, numeric_limits<double>::signaling_NaN()});
+}
+
+void ObjectGroup::parse_polygon(istream_iterator<string> &it, const string &line) {
 	IntTuple indexes, norm_coord, tex_coord;
-	for (unsigned int i = 1; i < tokens.size(); i++) {
-		std::istringstream token_str(tokens[i]);
-		std::string token;
+	string token;
+	while (it != istream_iterator<string>()) {
+		istringstream token_str(*it);
 		if (getline(token_str, token, '/')) {
 			indexes.emplace_back(stoi(token));
 		}
@@ -1441,59 +1436,63 @@ void ObjectGroup::parse_polygon(const std::vector<std::string>& tokens, const st
 		if (getline(token_str, token, '/')) {
 			throw MalformedPolygon(line);
 		}
+		++it;
 	}
 	polygons.emplace_back(Polygon {indexes, tex_coord, norm_coord});
 }
 
-void ObjectGroup::parse_mtllib(const std::vector<std::string>& tokens, const std::string& line)
-{
-
-  if (tokens.size() != 2) {
-    throw MalformedLine("mtllib", line);
-  }
-  if (!mtllib_filename.empty()) {
-    throw DuplicateEntry("object group", "mtllib");
-  } else {
-    mtllib_filename = tokens.at(1);
-  }
+void ObjectGroup::parse_mtllib(istream_iterator<string> &it, const string &line) {
+	if (!mtllib_filename.empty()) {
+		throw DuplicateEntry("object group", "mtllib");
+	}
+	if (it == istream_iterator<string>()) {
+		throw MalformedLine("mtllib", line);
+	}
+	mtllib_filename = *it;
+	if (++it != istream_iterator<string>()) {
+		throw MalformedLine("mtllib", line);
+	}
 }
 
-void ObjectGroup::parse_usemtl(const std::vector<std::string>& tokens, const std::string& line)
-{
-
-  if (tokens.size() != 2) {
-    throw MalformedLine("usemtl", line);
-  }
-  if (!mtl_name.empty()) {
-    throw DuplicateLine("usemtl");
-  } else {
-    mtl_name = tokens.at(1);
-  }
+void ObjectGroup::parse_usemtl(istream_iterator<string> &it, const string &line) {
+	if (!mtl_name.empty()) {
+		throw DuplicateLine("usemtl");
+	}
+	if (it == istream_iterator<string>()) {
+		throw MalformedLine("usemtl", line);
+	}
+	mtl_name = *it;
+	if (++it != istream_iterator<string>()) {
+		throw MalformedLine("usemtl", line);
+	}
 }
 
-void ObjectGroup::parse_obj_line(const std::string& line)
-{
-  auto tokens = split_wspace(line);
-  const std::string prefix = tokens.at(0);
-  if (is_ci_equal(prefix, "vn")) {
-    parse_vertex_normal(tokens, line);
-  } else if (is_ci_equal(prefix, "vt")) {
-    parse_texture_coordinates(tokens, line);
-  } else if (is_ci_equal(prefix, "v")) {
-    parse_vertex(tokens, line);
-  } else if (is_ci_equal(prefix, "l")) {
-    // polygons.push_back({std::stoul(tokens.at(1)), std::stoul(tokens.at(2))});
-  } else if (is_ci_equal(prefix, "f")) {
-    parse_polygon(tokens, line);
-  } else if (is_ci_equal(prefix, "mtllib")) {
-    parse_mtllib(tokens, line);
-  } else if (is_ci_equal(prefix, "usemtl")) {
-    parse_usemtl(tokens, line);
-  } else if (is_ci_equal(prefix, "s")) {
-	  // TODO handle this. We ignore it for now because damn you Blender
-  } else {
-    throw UnrecognizedType(line);
-  }
+void ObjectGroup::parse_obj_line(const string &line) {
+	istringstream tokens(line);
+	istream_iterator<string> it(tokens);
+	if (it == istream_iterator<string>()) {
+		throw UnrecognizedType(line);
+	}
+	const string &prefix = *it;
+	if (prefix == "vn") {
+		parse_vertex_normal(++it, line);
+	} else if (prefix == "vt") {
+		parse_texture_coordinates(++it, line);
+	} else if (prefix == "v") {
+		parse_vertex(++it, line);
+	} else if (prefix == "l") {
+		// TODO
+	} else if (prefix == "f") {
+		parse_polygon(++it, line);
+	} else if (prefix == "mtllib") {
+		parse_mtllib(++it, line);
+	} else if (prefix == "usemtl") {
+		parse_usemtl(++it, line);
+	} else if (prefix == "s") {
+		// TODO handle this. We ignore it for now because damn you Blender
+	} else {
+		throw UnrecognizedType(line);
+	}
 }
 
 ObjectGroup::ObjectGroup(std::istream& input_stream) { parse(input_stream); }

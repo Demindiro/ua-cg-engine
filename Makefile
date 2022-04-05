@@ -115,7 +115,7 @@ clean:: clean-images clean-bench
 	rm -rf $(ARCHIVE) build/ build-debug/
 
 clean-images::
-	rm -rf assets/*.bmp
+	rm -rf assets/*.bmp assets/extreme/*.bmp
 
 clean-bench::
 	rm -rf assets/cachegrind.out.* assets/callgrind.out.*
