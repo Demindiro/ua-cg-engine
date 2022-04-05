@@ -24,6 +24,10 @@ class InlineVector {
 		T *_heap_elem;
 	};
 
+	bool is_inline() const {
+		return _capacity <= inline_capacity;
+	}
+
 public:
 	InlineVector<T, inline_capacity>() : _size(0), _capacity(inline_capacity) {}
 
@@ -141,7 +145,7 @@ public:
 			if (curr == nullptr) {
 				throw std::bad_alloc();
 			}
-			if (new_cap > inline_capacity) {
+			if (new_cap > capacity() && is_inline()) {
 				// We need to do a copy ourselves.
 				for (size_t i = 0; i < size(); i++) {
 					curr[i] = _inline_elem[i];
