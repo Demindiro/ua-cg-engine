@@ -399,6 +399,12 @@ std::istream &img::operator>>(std::istream &in, EasyImage &image) {
 	free((char *)image.data);
 	in.read((char *)d + 2, size);
 	memset(d, 0, 2);
+
+	auto magic = (bmpfile_magic *)d;
+	if (size < 2 || magic->magic[0] != 'B' || magic->magic[1] != 'M') {
+		throw img::UnsupportedFileTypeException("magic does not match BM");
+	}
+
 	image.data = (char *)d;
 	image.row_size = (image.get_width() * 3 + 3) & ~3; // Round up to multiple of 4
 
