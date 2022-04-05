@@ -30,6 +30,8 @@
 
 namespace obj {
 
+using namespace std;
+
 ParseException::ParseException() throw() : std::exception()
 {
   // Does nothing...
@@ -827,17 +829,6 @@ std::vector<std::string> split_wspace(const std::string& textline)
   return tokens;
 }
 
-std::vector<std::string> split(const std::string& textline, char delimiter)
-{
-  std::vector<std::string> tokens;
-  std::string token;
-  std::istringstream token_str(textline);
-  while (std::getline(token_str, token, delimiter)) {
-    tokens.push_back(token);
-  }
-  return tokens;
-}
-
 MTLValue* read_number(const std::string& token)
 {
   std::stringstream input_stream;
@@ -1433,29 +1424,25 @@ void ObjectGroup::parse_texture_coordinates(const std::vector<std::string>& toke
 	texture_coordinates.push_back(tup);
 }
 
-void ObjectGroup::parse_polygon(const std::vector<std::string>& tokens, const std::string& line)
-
-{
-  IntTuple indexes;
-  IntTuple norm_coord;
-  IntTuple tex_coord;
-  for (unsigned int i = 1; i < tokens.size(); i++) {
-    auto index_it = split(tokens.at(i), '/');
-    const size_t num_indexes = index_it.size();
-    if (num_indexes >= 1) {
-      indexes.emplace_back(std::stoi(index_it.at(0)));
-    }
-    if (num_indexes >= 2 && !index_it.at(1).empty()) {
-      tex_coord.emplace_back(std::stoi(index_it.at(1)));
-    }
-    if (num_indexes == 3 && !index_it.at(2).empty()) {
-      norm_coord.emplace_back(std::stoi(index_it.at(2)));
-    }
-    if (num_indexes > 4 || num_indexes <= 0) {
-      throw MalformedPolygon(line);
-    }
-  }
-  polygons.emplace_back(Polygon{indexes, tex_coord, norm_coord});
+void ObjectGroup::parse_polygon(const std::vector<std::string>& tokens, const std::string& line) {
+	IntTuple indexes, norm_coord, tex_coord;
+	for (unsigned int i = 1; i < tokens.size(); i++) {
+		std::istringstream token_str(tokens[i]);
+		std::string token;
+		if (getline(token_str, token, '/')) {
+			indexes.emplace_back(stoi(token));
+		}
+		if (getline(token_str, token, '/') && !token.empty()) {
+			tex_coord.emplace_back(stoi(token));
+		}
+		if (getline(token_str, token, '/') && !token.empty()) {
+			norm_coord.emplace_back(stoi(token));
+		}
+		if (getline(token_str, token, '/')) {
+			throw MalformedPolygon(line);
+		}
+	}
+	polygons.emplace_back(Polygon {indexes, tex_coord, norm_coord});
 }
 
 void ObjectGroup::parse_mtllib(const std::vector<std::string>& tokens, const std::string& line)
@@ -1532,25 +1519,20 @@ std::ostream& operator<<(std::ostream& output_stream, const ObjectGroup& group)
 
 void ObjectGroup::parse(std::istream& input_stream)
 {
-  try {
-    std::string line;
-    while (std::getline(input_stream, line) && input_stream.good()) {
-      auto comment_start = line.find_first_of('#');
-      if (comment_start != std::string::npos) {
-        try {
-          line = line.substr(0, comment_start);
-        } catch (...) {
-          throw MalformedComment(line);
-        }
-      }
-      if (!line.empty()) {
-        parse_obj_line(line);
-      }
-    }
-  } catch (...) {
-    // Throw to main
-    throw;
-  }
+	std::string line;
+	while (std::getline(input_stream, line) && input_stream.good()) {
+		auto comment_start = line.find_first_of('#');
+		if (comment_start != std::string::npos) {
+			try {
+				line = line.substr(0, comment_start);
+			} catch (...) {
+				throw MalformedComment(line);
+			}
+		}
+		if (!line.empty()) {
+			parse_obj_line(line);
+		}
+	}
 }
 
 const std::vector<DoubleTuple>& ObjectGroup::get_vertexes() const { return vertexes; }
