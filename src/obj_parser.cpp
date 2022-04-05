@@ -1369,7 +1369,7 @@ const IntTuple& Polygon::get_normal_indexes() const { return normal_indexes; }
 bool Polygon::has_texture_indexes() const { return !texture_indexes.empty(); }
 bool Polygon::has_normal_indexes() const { return !normal_indexes.empty(); }
 
-static double next_vertex(istream_iterator<string> &it, const string &line) {
+static inline double next_vertex(istream_iterator<string> &it, const string &line) {
 	if (it == istream_iterator<string>()) {
 		throw MalformedVertex(line);
 	}
@@ -1378,7 +1378,7 @@ static double next_vertex(istream_iterator<string> &it, const string &line) {
 	return v;
 }
 
-static double maybe_next_vertex(istream_iterator<string> &it) {
+static inline double maybe_next_vertex(istream_iterator<string> &it) {
 	if (it == istream_iterator<string>()) {
 		return numeric_limits<double>::signaling_NaN();
 	}
@@ -1387,7 +1387,7 @@ static double maybe_next_vertex(istream_iterator<string> &it) {
 	return v;
 }
 
-static void no_next_vertex(istream_iterator<string> &it, const string &line) {
+static inline void no_next_vertex(istream_iterator<string> &it, const string &line) {
 	if (it != istream_iterator<string>()) {
 		throw MalformedVertex(line);
 	}

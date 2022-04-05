@@ -40,7 +40,7 @@ void wavefront(const Configuration &conf, FaceShape &shape) {
 				triples[t] = (unsigned int)triples.size();
 				shape.points.push_back(tup_to_point3d(obj.get_vertexes().at(t.pi)));
 				/*
-				shape.uvs.push_back(t.ti != -1
+				shape.uv.push_back(t.ti != -1
 					? tup_to_point2d(obj.get_texture_coordinates().at(t.ti))
 					: Point2D()
 				);

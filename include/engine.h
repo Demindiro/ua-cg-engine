@@ -4,6 +4,8 @@
 #include <cmath>
 #include <vector>
 #include "easy_image.h"
+#include "math/point2d.h"
+#include "math/point3d.h"
 #include "math/vector3d.h"
 #include "math/vector4d.h"
 #include "math/matrix4d.h"
@@ -41,6 +43,11 @@ static inline double round_up(double x) {
 
 static inline img::Color tup_to_color(std::vector<double> v) {
 	return img::Color(round_up(v.at(0) * 255), round_up(v.at(1) * 255), round_up(v.at(2) * 255));
+}
+
+static inline Point2D tup_to_point2d(std::vector<double> v) {
+	auto y = v.at(1), x = v[0];
+	return { x, y };
 }
 
 static inline Point3D tup_to_point3d(std::vector<double> v) {
