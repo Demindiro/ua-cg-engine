@@ -73,9 +73,9 @@ static Color color_from_conf(const vector<double> &c) {
 	return { r, g, b };
 }
 
-static Color try_color_from_conf(const vector<double> &c) {
+static Color try_color_from_conf(const vector<double> &c, Color def = {}) {
 	if (c.size() < 3)
-		return { 0, 0, 0 };
+		return def;
 	double b = c.at(2);
 	double g = c.at(1);
 	double r = c.at(0);
@@ -86,12 +86,9 @@ static Color color_from_conf(const ini::Entry &e) {
 	return color_from_conf(e.as_double_tuple_or_die());
 }
 
-static Color try_color_from_conf(const ini::Entry &e) {
+static Color try_color_from_conf(const ini::Entry &e, Color def = {}) {
 	vector<double> c;
-	if (e.as_double_tuple_if_exists(c)) {
-		return color_from_conf(c);
-	}
-	return Color();
+	return e.as_double_tuple_if_exists(c) ? color_from_conf(c) : def;
 }
 
 Color color_from_conf(const ini::Section &conf) {
@@ -113,17 +110,17 @@ vector<Vector3D> calculate_face_normals(const vector<Point3D> &points, const vec
 	return normals;
 }
 
-TriangleFigure convert(FaceShape shape, const Configuration &conf, bool with_lighting, const Matrix4D &eye) {
+TriangleFigure convert(FaceShape shape, Material mat, const Configuration &conf, bool with_lighting, const Matrix4D &eye) {
 
 	const auto &section = conf.section;
 	TriangleFigure fig;
 	fig.points = shape.points;
 	fig.faces = shape.faces;
 	if (with_lighting) {
-		fig.ambient = try_color_from_conf(section["ambientReflection"]);
-		fig.diffuse = try_color_from_conf(section["diffuseReflection"]);
-		fig.specular = try_color_from_conf(section["specularReflection"]);
-		fig.reflection = section["reflectionCoefficient"].as_double_or_default(0);
+		fig.ambient = try_color_from_conf(section["ambientReflection"], mat.ambient);
+		fig.diffuse = try_color_from_conf(section["diffuseReflection"], mat.diffuse);
+		fig.specular = try_color_from_conf(section["specularReflection"], mat.specular);
+		fig.reflection = section["reflectionCoefficient"].as_double_or_default(mat.reflection);
 		// integer powers are faster, so try to use that.
 		fig.reflection_int = fig.reflection;
 		if (fig.reflection_int != fig.reflection) {
@@ -147,33 +144,41 @@ TriangleFigure convert(FaceShape shape, const Configuration &conf, bool with_lig
 		}
 
 		// Generate UVs (flat mapping by default)
-		Rect rect;
-		rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
-		rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
-		fig.uv.reserve(fig.points.size());
-		for (auto &p : fig.points) {
-			Point2D uv(p.x, p.z);
-			rect |= uv;
-			fig.uv.push_back(uv);
+		fig.uv = shape.uvs;
+		if (fig.uv.empty()) {
+			assert(!"wtf");
+			Rect rect;
+			rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
+			rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
+			fig.uv.reserve(fig.points.size());
+			for (auto &p : fig.points) {
+				Point2D uv(p.x, p.z);
+				rect |= uv;
+				fig.uv.push_back(uv);
+			}
+			for (auto &uv : fig.uv) {
+				uv.x = (uv.x - rect.min.x) / rect.size().x;
+				uv.y = (uv.y - rect.min.y) / rect.size().y;
+			}
 		}
-		for (auto &uv : fig.uv) {
-			uv.x = (uv.x - rect.min.x) / rect.size().x;
-			uv.y = (uv.y - rect.min.y) / rect.size().y;
-		}
+	} else if (mat.texture.has_value()) {
+		fig.texture = mat.texture;
+		fig.uv = shape.uvs;
+		assert(!fig.uv.empty());
 	}
 
 	fig.flags.cubemap(section["cubeMap"].as_bool_or_default(false));
 
-	auto mat = transform_from_conf(section, eye);
+	auto m = transform_from_conf(section, eye);
 	for (auto &p : fig.points) {
-		p *= mat;
+		p *= m;
 	}
 
 	fig.flags.separate_normals(conf.point_normals);
 	fig.normals = shape.normals;
 
 	for (auto &p : fig.normals) {
-		p *= mat;
+		p *= m;
 	}
 
 	if (!fig.flags.separate_normals() && shape.normals.empty()) { // TODO should already be done
@@ -445,6 +450,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		FaceShape shape;
 		auto smooth = section["smooth"].as_bool_or_default(false);
 		bool nogen = true;
+		Material mat;
 
 		auto f_b = [&](auto s, const auto &t) {
 			if (type == s) {
@@ -517,7 +523,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 
 		if (type == "Object") {
 			assert(nogen);
-			wavefront({ section, smooth }, shape);
+			wavefront({ section, smooth }, shape, mat);
 			smooth = true; // TODO technically not accurate and perhaps confusing...
 			nogen = false;
 		}
@@ -526,7 +532,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 			throw TypeException(type);
 		}
 
-		figures.push_back(convert(shape, { section, smooth }, with_lighting, mat_eye));
+		figures.push_back(convert(shape, mat, { section, smooth }, with_lighting, mat_eye));
 	}
 
 	if (lights.shadows) {

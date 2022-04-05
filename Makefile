@@ -60,8 +60,11 @@ test-cubemap: build-debug | assets/mountains.bmp
 assets/%.bmp: assets/%.ini build
 	cd assets && ../build/engine $(patsubst assets/%,%,$<)
 
-assets/honk.bmp: assets/honk.webp
-	ffmpeg -y -i $< $@
+assets/honk.bmp: %.bmp: %.webp
+	ffmpeg -y -i $< -pix_fmt bgr24 $@
+
+assets/ambulance.bmp: %.bmp: %.png
+	ffmpeg -y -i $< -pix_fmt bgr24 $@
 
 mountain_images := posz.jpg negz.jpg posx.jpg negx.jpg posy.jpg negy.jpg
 assets/mountains.bmp: $(patsubst %,assets/cubemap/mountain-skyboxes/Maskonaive/%,$(mountain_images))

@@ -45,6 +45,12 @@ static inline img::Color tup_to_color(std::vector<double> v) {
 	return img::Color(round_up(v.at(0) * 255), round_up(v.at(1) * 255), round_up(v.at(2) * 255));
 }
 
+template<size_t n>
+static inline Point2D tup_to_point2d(const std::array<double, n> &v) {
+	static_assert(n >= 2);
+	return { v[0], v[1] };
+}
+
 static inline Point2D tup_to_point2d(std::vector<double> v) {
 	auto y = v.at(1), x = v[0];
 	return { x, y };

@@ -101,6 +101,7 @@ struct EdgeShape {
 struct FaceShape {
 	std::vector<Point3D> points;
 	std::vector<Vector3D> normals;
+	std::vector<Point2D> uvs;
 	std::vector<render::Face> faces;
 
 	FaceShape() {}
@@ -148,6 +149,12 @@ struct ShapeTemplateAny {
 		, edges_size(shape.edges.size())
 		, faces_size(0)
 	{}
+};
+
+struct Material {
+	std::optional<render::Texture> texture;
+	render::Color ambient, diffuse, specular;
+	double reflection;
 };
 
 Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection);

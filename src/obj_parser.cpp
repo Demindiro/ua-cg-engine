@@ -1458,7 +1458,8 @@ void ObjectGroup::parse_mtllib(istream_iterator<string> &it, const string &line)
 
 void ObjectGroup::parse_usemtl(istream_iterator<string> &it, const string &line) {
 	if (!mtl_name.empty()) {
-		throw DuplicateLine("usemtl");
+		// TODO
+		//throw DuplicateLine("usemtl");
 	}
 	if (it == istream_iterator<string>()) {
 		throw MalformedLine("usemtl", line);
