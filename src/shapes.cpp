@@ -439,6 +439,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	vector<TriangleFigure> figures;
 	figures.reserve(nr_fig);
 	for (int i = 0; i < nr_fig; i++) {
+		cout << "Loading Figure" << i << endl;
 		auto section = conf[string("Figure") + to_string(i)];
 		auto type = section["type"].as_string_or_die();
 		FaceShape shape;
@@ -541,6 +542,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	}
 
 	// Draw
+	cout << "Drawing" << endl;
 	return draw(std::move(figures), lights, size, bg);
 }
 

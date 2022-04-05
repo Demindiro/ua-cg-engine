@@ -15,7 +15,9 @@ using namespace render;
 
 void wavefront(const Configuration &conf, FaceShape &shape) {
 	ifstream f(conf.section["file"].as_string_or_die());
+	cout << "Reading Wavefront file" << endl;
 	obj::ObjectGroup obj(f);
+	cout << "Parsing loaded data" << endl;
 
 	// Find all unique point/uv/normal triples & create points & faces
 	struct Triple {
