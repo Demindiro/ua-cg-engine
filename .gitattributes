@@ -1,2 +1,0 @@
-assets/stanford_dragon.obj filter=lfs diff=lfs merge=lfs -text
-assets/stanford_lucy.obj filter=lfs diff=lfs merge=lfs -text
