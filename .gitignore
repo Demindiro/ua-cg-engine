@@ -8,4 +8,4 @@ flamegraph.svg
 assets/filelist
 cachegrind.out.*
 callgrind.out.*
-assets/stanford_*.obj
+stanford_*.obj
