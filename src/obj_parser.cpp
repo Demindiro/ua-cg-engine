@@ -1426,6 +1426,8 @@ void ObjectGroup::parse_polygon(istream_iterator<string> &it, const string &line
 		istringstream token_str(*it);
 		if (getline(token_str, token, '/')) {
 			indexes.emplace_back(stoi(token));
+		} else {
+			throw MalformedPolygon(line);
 		}
 		if (getline(token_str, token, '/') && !token.empty()) {
 			tex_coord.emplace_back(stoi(token));

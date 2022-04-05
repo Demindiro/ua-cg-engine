@@ -701,6 +701,7 @@ class MalformedLine : public ParseException
  * assumption does not hold a buffer is allocated.
  */
 using IntTuple = engine::util::InlineVector<int, 4>;
+//using IntTuple = std::vector<int>;
 
 /**
  * \brief The type that is used to store double tuples (list of doubles).

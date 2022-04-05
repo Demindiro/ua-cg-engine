@@ -39,10 +39,10 @@ public:
 	}
 
 	InlineVector<T, inline_capacity>(InlineVector<T, inline_capacity> &&v) {
-		auto s = std::max(sizeof(_inline_elem), sizeof(_heap_elem));
+		auto s = std::max(sizeof(T) * inline_capacity, sizeof(T *));
 		std::memcpy(_inline_elem, v._inline_elem, s);
-		_capacity =  v._capacity;
-		_size = v._size;
+		_capacity =  v.capacity();
+		_size = v.size();
 		v._capacity = inline_capacity;
 		v._size = 0;
 	}
@@ -80,6 +80,7 @@ public:
 	}
 
 	size_t capacity() const {
+		assert(_capacity >= inline_capacity);
 		return _capacity;
 	}
 
@@ -93,7 +94,7 @@ public:
 
 	const T &operator [](size_t i) const {
 		assert(size() <= capacity());
-		assert(i <= size());
+		assert(i < size());
 		if (capacity() <= inline_capacity) {
 			return _inline_elem[i];
 		} else {
@@ -103,7 +104,7 @@ public:
 
 	T &operator [](size_t i) {
 		assert(size() <= capacity());
-		assert(i <= size());
+		assert(i < size());
 		if (capacity() <= inline_capacity) {
 			return _inline_elem[i];
 		} else {
@@ -140,7 +141,7 @@ public:
 			if (curr == nullptr) {
 				throw std::bad_alloc();
 			}
-			if (capacity() > inline_capacity) {
+			if (new_cap > inline_capacity) {
 				// We need to do a copy ourselves.
 				for (size_t i = 0; i < size(); i++) {
 					curr[i] = _inline_elem[i];
