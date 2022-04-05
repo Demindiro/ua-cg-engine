@@ -25,6 +25,7 @@
 #include <iomanip>
 #include <iterator>
 #include <memory>
+#include <limits>
 #include <sstream>
 
 namespace obj {
@@ -661,9 +662,6 @@ bool TupleValue::as_int_tuple_if_exists(const std::string& section_name, const s
 bool TupleValue::as_double_tuple_if_exists(const std::string& section_name, const std::string& entry_name,
                                            DoubleTuple& ret_val) const
 {
-  ret_val.clear();
-  ret_val.reserve(elements.size());
-
   const ConstElementIter first_element = elements.begin();
   const ConstElementIter last_element = elements.end();
 
@@ -671,7 +669,7 @@ bool TupleValue::as_double_tuple_if_exists(const std::string& section_name, cons
     double element_value;
     const bool exists = (*i)->as_double_if_exists(section_name, entry_name, element_value);
     assert(exists);
-    ret_val.push_back(element_value);
+    ret_val[i - elements.begin()] = element_value;
   }
 
   return true;
@@ -1423,23 +1421,16 @@ void ObjectGroup::parse_vertex_normal(const std::vector<std::string>& tokens, co
 }
 void ObjectGroup::parse_texture_coordinates(const std::vector<std::string>& tokens, const std::string& line)
 {
-  double u, v, w;
-  DoubleTuple tup;
-  switch (tokens.size()) {
-  case 4:
-    w = std::stod(tokens.at(3));
-    tup.insert(tup.begin(), w);
-  case 3:
-    v = std::stod(tokens.at(2));
-    tup.insert(tup.begin(), v);
-  case 2:
-    u = std::stod(tokens.at(1));
-    tup.insert(tup.begin(), u);
-    break;
-  default:
-    throw MalformedVertex(line);
-  }
-  texture_coordinates.push_back(tup);
+	auto def = std::numeric_limits<double>::signaling_NaN();
+	DoubleTuple tup = { def, def, def, def };
+	switch (tokens.size()) {
+	case 4: tup[2] = std::stod(tokens.at(3)); [[fallthrough]]
+	case 3: tup[1] = std::stod(tokens.at(2)); [[fallthrough]]
+	case 2: tup[0] = std::stod(tokens.at(1)); break;
+	default:
+		throw MalformedVertex(line);
+	}
+	texture_coordinates.push_back(tup);
 }
 
 void ObjectGroup::parse_polygon(const std::vector<std::string>& tokens, const std::string& line)

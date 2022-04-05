@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <vector>
 #include "easy_image.h"
@@ -49,10 +50,22 @@ static inline Point3D tup_to_point3d(std::vector<double> v) {
 	return Point3D(x, y, z);
 }
 
+template<size_t n>
+static inline Point3D tup_to_point3d(const std::array<double, n> &v) {
+	static_assert(n >= 3);
+	return { v[0], v[1], v[2] };
+}
+
 static inline Vector3D tup_to_vector3d(std::vector<double> v) {
 	// Ditto
 	auto z = v.at(2), y = v[1], x = v[0];
 	return Vector3D(x, y, z);
+}
+
+template<size_t n>
+static inline Vector3D tup_to_vector3d(const std::array<double, n> &v) {
+	static_assert(n >= 3);
+	return { v[0], v[1], v[2] };
 }
 
 static constexpr inline double deg2rad(double a) {

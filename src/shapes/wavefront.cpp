@@ -56,6 +56,8 @@ void wavefront(const Configuration &conf, FaceShape &shape) {
 			shape.faces.push_back({ triples[get(0)], triples[get(i - 1)], triples[get(i)] });
 		}
 	}
+
+	cout << "Done parsing" << endl;
 }
 
 }

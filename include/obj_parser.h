@@ -19,11 +19,13 @@
 #ifndef OBJ_PARSER_INCLUDED
 #define OBJ_PARSER_INCLUDED
 
+#include <array>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "inline_vector.h"
 
 /**
  * \brief The namespace of the OBJ file parser.
@@ -692,13 +694,19 @@ class MalformedLine : public ParseException
 
 /**
  * \brief The type that is used to store int tuples (list of ints).
+ *
+ * If there are 4 or less indices, it is stored inline. This is based on the
+ * assumption that most models consist majorly of triangles and quads. If this
+ * assumption does not hold a buffer is allocated.
  */
-using IntTuple = std::vector<int>;
+using IntTuple = engine::util::InlineVector<int, 4>;
 
 /**
  * \brief The type that is used to store double tuples (list of doubles).
+ *
+ * A vertex consists of at most 4 components (x, y, z and w or u, v and w).
  */
-using DoubleTuple = std::vector<double>;
+using DoubleTuple = std::array<double, 4>;
 
 /**
  * \brief A polygon that is part of a mesh. This class only keeps track of the indexes of the points/texture
@@ -706,7 +714,7 @@ using DoubleTuple = std::vector<double>;
  */
 class Polygon
 {
-  private:
+private:
   /**
    * \brief Vertex/point indices
    */
