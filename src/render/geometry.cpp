@@ -42,7 +42,7 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		auto p = proj(out, inl);
 		auto q = proj(out, inr);
 		out = p;
-		f.faces.push_back({ p, q, inr });
+		f.faces.push_back({ q, p, inr });
 		if (f.normals.size() > 0)
 			f.normals.push_back(f.normals[i]);
 		added++;
