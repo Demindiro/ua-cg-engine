@@ -5,6 +5,7 @@
 #include <set>
 #include <string>
 #include <sstream>
+#include <unordered_map>
 #include "ini_configuration.h"
 #include "math/point3d.h"
 #include "shapes.h"
@@ -37,15 +38,23 @@ using namespace render;
 
 void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 
-	// Find all unique point/uv/normal triples & create points & faces
+	// Find all unique point/uv/normal triples
 	struct Triple {
-		int pi, ti, ni;
-		bool operator <(const Triple &r) const {
-			return pi != r.pi ? pi < r.pi : (ti != r.ti ? ti < r.ti : ni < r.ni);
+		unsigned int pi, ti, ni;
+	};
+	struct TripleHash {
+		size_t operator ()(const Triple &t) const {
+			// This is the fastest hash function I could come up with, I swear.
+			return t.pi;
+		}
+	};
+	struct TripleEqual {
+		bool operator ()(const Triple &l, const Triple &r) const {
+			return l.pi == r.pi && l.ti == r.ti && l.ni == r.ni;
 		}
 	};
 
-	map<Triple, unsigned int> triples;
+	unordered_map<Triple, unsigned int, TripleHash, TripleEqual> triples;
 	string usemtl, mtllib;
 	vector<Point3D> points;
 	vector<Point2D> uvs;
