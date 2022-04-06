@@ -52,7 +52,6 @@ set(engine_sources
 	src/l_parser.cpp
 	src/l_system.cpp
 	src/math.cpp
-	src/obj_parser.cpp
 	src/render/color.cpp
 	src/render/fragment.cpp
 	src/render/fragment/edges.cpp
