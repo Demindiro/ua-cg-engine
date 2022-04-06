@@ -167,7 +167,7 @@ img::EasyImage::EasyImage(unsigned int width, unsigned int height, Color color) 
 	fm->magic[0] = 'B';
 	fm->magic[1] = 'M';
 
-	fh->file_size = htole32(calc_size(width, height));
+	fh->file_size = htole32(calc_size(width, height) - 2);
 	fh->bmp_offset = htole32(calc_meta_size() - 2);
 
 	h->header_size = htole32(sizeof(*h));

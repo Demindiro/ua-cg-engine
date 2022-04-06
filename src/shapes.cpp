@@ -169,15 +169,19 @@ TriangleFigure convert(FaceShape shape, Material mat, const Configuration &conf,
 
 	fig.flags.cubemap(section["cubeMap"].as_bool_or_default(false));
 
-	auto m = transform_from_conf(section, eye);
-	for (auto &p : fig.points) {
-		p *= m;
-	}
-
 	fig.flags.separate_normals(conf.point_normals);
 	fig.normals = shape.normals;
 
+	Matrix4D mat_scale;
+	auto m = transform_from_conf(section, eye, mat_scale);
+
 	for (auto &p : fig.normals) {
+		p *= m;
+	}
+
+	m = mat_scale * m;
+
+	for (auto &p : fig.points) {
 		p *= m;
 	}
 
