@@ -7,5 +7,5 @@ valgrind \
 	--tool=callgrind \
 	--dump-instr=yes \
 	--collect-jumps=yes \
-	../build/engine "$@.ini"
+	../build/engine *.ini
 
