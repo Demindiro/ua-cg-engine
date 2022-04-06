@@ -51,15 +51,22 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 	vector<Point2D> uvs;
 	vector<Vector3D> normals;
 
-	ifstream f(conf.section["file"].as_string_or_die());
+	ifstream f;
+	f.open(conf.section["file"].as_string_or_die());
 	cout << "Reading Wavefront file" << endl;
+	// Try to reuse buffers as much as possible.
+	// Merely moving tok & vert from inside the loops to here
+	// reduced runtime on Lucy from 100s to 65s!
 	string line, prefix, token;
+	istringstream tok, vert;
 	int no_uv = -1, no_normals = -1;
 
 	unsigned int line_i = 0;
 	while (getline(f, line)) {
 		line_i++;
-		istringstream tok(line);
+		tok.clear();
+		tok.seekg(0, ios::beg);
+		tok.str(line);
 		istream_iterator<string> it(tok);
 		auto end = istream_iterator<string>();
 		if (it == end) {
@@ -109,16 +116,18 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 			normals.push_back({ x, y, z });
 		} else if (*it == "f") {
 			auto get = [&](auto str) {
-				istringstream s(str);
+				vert.clear();
+				vert.seekg(0, ios::beg);
+				vert.str(str);
 				Triple t = { 0, 0, 0 };
-				if (!getline(s, token, '/')) {
+				if (!getline(vert, token, '/')) {
 					throw WavefrontParseException(line_i, "face vertex must have at least one point");
 				}
 				t.pi = stoi(token);
-				if (getline(s, token, '/') && token != "") {
+				if (getline(vert, token, '/') && token != "") {
 					t.ti = stoi(token);
 				}
-				if (getline(s, token, '/')) {
+				if (getline(vert, token, '/')) {
 					t.ni = stoi(token);
 				}
 				if (triples.count(t) == 0) {
