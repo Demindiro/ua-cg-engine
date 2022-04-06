@@ -42,6 +42,8 @@ Geïmplementeerde vorm van texture mapping: N/A
 
 - BuckyBall faces zijn niet geïmplementeerd
 - View frustum clipt teveel + splitsing tussen edges.
+- De OBJ parser neemt aan dat alle polygons convex zijn. Niet-convexe
+  polygons worden mogelijk verkeerd opgesplits in driehoeken.
 
 ## Niet-gequoteerde functionaliteit
 
