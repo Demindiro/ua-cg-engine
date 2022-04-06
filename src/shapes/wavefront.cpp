@@ -52,6 +52,8 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 	vector<Vector3D> normals;
 
 	ifstream f;
+	char buffer[1 << 16];
+	f.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
 	f.open(conf.section["file"].as_string_or_die());
 	cout << "Reading Wavefront file" << endl;
 	// Try to reuse buffers as much as possible.
