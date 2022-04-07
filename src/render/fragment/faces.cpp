@@ -217,53 +217,24 @@ static ALWAYS_INLINE Color cubemap_color(
 	auto p3 = (point - aabb.min) / aabb.size();
 
 	Vector2D p;
-	bool inv = false;
-	bool inv_y = false;
 	if (f == f3.abs().x) {
 		// Right / left
-		p = { p3.z, p3.y };
-		uv.y = 1.0 / 3;
-		inv = normal.x > 0;
-		uv.x = !inv ? 0.5 : 0;
-		uv.x += 0.25;
+		uv = { normal.x > 0 ? 0.5 : 0, 1.0 / 3 };
+		p = { normal.x > 0 ? 1.0 - p3.z : p3.z, p3.y };
 	} else if (f == f3.abs().y) {
 		// Top / bottom
-		p = { p3.x, p3.z };
-		inv_y = normal.y > 0;
-		uv = { 0, normal.y > 0 ? 2.0 / 3 : 0 };
+		uv = { 0.25, normal.y > 0 ? 2.0 / 3 : 0 };
+		p = { p3.x, normal.y > 0 ? 1.0 - p3.z : p3.z };
 	} else {
 		// Back / front
-		p = { p3.x, p3.y };
-		uv.y = 1.0 / 3;
-		inv = normal.z < 0;
-		uv.x = inv ? 0.5 : 0;
+		uv = { normal.z < 0 ? 0.75 : 0.25, 1.0 / 3 };
+		p = { normal.z < 0 ? 1.0 - p3.x : p3.x, p3.y };
 	}
 
-	const auto e = 1e-3; // Hack to avoid white seams
-	/*
-	assert(-e <= p.x);
-	assert(p.x <= 1 + e);
-	assert(-e <= p.y);
-	assert(p.y <= 1 + e);
-	*/
-	if (inv)
-		p.x = 1.0 - p.x;
-	if (inv_y)
-		p.y = 1.0 - p.y;
-	p.x = clamp(p.x, e, 1.0 - e);
-	p.y = clamp(p.y, e, 1.0 - e);
 	p.x /= 4;
 	p.y /= 3;
-	uv += p;
 
-	/*
-	assert(0 <= uv.x);
-	assert(0 <= uv.y);
-	assert(uv.x <= 1);
-	assert(uv.y <= 1);
-	*/
-
-	return Color(tex.get_clamped(uv));
+	return Color(tex.get_clamped(uv + p));
 }
 
 img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background) {

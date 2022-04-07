@@ -14,12 +14,16 @@ PZ="$5"
 NZ="$6"
 OUT="$7"
 
+size=$(identify -format "%[w]" "$1")
 temp=$(mktemp)
-temp2=$(mktemp)
 
-convert +append "$PX" "$PY" "$NX" "$NY" "$temp"
-convert -append "$PZ" "$temp" "$NZ" "$temp2"
+echo $size
+
+convert -background white \
+	\( -size "$size"x xc:none "$PZ" +append \) \
+	\( "$NY" "$PX" "$PY" "$NX" +append \) \
+	\( -size "$size"x xc:none "$NZ" +append \) \
+	-append "$temp".jpg || exit
+
+ffmpeg -i "$temp".jpg -pix_fmt bgr24 "$OUT"
 rm "$temp"
-
-ffmpeg -i "$temp2" -pix_fmt bgr24 "$OUT"
-rm "$temp2"
