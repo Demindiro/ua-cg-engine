@@ -419,7 +419,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		lights.ambient = { 1, 1, 1 };
 		lights.shadows = false;
 		for (auto &p : lights.point) {
-			auto pt = p.point * Matrix::inv(mat_eye);
+			auto pt = p.point * lights.inv_eye;
 			mat_eye = look_direction(pt, -(pt - Point3D()));
 			break;
 		}
