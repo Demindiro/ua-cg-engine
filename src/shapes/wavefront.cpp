@@ -40,7 +40,7 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 
 	// Find all unique point/uv/normal triples
 	struct Triple {
-		unsigned int pi, ti, ni;
+		int pi, ti, ni;
 	};
 	struct TripleHash {
 		size_t operator ()(const Triple &t) const {
@@ -185,9 +185,13 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 	shape.normals.resize(triples.size());
 	for (auto [t, i] : triples) {
 		assert(i < triples.size());
-		shape.points[i] = points.at(t.pi - 1);
-		shape.uvs[i] = t.ti > 0 ? uvs.at(t.ti - 1) : Point2D();
-		shape.normals[i] = t.ni > 0 ? normals.at(t.ni - 1) : Vector3D();
+		shape.points[i] = points.at(t.pi > 0 ? t.pi - 1 : points.size() + t.pi);
+		shape.uvs[i] = t.ti != 0
+			? uvs.at(t.ti > 0 ? t.ti - 1 : uvs.size() + t.ti)
+			: Point2D();
+		shape.normals[i] = t.ni != 0
+			? normals.at(t.ni > 0 ? t.ni - 1 : normals.size() + t.ni)
+			: Vector3D();
 	}
 
 	// Parse material if any is provided
