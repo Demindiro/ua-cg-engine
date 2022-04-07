@@ -63,6 +63,7 @@ set(engine_sources
 	src/shapes/circle.cpp
 	src/shapes/cylinder.cpp
 	src/shapes/fractal.cpp
+	src/shapes/mengersponge.cpp
 	src/shapes/sphere.cpp
 	src/shapes/thicken.cpp
 	src/shapes/torus.cpp

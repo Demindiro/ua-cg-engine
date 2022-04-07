@@ -21,6 +21,7 @@
 #include "shapes/dodecahedron.h"
 #include "shapes/fractal.h"
 #include "shapes/icosahedron.h"
+#include "shapes/mengersponge.h"
 #include "shapes/tetrahedron.h"
 #include "shapes/octahedron.h"
 #include "shapes/sphere.h"
@@ -316,6 +317,7 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		f_g("LineDrawing", [](auto a, auto b) { return wireframe::line_drawing(a.section, b); });
 		f_g("Cylinder", cylinder);
 		f_g("Cone", cone);
+		f_g("MengerSponge", mengersponge);
 		f_g("Sphere", sphere);
 		f_g("Torus", torus);
 		f_g("3DLSystem", [](auto a, auto b) { return wireframe::l_system(a.section, b); });
@@ -326,10 +328,6 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 		f_f("FractalIcosahedron", icosahedron);
 		f_f("FractalDodecahedron", dodecahedron);
 		f_f("FractalBuckyBall", buckyball);
-		if (type == "MengerSponge") {
-			puts("TODO MengerSponge lines");
-			nogen = false;
-		}
 
 		if (type == "ThickLineDrawing") {
 			EdgeShape templ, thick;
@@ -492,6 +490,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		f_b("Dodecahedron", dodecahedron);
 		f_g("Cylinder", cylinder);
 		f_g("Cone", cone);
+		f_g("MengerSponge", mengersponge);
 		f_g("Sphere", sphere);
 		f_g("Torus", torus);
 		f_f("FractalBuckyBall", buckyball);
@@ -500,10 +499,6 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		f_f("FractalOctahedron", octahedron);
 		f_f("FractalIcosahedron", icosahedron);
 		f_f("FractalDodecahedron", dodecahedron);
-		if (type == "MengerSponge") {
-			puts("TODO MengerSponge triangles");
-			continue;
-		}
 
 		if (type == "ThickLineDrawing") {
 			EdgeShape templ;

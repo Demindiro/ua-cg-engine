@@ -82,7 +82,7 @@ bench-sep: $(patsubst %.ini,bench-sep-%,$(INI))
 bench-sep-%: build
 	cd assets && ../$</engine "$(patsubst bench-sep-%,%.ini,$@)"
 
-bench-batch: build | assets/honk.bmp assets/Intro2_Blocks.bmp
+bench-batch: build | assets/honk.bmp assets/Intro2_Blocks.bmp assets/ambulance.bmp assets/mountains.bmp
 	cd assets && $(PERF_STAT) ../$</engine *.ini
 
 bench-batch-%: build | assets/honk.bmp
