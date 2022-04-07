@@ -157,6 +157,12 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 				c = get(*it);
 				shape.faces.push_back({ a, b, c });
 			}
+		} else if (*it == "p") {
+			// We don't support points so just skip.
+			continue;
+		} else if (*it == "l") {
+			// Ditto but lines
+			continue;
 		} else if (*it == "s" || *it == "g") {
 			// Ignore anything group-related for now.
 			continue;
