@@ -33,6 +33,14 @@ struct Point3D {
 		return { x - rhs.x, y - rhs.y, z - rhs.z };
 	}
 
+	constexpr inline double distance_to_squared(Point3D rhs) const {
+		return (*this - rhs).length_squared();
+	}
+
+	constexpr inline double distance_to(Point3D rhs) const {
+		return (*this - rhs).length();
+	}
+
 	constexpr inline Point3D interpolate(Point3D to, double f) const {
 		return {
 			x * (1 - f) + to.x * f,
@@ -41,7 +49,8 @@ struct Point3D {
 		};
 	}
 
-	constexpr inline static Point3D center(std::initializer_list<Point3D> points) {
+	template<typename C = std::initializer_list<Point3D>>
+	constexpr inline static Point3D center(C points) {
 		Vector3D s;
 		for (auto p : points) {
 			s += p.to_vector();
@@ -53,3 +62,5 @@ struct Point3D {
 		return Vector3D(x, y, z);
 	}
 };
+
+std::ostream &operator <<(std::ostream &o, const Point3D &m);

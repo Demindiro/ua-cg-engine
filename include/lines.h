@@ -47,26 +47,4 @@ public:
 	img::EasyImage draw(unsigned int size, render::Color background) const;
 };
 
-struct Line3D {
-	Point3D a, b;
-	render::Color color;
-
-	Line3D(Point3D a, Point3D b, render::Color color) : a(a), b(b), color(color) {}
-
-	void draw(img::EasyImage &, ZBuffer &z) const;
-	void draw_clip(img::EasyImage &img, ZBuffer &z) const;
-};
-
-class Lines3D {
-	std::vector<Line3D> lines;
-
-public:
-	Lines3D() {}
-	Lines3D(std::vector<Line3D> lines) : lines(lines) {}
-
-	void add(Line3D);
-	
-	img::EasyImage draw(unsigned int size, render::Color background, bool with_z) const;
-};
-
 }

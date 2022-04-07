@@ -6,3 +6,6 @@ perf.data.old
 flamegraph.svg
 *.tar.gz
 assets/filelist
+cachegrind.out.*
+callgrind.out.*
+stanford_*.obj

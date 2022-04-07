@@ -11,31 +11,47 @@ struct Face {
 	unsigned int a, b, c;
 };
 
-constexpr Point2D project(Point3D p) {
-	assert(p.z != 0 && "division by 0");
-	return { p.x / -p.z, p.y / -p.z };
-}
+class TriangleFigureFlags {
+	int flags = 0;
+
+	bool test_flag(unsigned int flag) const {
+		return (flags & (1 << flag)) > 0;
+	}
+
+	void set_flag(unsigned int flag, bool v) {
+		flags &= ~(1 << flag);
+		flags |= (unsigned int)v << flag;
+		assert(test_flag(flag) == v);
+	}
+
+public:
+	bool separate_normals() const { return test_flag(0); };
+	void separate_normals(bool v) { return set_flag(0, v); };
+	bool separate_uv() const { return test_flag(1); };
+	void separate_uv(bool v) { return set_flag(1, v); };
+	bool can_cull() const { return test_flag(2); };
+	void can_cull(bool v) { return set_flag(2, v); };
+	bool clipped() const { return test_flag(3); };
+	void clipped(bool v) { return set_flag(3, v); };
+	bool cubemap() const { return test_flag(4); };
+	void cubemap(bool v) { return set_flag(4, v); };
+};
 
 struct TriangleFigure {
 	std::vector<Point3D> points;
-	std::vector<Point2D> uv;
-	/**
-	 * \brief Normals for calculating lighting. Empty if no lighting.
-	 */
 	std::vector<Vector3D> normals;
+	std::vector<Point2D> uv;
+
 	std::vector<Face> faces;
+
 	std::optional<Texture> texture;
 	Color ambient;
 	Color diffuse;
 	Color specular;
 	double reflection;
-	unsigned int reflection_int; // Not 0 if defined
-	/**
-	 * \brief Whether each normal is part of a face or a point.
-	 */
-	bool face_normals;
-	bool can_cull;
-	bool clipped;
+	unsigned int reflection_int; // Not UINT_MAX if defined
+
+	TriangleFigureFlags flags;
 
 	Rect bounds_projected() const;
 };
@@ -53,11 +69,11 @@ struct ZBufferTriangleFigure {
 	{}
 
 	ZBufferTriangleFigure(const TriangleFigure &fig)
-		: points(fig.points), faces(fig.faces), can_cull(fig.can_cull)
+		: points(fig.points), faces(fig.faces), can_cull(fig.flags.can_cull())
 	{}
 
 	ZBufferTriangleFigure(const TriangleFigure &fig, const Matrix4D &mat)
-		: faces(fig.faces), can_cull(fig.can_cull)
+		: faces(fig.faces), can_cull(fig.flags.can_cull())
 	{
 		points.reserve(fig.points.size());
 		for (auto &p : fig.points) {

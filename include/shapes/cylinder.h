@@ -9,9 +9,13 @@
 namespace engine {
 namespace shapes {
 
-void cylinder(const FigureConfiguration &conf, std::vector<Line3D> &lines);
+void cylinder_sides(unsigned int n, double height, EdgeShape &);
 
-render::TriangleFigure cylinder(const FigureConfiguration &conf);
+void cylinder_sides(unsigned int n, double height, FaceShape &, bool point_normals);
+
+void cylinder(const Configuration &, EdgeShape &);
+
+void cylinder(const Configuration &, FaceShape &);
 
 }
 }

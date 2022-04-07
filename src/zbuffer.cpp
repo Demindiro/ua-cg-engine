@@ -1,4 +1,5 @@
 #include "zbuffer.h"
+#include <algorithm>
 #include "engine.h"
 #include "math/point3d.h"
 #include "math/vector3d.h"
@@ -6,6 +7,13 @@
 namespace engine {
 
 using namespace std;
+
+/**
+ * \brief Find intersections
+ */
+static ALWAYS_INLINE double f(double y, Point3D p, Point3D q) {
+	return q.x + (p.x - q.x) * (y - q.y) / (p.y - q.y);
+};
 
 template<typename F>
 void ZBuffer::triangle(
@@ -36,40 +44,72 @@ void ZBuffer::triangle(
 	double g_x = (a.x + b.x + c.x) / 3;
 	double g_y = (a.y + b.y + c.y) / 3;
 
-	// Y bounds
-	double y_min = min(min(a.y, b.y), c.y);
-	double y_max = max(max(a.y, b.y), c.y);
-	// 1.0 --> round(1.5) --> 2.0
-	// 1.9 --> floor(2.9) --> 2.0
-	unsigned int from_y = (unsigned int)y_min + 1;
-	// 1.0 --> round(0.5) --> 1.0
-	// 1.0 --> floor(1.0) --> 1.0
-	unsigned int to_y = y_max;
+	// Sort triangles based on Y (ay <= by <= cy)
+	if (b.y < a.y) { swap(b, a); };
+	if (c.y < a.y) { swap(c, a); };
+	if (c.y < b.y) { swap(c, b); };
 
-	for (unsigned int y = from_y; y <= to_y; y++) {
-		// Find intersections
-		auto f = [y](Point3D p, Point3D q, double def = INFINITY) {
-			return (y - p.y) * (y - q.y) <= 0
-				? q.x + (p.x - q.x) * (y - q.y) / (p.y - q.y)
-				: def;
-		};
-		auto g = [f](Point3D p, Point3D q) {
-			return f(p, q, -INFINITY);
-		};
-		double xl = min(min(f(a, b), f(b, c)), f(c, a));
-		double xr = max(max(g(a, b), g(b, c)), g(c, a));
+	// Determine if b is left or right to avoid min max inside loop
+	double p = (b.y - a.y) / (c.y - a.y);
+	// NaN is fine
+	assert(isnan(p) || 0 <= p);
+	assert(isnan(p) || p <= 1);
+	bool b_left = b.x < a.x * (1 - p) + c.x * p;
 
-		// X bounds
-		double x_min = min(xl, xr);
-		double x_max = max(xl, xr);
-		unsigned int from_x = (unsigned int)x_min + 1;
-		unsigned int to_x   = x_max;
+	// Start from bottom to middle
+	{
+		// 1.0 --> round(1.5) --> 2.0
+		// 1.9 --> floor(2.9) --> 2.0
+		unsigned int from_y = (unsigned int)a.y + 1;
+		// 1.0 --> round(0.5) --> 1.0
+		// 1.0 --> floor(1.0) --> 1.0
+		unsigned int to_y = b.y;
+	
+		for (unsigned int y = from_y; y <= to_y; y++) {
+			// Find intersections
+			double ab = f(y, a, b), ac = f(y, a, c);
 
-		auto dy = (y - g_y) * dzdy;
-		for (unsigned int x = from_x; x <= to_x; x++) {
-			auto inv_z = inv_g_z + dy + (x - g_x) * dzdx;
-			if (replace(x, y, inv_z)) {
-				callback(x, y);
+			// X bounds
+			double x_min = b_left ? ab : ac;
+			double x_max = b_left ? ac : ab;
+			unsigned int from_x = (unsigned int)x_min + 1;
+			unsigned int to_x   = x_max;
+			// If x_min and x_max are very close to each other (or even x_min > x_max
+			// by a small epsilon) from_x may be 1 higher than to_x. In this case nothing
+			// gets rendered which is the expected behaviour.
+			assert(from_x <= to_x + 1);
+
+			auto dy = (y - g_y) * dzdy;
+			for (unsigned int x = from_x; x <= to_x; x++) {
+				auto inv_z = inv_g_z + dy + (x - g_x) * dzdx;
+				if (replace(x, y, inv_z)) {
+					callback(x, y);
+				}
+			}
+		}
+	}
+
+	// Now middle to top
+	{
+		unsigned int from_y = (unsigned int)b.y + 1;
+		unsigned int to_y = c.y;
+	
+		for (unsigned int y = from_y; y <= to_y; y++) {
+			double ac = f(y, a, c), bc = f(y, b, c);
+
+			// X bounds
+			double x_min = b_left ? bc : ac;
+			double x_max = b_left ? ac : bc;
+			unsigned int from_x = (unsigned int)x_min + 1;
+			unsigned int to_x   = x_max;
+			assert(from_x <= to_x + 1); // Ditto
+
+			auto dy = (y - g_y) * dzdy;
+			for (unsigned int x = from_x; x <= to_x; x++) {
+				auto inv_z = inv_g_z + dy + (x - g_x) * dzdx;
+				if (replace(x, y, inv_z)) {
+					callback(x, y);
+				}
 			}
 		}
 	}

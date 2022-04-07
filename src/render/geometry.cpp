@@ -22,7 +22,13 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		f.points.push_back(p);
 		return (unsigned int)(f.points.size() - 1);
 	};
-	auto swap_remove = [&f, &faces_count, disable_cull](size_t i) {
+	auto mark_clipped = [&]() {
+		if (disable_cull) {
+			f.flags.can_cull(false);
+		}
+		f.flags.clipped(true);
+	};
+	auto swap_remove = [&](size_t i) {
 		// Swap, then remove. This is always O(1)
 		if (i < faces_count) {
 			f.faces[i] = f.faces[faces_count - 1];
@@ -30,23 +36,17 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 				f.normals[i] = f.normals[faces_count - 1];
 		}
 		faces_count--;
-		if (disable_cull) {
-			f.can_cull = false;
-		}
-		f.clipped = true;
+		mark_clipped();
 	};
-	auto split = [&proj, &f, &added, disable_cull](auto i, auto &out, auto inl, auto inr) {
+	auto split = [&](auto i, auto &out, auto inl, auto inr) {
 		auto p = proj(out, inl);
 		auto q = proj(out, inr);
 		out = p;
-		f.faces.push_back({ p, q, inr });
+		f.faces.push_back({ q, p, inr });
 		if (f.normals.size() > 0)
 			f.normals.push_back(f.normals[i]);
 		added++;
-		if (disable_cull) {
-			f.can_cull = false;
-		}
-		f.clipped = true;
+		mark_clipped();
 	};
 	for (size_t i = 0; i < faces_count; i++) {
 		auto &t = f.faces[i];
@@ -68,17 +68,17 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		case 0b011:
 			t.b = proj(t.b, t.a);
 			t.c = proj(t.c, t.a);
-			f.clipped = true;
+			mark_clipped();
 			break;
 		case 0b101:
 			t.c = proj(t.c, t.b);
 			t.a = proj(t.a, t.b);
-			f.clipped = true;
+			mark_clipped();
 			break;
 		case 0b110:
 			t.a = proj(t.a, t.c);
 			t.b = proj(t.b, t.c);
-			f.clipped = true;
+			mark_clipped();
 			break;
 		// Remove triangle
 		case 0b111:

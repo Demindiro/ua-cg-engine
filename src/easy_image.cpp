@@ -35,6 +35,7 @@ using namespace engine;
 namespace {
 // structs borrowed from wikipedia's article on the BMP file format
 struct bmpfile_magic {
+	uint8_t padding[2];
 	uint8_t magic[2];
 };
 
@@ -161,11 +162,13 @@ img::EasyImage::EasyImage(unsigned int width, unsigned int height, Color color) 
 	bmpfile_header *fh = (bmpfile_header *)((char *)data + sizeof(*fm));
 	bmp_header *h = (bmp_header *)((char *)data + sizeof(*fm) + sizeof(*fh));
 
+	fm->padding[0] = 0;
+	fm->padding[1] = 0;
 	fm->magic[0] = 'B';
 	fm->magic[1] = 'M';
 
-	fh->file_size = htole32(calc_size(width, height));
-	fh->bmp_offset = htole32(calc_meta_size());
+	fh->file_size = htole32(calc_size(width, height) - 2);
+	fh->bmp_offset = htole32(calc_meta_size() - 2);
 
 	h->header_size = htole32(sizeof(*h));
 	h->width = htole32(width);
@@ -378,7 +381,7 @@ void img::EasyImage::draw_zbuf_line_clip(
 
 std::ostream &img::operator<<(std::ostream &out, EasyImage const &image) {
 	enable_exceptions(out, std::ios::badbit | std::ios::failbit);
-	out.write((char *)image.data, calc_size(image.get_width(), image.get_height()));
+	out.write((char *)image.data + 2, calc_size(image.get_width(), image.get_height()) - 2);
 	return out;
 }
 std::istream &img::operator>>(std::istream &in, EasyImage &image) {
@@ -388,14 +391,21 @@ std::istream &img::operator>>(std::istream &in, EasyImage &image) {
 
 	in.seekg(0, std::ios::end);
 	size_t size = in.tellg();
-	void *d = malloc(size);
+	void *d = malloc(2 + size);
 	if (d == NULL)
 		throw std::bad_alloc();
 	in.seekg(0, std::ios::beg);
 
-	free(image.data);
-	in.read((char *)d, size);
-	image.data = d;
+	free((char *)image.data);
+	in.read((char *)d + 2, size);
+	memset(d, 0, 2);
+
+	auto magic = (bmpfile_magic *)d;
+	if (size < 2 || magic->magic[0] != 'B' || magic->magic[1] != 'M') {
+		throw img::UnsupportedFileTypeException("magic does not match BM");
+	}
+
+	image.data = (char *)d;
 	image.row_size = (image.get_width() * 3 + 3) & ~3; // Round up to multiple of 4
 
 	return in;

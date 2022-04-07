@@ -9,13 +9,52 @@
 namespace engine {
 namespace shapes {
 
-void cube(const FigureConfiguration &conf, std::vector<Line3D> &lines);
-
-render::TriangleFigure cube(const FigureConfiguration &conf);
-
-void fractal_cube(const FigureConfiguration &conf, std::vector<Line3D> &lines);
-
-render::TriangleFigure fractal_cube(const FigureConfiguration &conf);
+constexpr ShapeTemplate<8, 12, 12> cube {
+	{{
+		{  1,  1,  1 },
+		{  1,  1, -1 },
+		{  1, -1,  1 },
+		{  1, -1, -1 },
+		{ -1,  1,  1 },
+		{ -1,  1, -1 },
+		{ -1, -1,  1 },
+		{ -1, -1, -1 },
+	}},
+	{{
+		// X
+		{ 0, 4 },
+		{ 1, 5 },
+		{ 2, 6 },
+		{ 3, 7 },
+		// Y
+		{ 0, 2 },
+		{ 1, 3 },
+		{ 4, 6 },
+		{ 5, 7 },
+		// Z
+		{ 0, 1 },
+		{ 2, 3 },
+		{ 4, 5 },
+		{ 6, 7 },
+	}},
+	{{
+		// X
+		{ 1, 0, 2 },
+		{ 3, 1, 2 },
+		{ 4, 5, 6 },
+		{ 7, 6, 5 },
+		// Y
+		{ 0, 1, 4 },
+		{ 1, 5, 4 },
+		{ 3, 2, 6 },
+		{ 3, 6, 7 },
+		// Z
+		{ 2, 0, 4 },
+		{ 6, 2, 4 },
+		{ 1, 3, 5 },
+		{ 7, 5, 3 },
+	}},
+};
 
 }
 }

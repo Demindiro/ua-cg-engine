@@ -23,7 +23,7 @@ X: Niet werkend of niet geïmplementeerd
 | 5 | Triangulatie              | V |
 |   | Z-buffering (driehoeken)  | V |
 | 6 | 3D fractalen              | V |
-|   | BuckyBall                 | - |
+|   | BuckyBall                 | V |
 |   | Mengerspons               |   |
 |   | View Frustum              | - |
 | 7 | Ambient licht             | V |
@@ -32,9 +32,9 @@ X: Niet werkend of niet geïmplementeerd
 |   | Speculair licht           | V |
 | 8 | Schaduw                   | V |
 |   | Texture mapping           | V |
-| 9 | Bollen en cylinders       |   |
-|   | UV-coordinaten            |   |
-|   | Cube mapping              |   |
+| 9 | Bollen en cylinders       | V |
+|   | UV-coordinaten            | V |
+|   | Cube mapping              | - |
 
 Geïmplementeerde vorm van texture mapping: N/A
 
@@ -42,6 +42,8 @@ Geïmplementeerde vorm van texture mapping: N/A
 
 - BuckyBall faces zijn niet geïmplementeerd
 - View frustum clipt teveel + splitsing tussen edges.
+- De OBJ parser neemt aan dat alle polygons convex zijn. Niet-convexe
+  polygons worden mogelijk verkeerd opgesplits in driehoeken.
 
 ## Niet-gequoteerde functionaliteit
 

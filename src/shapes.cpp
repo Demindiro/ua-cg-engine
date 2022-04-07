@@ -9,6 +9,7 @@
 #include "math/matrix2d.h"
 #include "math/matrix4d.h"
 #include "math/vector3d.h"
+#include "render/aabb.h"
 #include "render/fragment.h"
 #include "render/geometry.h"
 #include "render/light.h"
@@ -18,11 +19,14 @@
 #include "shapes/cube.h"
 #include "shapes/cylinder.h"
 #include "shapes/dodecahedron.h"
+#include "shapes/fractal.h"
 #include "shapes/icosahedron.h"
 #include "shapes/tetrahedron.h"
 #include "shapes/octahedron.h"
 #include "shapes/sphere.h"
+#include "shapes/thicken.h"
 #include "shapes/torus.h"
+#include "shapes/wavefront.h"
 #include "wireframe.h"
 
 namespace engine {
@@ -69,9 +73,9 @@ static Color color_from_conf(const vector<double> &c) {
 	return { r, g, b };
 }
 
-static Color try_color_from_conf(const vector<double> &c) {
+static Color try_color_from_conf(const vector<double> &c, Color def = {}) {
 	if (c.size() < 3)
-		return { 0, 0, 0 };
+		return def;
 	double b = c.at(2);
 	double g = c.at(1);
 	double r = c.at(0);
@@ -82,12 +86,9 @@ static Color color_from_conf(const ini::Entry &e) {
 	return color_from_conf(e.as_double_tuple_or_die());
 }
 
-static Color try_color_from_conf(const ini::Entry &e) {
+static Color try_color_from_conf(const ini::Entry &e, Color def = {}) {
 	vector<double> c;
-	if (e.as_double_tuple_if_exists(c)) {
-		return color_from_conf(c);
-	}
-	return Color();
+	return e.as_double_tuple_if_exists(c) ? color_from_conf(c) : def;
 }
 
 Color color_from_conf(const ini::Section &conf) {
@@ -109,80 +110,86 @@ vector<Vector3D> calculate_face_normals(const vector<Point3D> &points, const vec
 	return normals;
 }
 
-void platonic(const FigureConfiguration &conf, vector<Line3D> &lines, const Point3D *points, unsigned int points_len, const Edge *edges, unsigned int edges_len) {
-	auto mat = transform_from_conf(conf.section, conf.eye);
-	auto color = color_from_conf(conf.section);
+TriangleFigure convert(FaceShape shape, Material mat, const Configuration &conf, bool with_lighting, const Matrix4D &eye) {
 
-	lines.reserve(lines.size() + edges_len);
-	for (auto c = edges; c != edges + edges_len; c++) {
-		assert(c->a < points_len);
-		assert(c->b < points_len);
-		// TODO avoid redundant transforms
-		auto a = points[c->a] * mat;
-		auto b = points[c->b] * mat;
-		lines.push_back({{a.x, a.y, a.z}, {b.x, b.y, b.z}, color.to_img_color()});
-	}
-}
-
-TriangleFigure platonic(const FigureConfiguration &conf, vector<Point3D> points, vector<Face> faces) {
-
+	const auto &section = conf.section;
 	TriangleFigure fig;
-	fig.points = points;
-	fig.faces = faces;
-	assert(conf.face_normals && "TODO: vertex normals");
-	fig.face_normals = conf.face_normals;
-	if (conf.with_lighting) {
-		fig.ambient = try_color_from_conf(conf.section["ambientReflection"]);
-		fig.diffuse = try_color_from_conf(conf.section["diffuseReflection"]);
-		fig.specular = try_color_from_conf(conf.section["specularReflection"]);
-		fig.reflection = conf.section["reflectionCoefficient"].as_double_or_default(0);
+	fig.points = shape.points;
+	fig.faces = shape.faces;
+	if (with_lighting) {
+		fig.ambient = try_color_from_conf(section["ambientReflection"], mat.ambient);
+		fig.diffuse = try_color_from_conf(section["diffuseReflection"], mat.diffuse);
+		fig.specular = try_color_from_conf(section["specularReflection"], mat.specular);
+		fig.reflection = section["reflectionCoefficient"].as_double_or_default(mat.reflection);
 		// integer powers are faster, so try to use that.
 		fig.reflection_int = fig.reflection;
 		if (fig.reflection_int != fig.reflection) {
-			fig.reflection_int = 0;
+			fig.reflection_int = numeric_limits<unsigned int>::max();
 		}
 	} else {
-		fig.ambient = color_from_conf(conf.section);
+		fig.ambient = color_from_conf(section);
 	}
-	fig.can_cull = true; // All platonics are solid (& other generated meshes are too)
-	fig.clipped = false;
+	fig.flags.can_cull(true); // All platonics are solid (& other generated meshes are too)
+	fig.flags.clipped(false);
 
 	// Load texture, if any
 	string tex_path;
-	if (conf.section["texture"].as_string_if_exists(tex_path)) {
+	if (section["texture"].as_string_if_exists(tex_path)) {
 		{
 			ifstream f(tex_path);
-			Texture tex;
-			f >> tex.image;
+			img::EasyImage img;
+			f >> img;
+			Texture tex(std::move(img));
 			fig.texture.emplace(std::move(tex));
 		}
 
 		// Generate UVs (flat mapping by default)
-		Point2D uv_min, uv_max;
-		uv_min.x = uv_min.y = +numeric_limits<double>::infinity();
-		uv_max.x = uv_max.y = -numeric_limits<double>::infinity();
-		fig.uv.reserve(fig.points.size());
-		for (auto &p : fig.points) {
-			Point2D uv(p.x, p.z);
-			fig.uv.push_back(uv);
-			uv_min.x = min(uv_min.x, uv.x);
-			uv_min.y = min(uv_min.y, uv.y);
-			uv_max.x = max(uv_max.x, uv.x);
-			uv_max.y = max(uv_max.y, uv.y);
+		fig.uv = shape.uvs;
+		if (fig.uv.empty()) {
+			assert(!"wtf");
+			Rect rect;
+			rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
+			rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
+			fig.uv.reserve(fig.points.size());
+			for (auto &p : fig.points) {
+				Point2D uv(p.x, p.z);
+				rect |= uv;
+				fig.uv.push_back(uv);
+			}
+			for (auto &uv : fig.uv) {
+				uv.x = (uv.x - rect.min.x) / rect.size().x;
+				uv.y = (uv.y - rect.min.y) / rect.size().y;
+			}
 		}
-		for (auto &uv : fig.uv) {
-			uv.x = (uv.x - uv_min.x) / (uv_max.x - uv_min.x);
-			uv.y = (uv.y - uv_min.y) / (uv_max.y - uv_min.y);
-		}
+	} else if (mat.texture.has_value()) {
+		fig.texture = mat.texture;
+		fig.uv = shape.uvs;
+		assert(!fig.uv.empty());
 	}
 
-	auto mat = transform_from_conf(conf.section, conf.eye);
+	fig.flags.cubemap(section["cubeMap"].as_bool_or_default(false));
+
+	fig.flags.separate_normals(conf.point_normals);
+	fig.normals = shape.normals;
+
+	Matrix4D mat_scale;
+	auto m = transform_from_conf(section, eye, mat_scale);
+
+	for (auto &p : fig.normals) {
+		p *= m;
+	}
+
+	m = mat_scale * m;
 
 	for (auto &p : fig.points) {
-		p *= mat;
+		p *= m;
 	}
 
-	fig.normals = calculate_face_normals(fig.points, fig.faces);
+	if (!fig.flags.separate_normals() && shape.normals.empty()) { // TODO should already be done
+		fig.normals = calculate_face_normals(fig.points, fig.faces);
+	}
+
+	assert(!fig.normals.empty());
 
 	return fig;
 }
@@ -230,76 +237,147 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 	common_conf(conf, bg, size, mat_eye, mat_inv_eye, nr_fig, frustum, frustum_use);
 
 	// Parse figures
-	vector<Line3D> lines;
+	vector<LineFigure> figures;
 	for (int i = 0; i < nr_fig; i++) {
 		auto section = conf[string("Figure") + to_string(i)];
-		FigureConfiguration fconf {
-			section,
-			mat_eye,
-			false,
-			false,
+		auto type = section["type"].as_string_or_die();
+		auto mat = transform_from_conf(section, mat_eye);
+		auto color = color_from_conf(section);
+
+		auto nogen = true;
+
+		auto f_g = [&](auto s, void (*g)(const Configuration &, EdgeShape &)) {
+			if (type == s) {
+				assert(nogen);
+				EdgeShape shape;
+				g({ section, false }, shape);
+				for (auto &p : shape.points) {
+					p *= mat;
+				}
+				figures.push_back({
+					shape.points,
+					shape.edges,
+					color,
+				});
+				nogen = false;
+			}
 		};
-		auto type = fconf.section["type"].as_string_or_die();
-		if (type == "LineDrawing") {
-			wireframe::line_drawing(fconf.section, fconf.eye, lines);
-		} else if (type == "Cube") {
-			cube(fconf, lines);
-		} else if (type == "Tetrahedron") {
-			tetrahedron(fconf, lines);
-		} else if (type == "Octahedron") {
-			octahedron(fconf, lines);
-		} else if (type == "Icosahedron") {
-			icosahedron(fconf, lines);
-		} else if (type == "Dodecahedron") {
-			dodecahedron(fconf, lines);
-		} else if (type == "Cylinder") {
-			cylinder(fconf, lines);
-		} else if (type == "Cone") {
-			cone(fconf, lines);
-		} else if (type == "Sphere") {
-			sphere(fconf, lines);
-		} else if (type == "Torus") {
-			torus(fconf, lines);
-		} else if (type == "BuckyBall") {
-			buckyball(fconf, lines);
-		} else if (type == "3DLSystem") {
-			wireframe::l_system(fconf.section, fconf.eye, lines);
-		} else if (type == "FractalCube") {
-			fractal_cube(fconf, lines);
-		} else if (type == "FractalOctahedron") {
-			fractal_octahedron(fconf, lines);
-		} else if (type == "FractalTetrahedron") {
-			fractal_tetrahedron(fconf, lines);
-		} else if (type == "FractalIcosahedron") {
-			fractal_icosahedron(fconf, lines);
-		} else if (type == "FractalDodecahedron") {
-			fractal_dodecahedron(fconf, lines);
-		} else if (type == "FractalBuckyBall") {
-			fractal_buckyball(fconf, lines);
-		} else if (type == "MengerSponge") {
+		auto f_b = [&](auto s, const auto &t) {
+			if (type == s) {
+				assert(nogen);
+				EdgeShape shape = t;
+				for (auto &p : shape.points) {
+					p *= mat;
+				}
+				figures.push_back({
+					shape.points,
+					shape.edges,
+					color,
+				});
+				nogen = false;
+			}
+		};
+		auto f_f = [&](auto s, const auto &t) {
+			if (type == s) {
+				assert(nogen);
+				EdgeShape shape;
+				fractal({ section, false }, t, shape);
+				for (auto &p : shape.points) {
+					p *= mat;
+				}
+				figures.push_back({
+					shape.points,
+					shape.edges,
+					color,
+				});
+				nogen = false;
+			}
+		};
+		auto f_t = [&](auto s, const auto &f) {
+			if (type == s) {
+				assert(nogen);
+				EdgeShape thick;
+				thicken({ section, false }, f, thick);
+				for (auto &p : thick.points) {
+					p *= mat;
+				}
+				figures.push_back({ thick.points, thick.edges, color });
+				nogen = false;
+			}
+		};
+
+		f_b("BuckyBall", buckyball);
+		f_b("Cube", cube);
+		f_b("Dodecahedron", dodecahedron);
+		f_b("Icosahedron", icosahedron);
+		f_b("Octahedron", octahedron);
+		f_b("Tetrahedron", tetrahedron);
+
+		f_g("LineDrawing", [](auto a, auto b) { return wireframe::line_drawing(a.section, b); });
+		f_g("Cylinder", cylinder);
+		f_g("Cone", cone);
+		f_g("Sphere", sphere);
+		f_g("Torus", torus);
+		f_g("3DLSystem", [](auto a, auto b) { return wireframe::l_system(a.section, b); });
+
+		f_f("FractalCube", cube);
+		f_f("FractalOctahedron", octahedron);
+		f_f("FractalTetrahedron", tetrahedron);
+		f_f("FractalIcosahedron", icosahedron);
+		f_f("FractalDodecahedron", dodecahedron);
+		f_f("FractalBuckyBall", buckyball);
+		if (type == "MengerSponge") {
 			puts("TODO MengerSponge lines");
-		} else {
+			nogen = false;
+		}
+
+		if (type == "ThickLineDrawing") {
+			EdgeShape templ, thick;
+			wireframe::line_drawing(section, templ);
+			thicken({ section, false }, ShapeTemplateAny(templ), thick);
+			for (auto &p : thick.points) {
+				p *= mat;
+			}
+			figures.push_back({ thick.points, thick.edges, color });
+			nogen = false;
+		}
+		if (type == "Thick3DLSystem") {
+			EdgeShape templ, thick;
+			wireframe::l_system(section, templ);
+			thicken({ section, false }, ShapeTemplateAny(templ), thick);
+			for (auto &p : thick.points) {
+				p *= mat;
+			}
+			figures.push_back({ thick.points, thick.edges, color });
+			nogen = false;
+		}
+		f_t("ThickBuckyBall", buckyball);
+		f_t("ThickCube", cube);
+		f_t("ThickDodecahedron", dodecahedron);
+		f_t("ThickIcosahedron", icosahedron);
+		f_t("ThickOctahedron", octahedron);
+		f_t("ThickTetrahedron", tetrahedron);
+
+		if (nogen) {
 			throw TypeException(type);
 		}
 	}
 
 	// Draw
-	return Lines3D(lines).draw(size, bg, with_z);
+	return render::draw(figures, size, bg, with_z);
 }
 
 img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	Color bg;
 	int size, nr_fig;
-	Matrix4D mat_eye;
 	Frustum frustum;
 	bool frustum_use;
 	Lights lights;
 
-	common_conf(conf, bg, size, mat_eye, lights.inv_eye, nr_fig, frustum, frustum_use);
+	common_conf(conf, bg, size, lights.eye, lights.inv_eye, nr_fig, frustum, frustum_use);
 
 	// Parse lights
 	if (with_lighting) {
-		lights.eye = mat_eye;
 		lights.shadows = conf["General"]["shadowEnabled"].as_bool_or_default(false);
 		lights.shadow_mask = lights.shadows ? conf["General"]["shadowMask"].as_int_or_die(): 0;
 
@@ -312,14 +390,14 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 				| section["specularLight"].as_double_tuple_if_exists(specular)) {
 				if (section["infinity"].as_bool_or_default(false)) {
 					lights.directional.push_back({
-						tup_to_vector3d(section["direction"].as_double_tuple_or_die()).normalize() * mat_eye,
+						tup_to_vector3d(section["direction"].as_double_tuple_or_die()).normalize() * lights.eye,
 						try_color_from_conf(diffuse),
 						try_color_from_conf(specular),
 					});
 				} else {
 					auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
 					auto a = deg2rad(section["spotAngle"].as_double_or_default(90)); // 91 to ensure >= 1.0 works
-					d *= mat_eye;
+					d *= lights.eye;
 					lights.point.push_back({
 						d,
 						try_color_from_conf(diffuse),
@@ -339,8 +417,8 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		lights.ambient = { 1, 1, 1 };
 		lights.shadows = false;
 		for (auto &p : lights.point) {
-			auto pt = p.point * Matrix::inv(mat_eye);
-			mat_eye = look_direction(pt, -(pt - Point3D()));
+			auto pt = p.point * lights.inv_eye;
+			lights.eye = look_direction(pt, -(pt - Point3D()));
 			break;
 		}
 		if (lights.shadows) {
@@ -353,60 +431,111 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	}
 #endif
 
+	// Check for cubemap
+	{
+		string path;
+		if (conf["General"]["cubeMap"].as_string_if_exists(path)) {
+			ifstream f(path);
+			img::EasyImage img;
+			f >> img;
+			lights.cubemap.emplace(Texture(std::move(img)));
+			lights.cubemap_size = conf["General"]["cubeMapSize"].as_double_or_die();
+		}
+	}
+
 	// Parse figures
 	vector<TriangleFigure> figures;
 	figures.reserve(nr_fig);
 	for (int i = 0; i < nr_fig; i++) {
+		cout << "Loading Figure" << i << endl;
 		auto section = conf[string("Figure") + to_string(i)];
-		FigureConfiguration fconf {
-			section,
-			mat_eye,
-			with_lighting,
-			true,
+		auto type = section["type"].as_string_or_die();
+		FaceShape shape;
+		auto smooth = section["smooth"].as_bool_or_default(false);
+		bool nogen = true;
+		Material mat;
+
+		auto f_b = [&](auto s, const auto &t) {
+			if (type == s) {
+				assert(nogen);
+				shape = FaceShape(t, smooth);
+				nogen = false;
+			}
 		};
-		auto type = fconf.section["type"].as_string_or_die();
-		TriangleFigure fig;
-		if (type == "Cube") {
-			fig = cube(fconf);
-		} else if (type == "Tetrahedron") {
-			fig = tetrahedron(fconf);
-		} else if (type == "Octahedron") {
-			fig = octahedron(fconf);
-		} else if (type == "Icosahedron") {
-			fig = icosahedron(fconf);
-		} else if (type == "Dodecahedron") {
-			fig = dodecahedron(fconf);
-		} else if (type == "Cylinder") {
-			fig = cylinder(fconf);
-		} else if (type == "Cone") {
-			fig = cone(fconf);
-		} else if (type == "Sphere") {
-			fig = sphere(fconf);
-		} else if (type == "Torus") {
-			fig = torus(fconf);
-		} else if (type == "BuckyBall") {
-			puts("TODO BuckyBall triangles");
-			continue;
-		} else if (type == "FractalCube") {
-			fig = fractal_cube(fconf);
-		} else if (type == "FractalTetrahedron") {
-			fig = fractal_tetrahedron(fconf);
-		} else if (type == "FractalOctahedron") {
-			fig = fractal_octahedron(fconf);
-		} else if (type == "FractalIcosahedron") {
-			fig = fractal_icosahedron(fconf);
-		} else if (type == "FractalDodecahedron") {
-			fig = fractal_dodecahedron(fconf);
-		} else if (type == "FractalBuckyBall") {
-			puts("TODO FractalBuckyBall triangles");
-			continue;
-		} else if (type == "MengerSponge") {
+		auto f_g = [&](auto s, void (*g)(const Configuration &, FaceShape &)) {
+			if (type == s) {
+				assert(nogen);
+				g({ section, smooth }, shape);
+				nogen = false;
+			}
+		};
+		auto f_f = [&](auto s, const auto &t) {
+			if (type == s) {
+				assert(nogen);
+				fractal({ section, smooth }, t, shape);
+				nogen = false;
+			}
+		};
+		auto f_t = [&](auto s, const auto &f) {
+			if (type == s) {
+				assert(nogen);
+				thicken({ section, smooth }, f, shape);
+				nogen = false;
+			}
+		};
+
+		f_b("BuckyBall", buckyball);
+		f_b("Cube", cube);
+		f_b("Tetrahedron", tetrahedron);
+		f_b("Octahedron", octahedron);
+		f_b("Icosahedron", icosahedron);
+		f_b("Dodecahedron", dodecahedron);
+		f_g("Cylinder", cylinder);
+		f_g("Cone", cone);
+		f_g("Sphere", sphere);
+		f_g("Torus", torus);
+		f_f("FractalBuckyBall", buckyball);
+		f_f("FractalCube", cube);
+		f_f("FractalTetrahedron", tetrahedron);
+		f_f("FractalOctahedron", octahedron);
+		f_f("FractalIcosahedron", icosahedron);
+		f_f("FractalDodecahedron", dodecahedron);
+		if (type == "MengerSponge") {
 			puts("TODO MengerSponge triangles");
 			continue;
-		} else {
+		}
+
+		if (type == "ThickLineDrawing") {
+			EdgeShape templ;
+			wireframe::line_drawing(section, templ);
+			thicken({ section, smooth }, ShapeTemplateAny(templ), shape);
+			nogen = false;
+		}
+		if (type == "Thick3DLSystem") {
+			EdgeShape templ;
+			wireframe::l_system(section, templ);
+			thicken({ section, smooth }, ShapeTemplateAny(templ), shape);
+			nogen = false;
+		}
+		f_t("ThickBuckyBall", buckyball);
+		f_t("ThickCube", cube);
+		f_t("ThickDodecahedron", dodecahedron);
+		f_t("ThickIcosahedron", icosahedron);
+		f_t("ThickOctahedron", octahedron);
+		f_t("ThickTetrahedron", tetrahedron);
+
+		if (type == "Object") {
+			assert(nogen);
+			wavefront({ section, smooth }, shape, mat);
+			smooth = true; // TODO technically not accurate and perhaps confusing...
+			nogen = false;
+		}
+
+		if (nogen) {
 			throw TypeException(type);
 		}
-		figures.push_back(std::move(fig));
+
+		figures.push_back(convert(shape, mat, { section, smooth }, with_lighting, lights.eye));
 	}
 
 	if (lights.shadows) {
@@ -422,6 +551,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	}
 
 	// Draw
+	cout << "Drawing" << endl;
 	return draw(std::move(figures), lights, size, bg);
 }
 

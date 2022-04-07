@@ -107,4 +107,8 @@ constexpr Vector3D operator *(const Vector3D &v, const Matrix4D &m) {
 	return { r.x, r.y, r.z };
 }
 
+constexpr Vector3D operator *=(Vector3D &v, const Matrix4D &m) {
+	return v = v * m;
+}
+
 std::ostream &operator <<(std::ostream &, const Matrix4D &);

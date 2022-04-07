@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <ostream>
 
 struct Vector2D {
 
@@ -47,6 +48,10 @@ struct Vector2D {
 		return { x / f, y / f };
 	}
 
+	constexpr bool operator ==(const Vector2D &rhs) const {
+		return x == rhs.x && y == rhs.y;
+	}
+
 	constexpr Vector2D &operator +=(const Vector2D &rhs) {
 		return *this = *this + rhs;
 	}
@@ -82,8 +87,15 @@ struct Vector2D {
 	constexpr Vector2D normalize() const {
 		return *this / length();
 	}
+
+	constexpr Vector2D normalize_or_zero() const {
+		auto l = length();
+		return l == 0 ? Vector2D() : *this / l;
+	}
 };
 
 constexpr Vector2D operator *(double lhs, const Vector2D &rhs) {
 	return rhs * lhs;
 }
+
+std::ostream &operator <<(std::ostream &o, const Vector2D &m);

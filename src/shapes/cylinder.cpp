@@ -9,46 +9,94 @@ namespace shapes {
 using namespace std;
 using namespace render;
 
-	void cylinder(const FigureConfiguration &conf, vector<Line3D> &lines) {
-		auto n = (unsigned int)conf.section["n"].as_int_or_die();
-		auto height = conf.section["height"].as_double_or_die();
+void cylinder(const Configuration &conf, EdgeShape &shape) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
 
-		vector<Point3D> points;
-		points.reserve(n * 2);
-		circle(points, n, 0);
-		circle(points, n, height);
+	shape.points.reserve(n * 2);
+	circle(shape.points, n, 0);
+	circle(shape.points, n, height);
 
-		vector<Edge> edges(n * 3);
-		for (unsigned int i = 0; i < n; i++) {
-			edges[0 * n + i] = { 0 * n + i, 0 * n + (i + 1) % n };
-			edges[1 * n + i] = { 1 * n + i, 1 * n + (i + 1) % n };
-			edges[2 * n + i] = { 0 * n + i, 1 * n + i };
-		}
+	shape.edges.resize(n * 3);
+	for (unsigned int i = 0; i < n; i++) {
+		shape.edges[0 * n + i] = { 0 * n + i, 0 * n + (i + 1) % n };
+		shape.edges[1 * n + i] = { 1 * n + i, 1 * n + (i + 1) % n };
+		shape.edges[2 * n + i] = { 0 * n + i, 1 * n + i };
+	}
+}
 
-		platonic(conf, lines, points.data(), points.size(), edges.data(), edges.size());
+void cylinder_sides(unsigned int n, double height, EdgeShape &shape) {
+	shape.points.reserve(n * 2);
+	circle(shape.points, n, 0);
+	circle(shape.points, n, height);
+
+	shape.edges.resize(n);
+	for (unsigned int i = 0; i < n; i++) {
+		shape.edges[i] = { i, n + i };
+	}
+}
+
+void cylinder(const Configuration &conf, FaceShape &f) {
+	auto n = (unsigned int)conf.section["n"].as_int_or_die();
+	auto height = conf.section["height"].as_double_or_die();
+
+	f.points.reserve(conf.point_normals ? n * 4 : n * 2);
+	f.faces.reserve(n * 4);
+	circle(f.points, n, 0);
+	circle(f.points, n, height);
+	if (conf.point_normals) {
+		circle(f.points, n, 0);
+		circle(f.points, n, height);
 	}
 
-	TriangleFigure cylinder(const FigureConfiguration &conf) {
-		auto n = (unsigned int)conf.section["n"].as_int_or_die();
-		auto height = conf.section["height"].as_double_or_die();
-
-		vector<Point3D> points;
-		vector<Face> faces;
-		points.reserve(n * 2);
-		faces.reserve(n * 2);
-		circle(points, n, 0);
-		circle(points, n, height);
-		circle(faces, n, 0);
-		circle_reversed(faces, n, n);
-
-		for (unsigned int i = 0; i < n; i++) {
-			unsigned int j = (i + 1) % n;
-			faces.push_back({ j, i, n + i });
-			faces.push_back({ j, n + i, n + j });
-		}
-
-		return platonic(conf, points, faces);
+	for (unsigned int i = 0; i < n; i++) {
+		unsigned int j = (i + 1) % n;
+		f.faces.push_back({ j, i, n + i });
+		f.faces.push_back({ j, n + i, n + j });
 	}
+	unsigned int offset = conf.point_normals ? n * 2 : 0;
+	circle(f.faces, n, 0 + offset);
+	circle_reversed(f.faces, n, n + offset);
+	
+	if (conf.point_normals) {
+		f.normals.resize(n * 4);
+		Rotation d(-2 * M_PI / n), r;
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 0 * n] = { r.u, r.v, 0 };
+			f.normals[i + 1 * n] = { r.u, r.v, 0 };
+			r *= d;
+		}
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 2 * n] = { 0, 0, -1 };
+		}
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 3 * n] = { 0, 0, 1 };
+		}
+	}
+}
+
+void cylinder_sides(unsigned int n, double height, FaceShape &f, bool point_normals) {
+	f.points.reserve(n * 2);
+	circle(f.points, n, 0);
+	circle(f.points, n, height);
+
+	f.faces.reserve(n * 2);
+	for (unsigned int i = 0; i < n; i++) {
+		unsigned int j = (i + 1) % n;
+		f.faces.push_back({ j, i, n + i });
+		f.faces.push_back({ j, n + i, n + j });
+	}
+	
+	if (point_normals) {
+		f.normals.resize(n * 2);
+		Rotation d(-2 * M_PI / n), r;
+		for (unsigned int i = 0; i < n; i++) {
+			f.normals[i + 0 * n] = { r.u, r.v, 0 };
+			f.normals[i + 1 * n] = { r.u, r.v, 0 };
+			r *= d;
+		}
+	}
+}
 
 }
 }

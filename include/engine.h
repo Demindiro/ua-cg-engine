@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <vector>
 #include "easy_image.h"
+#include "math/point2d.h"
+#include "math/point3d.h"
 #include "math/vector3d.h"
 #include "math/vector4d.h"
 #include "math/matrix4d.h"
@@ -42,6 +45,17 @@ static inline img::Color tup_to_color(std::vector<double> v) {
 	return img::Color(round_up(v.at(0) * 255), round_up(v.at(1) * 255), round_up(v.at(2) * 255));
 }
 
+template<size_t n>
+static inline Point2D tup_to_point2d(const std::array<double, n> &v) {
+	static_assert(n >= 2);
+	return { v[0], v[1] };
+}
+
+static inline Point2D tup_to_point2d(std::vector<double> v) {
+	auto y = v.at(1), x = v[0];
+	return { x, y };
+}
+
 static inline Point3D tup_to_point3d(std::vector<double> v) {
 	// Call v.at(2) first since it allows us to elide checks for the
 	// other positions.
@@ -49,10 +63,22 @@ static inline Point3D tup_to_point3d(std::vector<double> v) {
 	return Point3D(x, y, z);
 }
 
+template<size_t n>
+static inline Point3D tup_to_point3d(const std::array<double, n> &v) {
+	static_assert(n >= 3);
+	return { v[0], v[1], v[2] };
+}
+
 static inline Vector3D tup_to_vector3d(std::vector<double> v) {
 	// Ditto
 	auto z = v.at(2), y = v[1], x = v[0];
 	return Vector3D(x, y, z);
+}
+
+template<size_t n>
+static inline Vector3D tup_to_vector3d(const std::array<double, n> &v) {
+	static_assert(n >= 3);
+	return { v[0], v[1], v[2] };
 }
 
 static constexpr inline double deg2rad(double a) {
@@ -77,6 +103,18 @@ struct Rotation {
 	constexpr Rotation() : u(1), v(0) {}
 	constexpr Rotation(double a) : u(std::cos(a)), v(std::sin(a)) {}
 	constexpr Rotation(double u, double v) : u(u), v(v) {}
+	constexpr Rotation(Vector2D a, Vector2D b) : u(NAN), v(NAN) {
+		if (a == Vector2D() || b == Vector2D()) {
+			u = 1;
+			v = 0;
+		} else {
+			a = a.normalize();
+			b = b.normalize();
+			u = a.dot(b);
+			v = std::sqrt(1 - u * u);
+			v = a.cross(b) < 0 ? -v : v;
+		}
+	}
 
 	constexpr Rotation inv() const {
 		return { u, -v };

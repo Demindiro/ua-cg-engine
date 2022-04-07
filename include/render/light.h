@@ -1,8 +1,10 @@
 #pragma once
 
+#include <optional>
 #include "math/point3d.h"
 #include "math/matrix4d.h"
 #include "render/color.h"
+#include "render/texture.h"
 #include "render/triangle.h"
 
 namespace engine {
@@ -30,6 +32,8 @@ struct Lights {
 	std::vector<PointLight> point;
 	std::vector<ZBufferTriangleFigure> zfigures;
 	Matrix4D eye, inv_eye;
+	double cubemap_size;
+	std::optional<Texture> cubemap;
 	unsigned int shadow_mask;
 	Color ambient;
 	bool shadows;

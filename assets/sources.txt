@@ -1,0 +1,4 @@
+stanford_dragon: http://www-graphics.stanford.edu/data/3Dscanrep/
+monkey: Blender
+mountains: Somewhere on opengameart.org
+honk: ???
