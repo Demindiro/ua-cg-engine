@@ -190,7 +190,8 @@ static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Vector
 static ALWAYS_INLINE Color cubemap_color(
 	const Texture &tex,
 	Point3D point,
-	Vector3D normal
+	Vector3D normal,
+	Matrix4D inv_mat
 ) {
 	// Current layout of cubemap:
 	//
@@ -205,6 +206,8 @@ static ALWAYS_INLINE Color cubemap_color(
 		Vector3D(-1,-1,-1) * 10000,
 		Vector3D(1,1,1) * 10000,
 	};
+	normal *= inv_mat;
+	point *= inv_mat;
 	auto f3 = (
 		normal.sign().max(Vector3D()) * aabb.max.to_vector()
 		- normal.sign().min(Vector3D()) * aabb.min.to_vector()
@@ -218,17 +221,17 @@ static ALWAYS_INLINE Color cubemap_color(
 
 	Vector2D p;
 	if (f == f3.abs().x) {
-		// Right / left
-		uv = { normal.x > 0 ? 0.5 : 0, 1.0 / 3 };
-		p = { normal.x > 0 ? 1.0 - p3.z : p3.z, p3.y };
-	} else if (f == f3.abs().y) {
-		// Top / bottom
-		uv = { 0.25, normal.y > 0 ? 2.0 / 3 : 0 };
-		p = { p3.x, normal.y > 0 ? 1.0 - p3.z : p3.z };
-	} else {
 		// Back / front
-		uv = { normal.z < 0 ? 0.75 : 0.25, 1.0 / 3 };
-		p = { normal.z < 0 ? 1.0 - p3.x : p3.x, p3.y };
+		uv = { normal.x < 0 ? 0.75 : 0.25, 1.0 / 3 };
+		p = { normal.x < 0 ? 1.0 - p3.y : p3.y, p3.z };
+	} else if (f == f3.abs().y) {
+		// Right / left
+		uv = { normal.y > 0 ? 0.5 : 0, 1.0 / 3 };
+		p = { normal.y > 0 ? 1.0 - p3.x : p3.x, p3.z };
+	} else {
+		// Top / bottom
+		uv = { 0.25, normal.z > 0 ? 2.0 / 3 : 0 };
+		p = { p3.y, normal.z > 0 ? 1.0 - p3.x : p3.x };
 	}
 
 	p.x /= 4;
@@ -453,7 +456,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			}
 
 			if (lights.cubemap.has_value()) {
-				color *= cubemap_color(*lights.cubemap, point, n);
+				color *= cubemap_color(*lights.cubemap, point, n, lights.inv_eye);
 			}
 
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
