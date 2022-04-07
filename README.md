@@ -25,7 +25,7 @@ X: Niet werkend of niet geïmplementeerd
 | 6 | 3D fractalen              | V |
 |   | BuckyBall                 | V |
 |   | Mengerspons               |   |
-|   | View Frustum              | - |
+|   | View Frustum              | V |
 | 7 | Ambient licht             | V |
 |   | Diffuus licht (oneindig)  | V |
 |   | Diffuus licht (puntbron)  | V |
@@ -34,14 +34,12 @@ X: Niet werkend of niet geïmplementeerd
 |   | Texture mapping           | V |
 | 9 | Bollen en cylinders       | V |
 |   | UV-coordinaten            | V |
-|   | Cube mapping              | - |
+|   | Cube mapping              | V |
 
 Geïmplementeerde vorm van texture mapping: N/A
 
 ## Gekende problemen 
 
-- BuckyBall faces zijn niet geïmplementeerd
-- View frustum clipt teveel + splitsing tussen edges.
 - De OBJ parser neemt aan dat alle polygons convex zijn. Niet-convexe
   polygons worden mogelijk verkeerd opgesplits in driehoeken.
 
