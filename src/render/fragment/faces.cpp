@@ -398,60 +398,66 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 	for (unsigned int y = 0; y < img.get_height(); y++) {
 		for (unsigned int x = 0; x < img.get_width(); x++) {
 			auto pair = zbuf.get(x, y);
-			if (!pair.is_valid())
-				continue;
-
-			auto &f = figures[pair.figure_id];
-			auto &t = f.faces[pair.triangle_id];
-
-			// Invert perspective projection
-			// Given: x', y', 1/z, dx, dy
-			// x' = x / -z * d + dx => x = (x' - dx) * -z / d, ditto for y
-			Point3D point(
-				(x - offset.x) / (d * -pair.inv_z),
-				(y - offset.y) / (d * -pair.inv_z),
-				1 / pair.inv_z
-			);
-
-			auto cam_dir = (point - Point3D()).normalize();
-
-			auto pq = calc_pq(f, t, point);
-
+			Point3D point;
 			Vector3D n;
-			if (f.flags.separate_normals()) {
-				n = interpolate(f.normals[t.a], f.normals[t.b], f.normals[t.c], pq);
-				n = n.normalize();
-				if (f.flags.clipped()) {
-					auto m = f2p(f, t);
-					n = (m.b - m.a).cross(m.c - m.a).dot(cam_dir) > 0 ? -n : n;
-				}
-			} else if (!f.normals.empty()) {
-				n = f.normals[pair.triangle_id];
-				if (f.flags.clipped()) {
-					n = n.dot(cam_dir) > 0 ? -n : n;
-				}
-			}
+			Color color;
+			if (pair.is_valid()) {
+				auto &f = figures[pair.figure_id];
+				auto &t = f.faces[pair.triangle_id];
 
-			auto color = f.ambient;
+				// Invert perspective projection
+				// Given: x', y', 1/z, dx, dy
+				// x' = x / -z * d + dx => x = (x' - dx) * -z / d, ditto for y
+				point = {
+					(x - offset.x) / (d * -pair.inv_z),
+					(y - offset.y) / (d * -pair.inv_z),
+					1 / pair.inv_z
+				};
+
+				auto cam_dir = (point - Point3D()).normalize();
+
+				auto pq = calc_pq(f, t, point);
+
+				if (f.flags.separate_normals()) {
+					n = interpolate(f.normals[t.a], f.normals[t.b], f.normals[t.c], pq);
+					n = n.normalize();
+					if (f.flags.clipped()) {
+						auto m = f2p(f, t);
+						n = (m.b - m.a).cross(m.c - m.a).dot(cam_dir) > 0 ? -n : n;
+					}
+				} else if (!f.normals.empty()) {
+					n = f.normals[pair.triangle_id];
+					if (f.flags.clipped()) {
+						n = n.dot(cam_dir) > 0 ? -n : n;
+					}
+				}
+
+				color = f.ambient;
 #if GRAPHICS_DEBUG_Z > 0
-			color = Color();
+				color = Color();
 #endif
 
-			for (auto &d : lights.directional) {
-				auto c = directional_light(f, d, n, cam_dir);
-				if (c.has_value()) {
-					color += *c;
+				for (auto &d : lights.directional) {
+					auto c = directional_light(f, d, n, cam_dir);
+					if (c.has_value()) {
+						color += *c;
+					}
 				}
-			}
-			for (auto &p : lights.point) {
-				auto c = point_light(f, p, point, lights.shadows, n, cam_dir);
-				if (c.has_value()) {
-					color += *c;
+				for (auto &p : lights.point) {
+					auto c = point_light(f, p, point, lights.shadows, n, cam_dir);
+					if (c.has_value()) {
+						color += *c;
+					}
 				}
-			}
 
-			if (f.texture.has_value()) {
-				color *= texture_color(f, f.faces[pair.triangle_id], pq);
+				if (f.texture.has_value()) {
+					color *= texture_color(f, f.faces[pair.triangle_id], pq);
+				}
+			} else if (lights.cubemap.has_value()) {
+				// Draw cubemap background (skybox)
+				point = Point3D() * lights.eye;
+				n = { (x - offset.x) / d, (y - offset.y) / d, -1 };
+				color = { 1, 1, 1 };
 			}
 
 			if (lights.cubemap.has_value()) {

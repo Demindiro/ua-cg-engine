@@ -370,16 +370,14 @@ img::EasyImage wireframe(const ini::Configuration &conf, bool with_z) {
 img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 	Color bg;
 	int size, nr_fig;
-	Matrix4D mat_eye;
 	Frustum frustum;
 	bool frustum_use;
 	Lights lights;
 
-	common_conf(conf, bg, size, mat_eye, lights.inv_eye, nr_fig, frustum, frustum_use);
+	common_conf(conf, bg, size, lights.eye, lights.inv_eye, nr_fig, frustum, frustum_use);
 
 	// Parse lights
 	if (with_lighting) {
-		lights.eye = mat_eye;
 		lights.shadows = conf["General"]["shadowEnabled"].as_bool_or_default(false);
 		lights.shadow_mask = lights.shadows ? conf["General"]["shadowMask"].as_int_or_die(): 0;
 
@@ -392,14 +390,14 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 				| section["specularLight"].as_double_tuple_if_exists(specular)) {
 				if (section["infinity"].as_bool_or_default(false)) {
 					lights.directional.push_back({
-						tup_to_vector3d(section["direction"].as_double_tuple_or_die()).normalize() * mat_eye,
+						tup_to_vector3d(section["direction"].as_double_tuple_or_die()).normalize() * lights.eye,
 						try_color_from_conf(diffuse),
 						try_color_from_conf(specular),
 					});
 				} else {
 					auto d = tup_to_point3d(section["location"].as_double_tuple_or_die());
 					auto a = deg2rad(section["spotAngle"].as_double_or_default(90)); // 91 to ensure >= 1.0 works
-					d *= mat_eye;
+					d *= lights.eye;
 					lights.point.push_back({
 						d,
 						try_color_from_conf(diffuse),
@@ -420,7 +418,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 		lights.shadows = false;
 		for (auto &p : lights.point) {
 			auto pt = p.point * lights.inv_eye;
-			mat_eye = look_direction(pt, -(pt - Point3D()));
+			lights.eye = look_direction(pt, -(pt - Point3D()));
 			break;
 		}
 		if (lights.shadows) {
@@ -537,7 +535,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 			throw TypeException(type);
 		}
 
-		figures.push_back(convert(shape, mat, { section, smooth }, with_lighting, mat_eye));
+		figures.push_back(convert(shape, mat, { section, smooth }, with_lighting, lights.eye));
 	}
 
 	if (lights.shadows) {
