@@ -32,10 +32,11 @@ struct Lights {
 	std::vector<PointLight> point;
 	std::vector<ZBufferTriangleFigure> zfigures;
 	Matrix4D eye, inv_eye;
+	double cubemap_size;
+	std::optional<Texture> cubemap;
 	unsigned int shadow_mask;
 	Color ambient;
 	bool shadows;
-	std::optional<Texture> cubemap;
 };
 
 }

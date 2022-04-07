@@ -441,6 +441,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 			img::EasyImage img;
 			f >> img;
 			lights.cubemap.emplace(Texture(std::move(img)));
+			lights.cubemap_size = conf["General"]["cubeMapSize"].as_double_or_die();
 		}
 	}
 

@@ -188,10 +188,9 @@ static ALWAYS_INLINE Color texture_color(const TriangleFigure &f, Face t, Vector
  * \brief Get the color of a cubemap texture at a pixel
  */
 static ALWAYS_INLINE Color cubemap_color(
-	const Texture &tex,
+	const Lights &lights,
 	Point3D point,
-	Vector3D normal,
-	Matrix4D inv_mat
+	Vector3D normal
 ) {
 	// Current layout of cubemap:
 	//
@@ -203,11 +202,11 @@ static ALWAYS_INLINE Color cubemap_color(
 	Point2D uv;
 
 	Aabb aabb {
-		Vector3D(-1,-1,-1) * 10000,
-		Vector3D(1,1,1) * 10000,
+		Vector3D(-1,-1,-1) * lights.cubemap_size,
+		Vector3D(1,1,1) * lights.cubemap_size,
 	};
-	normal *= inv_mat;
-	point *= inv_mat;
+	normal *= lights.inv_eye;
+	point *= lights.inv_eye;
 	auto f3 = (
 		normal.sign().max(Vector3D()) * aabb.max.to_vector()
 		- normal.sign().min(Vector3D()) * aabb.min.to_vector()
@@ -237,7 +236,7 @@ static ALWAYS_INLINE Color cubemap_color(
 	p.x /= 4;
 	p.y /= 3;
 
-	return Color(tex.get_clamped(uv + p));
+	return Color(lights.cubemap->get_clamped(uv + p));
 }
 
 img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background) {
@@ -456,7 +455,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			}
 
 			if (lights.cubemap.has_value()) {
-				color *= cubemap_color(*lights.cubemap, point, n, lights.inv_eye);
+				color *= cubemap_color(lights, point, n);
 			}
 
 #if GRAPHICS_DEBUG_Z != 2 && GRAPHICS_DEBUG_Z > 0
