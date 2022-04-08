@@ -36,7 +36,7 @@ using namespace render;
 // We're parsing it directly to avoid an excessively huge amount of allocations & avoid
 // unneccessary indirection in general.
 
-void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
+void wavefront(const std::string &path, FaceShape &shape, Material &mat) {
 
 	// Find all unique point/uv/normal triples
 	struct Triple {
@@ -63,7 +63,7 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 	ifstream f;
 	char buffer[1 << 16];
 	f.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
-	f.open(conf.section["file"].as_string_or_die());
+	f.open(path);
 	cout << "Reading Wavefront file" << endl;
 	// Try to reuse buffers as much as possible.
 	// Merely moving tok & vert from inside the loops to here
@@ -284,6 +284,10 @@ void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
 	}
 
 	cout << "Done parsing" << endl;
+}
+
+void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
+	wavefront(conf.section["file"].as_string_or_die(), shape, mat);
 }
 
 }

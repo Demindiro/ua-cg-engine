@@ -15,9 +15,9 @@ Matrix4D look_direction(Point3D pos, Vector3D dir, Matrix4D &inv);
 
 Matrix4D look_direction(Point3D pos, Vector3D dir);
 
-img::EasyImage draw(std::vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background);
+img::EasyImage draw(const std::vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, Color background);
 
-img::EasyImage draw(std::vector<LineFigure> figures, unsigned int size, Color background, bool with_z);
+img::EasyImage draw(const std::vector<LineFigure> &figures, unsigned int size, Color background, bool with_z);
 
 }
 }

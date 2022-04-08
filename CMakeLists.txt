@@ -44,7 +44,6 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${OWN_GXX_FLAGS}")
 ############################################################
 include_directories(include)
 set(engine_sources
-	src/engine.cpp
 	src/easy_image.cpp
 	src/ini_configuration.cpp
 	src/intro.cpp
@@ -72,6 +71,18 @@ set(engine_sources
 	src/zbuffer.cpp
 )
 
+set(engine_standalone_sources
+	${engine_sources}
+	src/engine.cpp
+)
+
+set(engine_library_sources
+	${engine_sources}
+	src/cgengine.cpp
+)
+
 set(exe_name "engine")
-add_executable( ${exe_name} ${engine_sources} )
+set(lib_name "cgengine")
+add_executable( ${exe_name} ${engine_standalone_sources} )
+add_library( ${lib_name} ${engine_library_sources} )
 #install( TARGETS ${exe_name} DESTINATION ${PROJECT_SOURCE_DIR}/ )

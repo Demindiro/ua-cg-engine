@@ -24,7 +24,7 @@ struct PointLight {
 		ZBuffer zbuf;
 		double d;
 		Vector2D offset;
-	} cached;
+	} mutable cached;
 };
 
 struct Lights {

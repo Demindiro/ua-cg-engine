@@ -59,7 +59,7 @@ struct Matrix4D {
 		return columns[col - 1][row - 1];
 	}
 
-	constexpr Matrix4D operator *(const Matrix4D &rhs) {
+	constexpr Matrix4D operator *(const Matrix4D &rhs) const {
 		auto l = transpose();
 		auto &r = rhs;
 		return {

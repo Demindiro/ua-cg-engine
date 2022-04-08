@@ -21,11 +21,14 @@ ARCHIVE := s0215648
 
 build:
 	cmake -DCMAKE_BUILD_TYPE=Release -B $@
-	+make -C $@
+	+make -C $@ engine
+
+build/libcgengine.a::
+	+make -C build cgengine
 
 build-debug:
 	cmake -DCMAKE_BUILD_TYPE=Debug -B $@
-	+make -C $@
+	+make -C $@ engine
 
 #test: build-debug
 #	cd assets && for f in *.ini; do ../$</engine "$$f" || exit; done

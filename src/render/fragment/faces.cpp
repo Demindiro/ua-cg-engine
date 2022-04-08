@@ -239,7 +239,7 @@ static ALWAYS_INLINE Color cubemap_color(
 	return Color(lights.cubemap->get_clamped(uv + p));
 }
 
-img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background) {
+img::EasyImage draw(const vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, Color background) {
 
 	if (figures.empty()) {
 		return img::EasyImage(0, 0);
@@ -267,12 +267,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			auto pt = p.point * inv_project;
 			p.cached.eye = inv_project * look_direction(pt, -(pt - Point3D()));
 
-			vector<ZBufferTriangleFigure> zfigs;
-			if (pi < lights.point.size() - 1) {
-				zfigs = lights.zfigures;
-			} else {
-				zfigs.swap(lights.zfigures);
-			}
+			vector<ZBufferTriangleFigure> zfigs = lights.zfigures;
 
 			Rect rect;
 			rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
@@ -307,11 +302,6 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 				}
 			}
 		}
-	}
-
-	// Preprocess figures to speed up some later operations
-	for (auto &f : figures) {
-		f.ambient *= lights.ambient;
 	}
 
 	Rect dim;
@@ -432,7 +422,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 					}
 				}
 
-				color = f.ambient;
+				color = f.ambient * lights.ambient;
 #if GRAPHICS_DEBUG_Z > 0
 				color = Color();
 #endif
