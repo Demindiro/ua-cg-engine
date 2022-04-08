@@ -327,6 +327,10 @@ public:
 	void draw(Framebuffer &fb, int mode) const {
 		cgengine_context_draw(ctx, fb.fb, mode);
 	}
+
+	void clear_figures() {
+		cgengine_context_clear_figures(ctx);
+	}
 };
 
 }
