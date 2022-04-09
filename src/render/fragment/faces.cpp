@@ -239,12 +239,7 @@ static ALWAYS_INLINE Color cubemap_color(
 	return Color(lights.cubemap->get_clamped(uv + p));
 }
 
-img::EasyImage draw(const vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, Color background) {
-
-	if (figures.empty()) {
-		return img::EasyImage(0, 0);
-	}
-
+void draw(const std::vector<TriangleFigure> &figures, const Lights &lights, double d, Vector2D offset, img::EasyImage &img, TaggedZBuffer &zbuf) {
 	struct Tri {
 		Point3D a, b, c;
 	};
@@ -293,33 +288,15 @@ img::EasyImage draw(const vector<TriangleFigure> &figures, const Lights &lights,
 				assert(f.faces.size() < UINT32_MAX);
 				for (u_int32_t k = 0; k < f.faces.size(); k++) {
 					auto &t = f.faces[k];
-					auto abc = f2p(f, t);
-					auto a = abc.a, b = abc.b, c = abc.c;
+					auto a = f.points[t.a], b = f.points[t.b], c = f.points[t.c];
 					auto norm = (b - a).cross(c - a);
-					if (!f.can_cull || norm.dot(abc.a - Point3D()) <= 0) {
+					if (!f.can_cull || norm.dot(a - Point3D()) <= 0) {
 						p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.offset, 1);
 					}
 				}
 			}
 		}
 	}
-
-	Rect dim;
-	dim.min.x = dim.min.y = +numeric_limits<double>::infinity();
-	dim.max.x = dim.max.y = -numeric_limits<double>::infinity();
-	for (auto &f : figures) {
-		dim |= f.bounds_projected();
-	}
-
-	double d;
-	Vector2D offset;
-	auto img = create_img(dim, size, background, d, offset);
-
-	assert(!isnan(d));
-	assert(!isnan(offset.x));
-	assert(!isnan(offset.y));
-
-	TaggedZBuffer zbuf(img.get_width(), img.get_height());
 
 	// Fill in ZBuffer with figure & triangle IDs
 	assert(figures.size() < UINT16_MAX);
@@ -541,6 +518,31 @@ img::EasyImage draw(const vector<TriangleFigure> &figures, const Lights &lights,
 		Line3D(lo, loz, img::Color(0, 0, 255)).draw_clip(img, zbuf);
 	}
 #endif
+}
+
+img::EasyImage draw(const vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, Color background) {
+	if (figures.empty()) {
+		return img::EasyImage(0, 0);
+	}
+
+	Rect dim;
+	dim.min.x = dim.min.y = +numeric_limits<double>::infinity();
+	dim.max.x = dim.max.y = -numeric_limits<double>::infinity();
+	for (auto &f : figures) {
+		dim |= f.bounds_projected();
+	}
+
+	double d;
+	Vector2D offset;
+	auto img = create_img(dim, size, background, d, offset);
+
+	assert(!isnan(d));
+	assert(!isnan(offset.x));
+	assert(!isnan(offset.y));
+
+	TaggedZBuffer zbuf(img.get_width(), img.get_height());
+
+	draw(figures, lights, d, offset, img, zbuf);
 
 	return img;
 }

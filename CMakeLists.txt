@@ -56,6 +56,7 @@ set(engine_sources
 	src/render/fragment/edges.cpp
 	src/render/fragment/faces.cpp
 	src/render/geometry.cpp
+	src/render/rect.cpp
 	src/render/triangle.cpp
 	src/shapes.cpp
 	src/shapes/cone.cpp

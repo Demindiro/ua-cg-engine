@@ -44,9 +44,11 @@ protected:
 	);
 
 public:
+	ZBuffer() : width(0), height(0) {}
+
 	ZBuffer(unsigned int width, unsigned int height) : width(width), height(height) {
 		buffer.resize(width * height);
-		for (auto &c : buffer) c = INFINITY;
+		clear();
 	}
 
 	double operator()(unsigned int x, unsigned int y) const {
@@ -80,6 +82,12 @@ public:
 	 * \param d Scale factor.
 	 */
 	void triangle(Point3D a, Point3D b, Point3D c, double d, Vector2D offset, double bias);
+
+	void clear() {
+		for (auto &e : buffer) {
+			e = std::numeric_limits<double>::infinity();
+		}
+	}
 };
 
 class TaggedZBuffer : public ZBuffer {
@@ -106,11 +114,12 @@ public:
 		}
 	};
 
+	TaggedZBuffer() : ZBuffer() {}
+
 	TaggedZBuffer(unsigned int width, unsigned int height) : ZBuffer(width, height) {
 		figure_ids.resize(width * height);
 		triangle_ids.resize(width * height);
-		for (auto &e : figure_ids) e = std::numeric_limits<u_int16_t>::max();
-		for (auto &e : triangle_ids) e = std::numeric_limits<u_int32_t>::max();
+		clear();
 	}
 	
 	/**
@@ -147,6 +156,16 @@ public:
 	 * \param pair Pair of figure-triangle IDs. It's inv_z value is ignored.
 	 */
 	void triangle(Point3D a, Point3D b, Point3D c, double d, Vector2D offset, IdPair, double bias);
+
+	void clear() {
+		ZBuffer::clear();
+		for (auto &e : figure_ids) {
+			e = std::numeric_limits<u_int16_t>::max();
+		}
+		for (auto &e : triangle_ids) {
+			e = std::numeric_limits<u_int32_t>::max();
+		}
+	}
 };
 
 }

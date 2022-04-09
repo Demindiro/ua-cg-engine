@@ -128,7 +128,7 @@ void cgengine_context_draw(
 /**
  * \brief Create a framebuffer to draw to.
  */
-struct cgengine_framebuffer *cgengine_create_framebuffer(size_t width, size_t height);
+struct cgengine_framebuffer *cgengine_create_framebuffer(unsigned int width, unsigned int height);
 
 /**
  * \brief Destroy a framebuffer.
@@ -136,18 +136,10 @@ struct cgengine_framebuffer *cgengine_create_framebuffer(size_t width, size_t he
 void cgengine_destroy_framebuffer(struct cgengine_framebuffer *);
 
 /**
- * \brief Fill a framebuffer with a color.
- */
-void cgengine_framebuffer_clear(
-	struct cgengine_framebuffer *fb,
-	const struct cgengine_color8 *bg
-);
-
-/**
  * \brief Get a pixel in a framebuffer.
  */
 struct cgengine_color8 cgengine_framebuffer_get(
-	const struct cgengine_framebuffer *,
+	const struct cgengine_framebuffer * fb,
 	unsigned int x,
 	unsigned int y
 );
@@ -156,10 +148,18 @@ struct cgengine_color8 cgengine_framebuffer_get(
  * \brief Set a pixel in a framebuffer.
  */
 void cgengine_framebuffer_set(
-	const struct cgengine_framebuffer *,
+	struct cgengine_framebuffer *fb,
 	unsigned int x,
 	unsigned int y,
-	const struct cgengine_color8 *
+	const struct cgengine_color8 *clr
+);
+
+/**
+ * \brief Fill a framebuffer with a color.
+ */
+void cgengine_framebuffer_clear(
+	struct cgengine_framebuffer *fb,
+	const struct cgengine_color8 *bg
 );
 
 /**

@@ -12,12 +12,6 @@
 
 namespace engine {
 
-TypeException::TypeException(const std::string type) throw() : std::exception(), type(type) {}
-
-const char *TypeException::what() const throw() {
-	return type.c_str();
-};
-
 img::EasyImage generate_image(const ini::Configuration &conf) {
 	auto type = conf["General"]["type"].as_string_or_die();
 

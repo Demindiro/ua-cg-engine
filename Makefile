@@ -24,11 +24,16 @@ build:
 	+make -C $@ engine
 
 build/libcgengine.a::
+	cmake -DCMAKE_BUILD_TYPE=Release -B build
 	+make -C build cgengine
 
 build-debug:
 	cmake -DCMAKE_BUILD_TYPE=Debug -B $@
 	+make -C $@ engine
+
+build-debug/libcgengine.a::
+	cmake -DCMAKE_BUILD_TYPE=Debug -B build-debug
+	+make -C build-debug cgengine
 
 #test: build-debug
 #	cd assets && for f in *.ini; do ../$</engine "$$f" || exit; done

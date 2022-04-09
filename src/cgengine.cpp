@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "math/point3d.h"
+#include "math/vector2d.h"
 #include "math/vector3d.h"
 #include "shapes.h"
 #include "shapes/wavefront.h"
@@ -13,8 +14,10 @@
 #include "render/geometry.h"
 #include "render/light.h"
 #include "render/triangle.h"
+#include "zbuffer.h"
 
 using namespace std;
+using namespace engine;
 using namespace engine::shapes;
 using namespace engine::render;
 
@@ -43,7 +46,7 @@ static Matrix4D isometry_to_matrix(const struct cgengine_isometry3d *iso) {
 		{ 0, 0, 0, 1 },
 	};
 
-	return tr * (q1 * q2);
+	return (q1 * q2) * tr;
 }
 
 extern "C" {
@@ -52,6 +55,11 @@ struct cgengine_context {
 	vector<TriangleFigure> triangle_figures;
 	Lights lights;
 	Frustum frustum;
+};
+
+struct cgengine_framebuffer {
+	img::EasyImage img;
+	TaggedZBuffer zbuf;
 };
 
 struct cgengine_error {
@@ -64,11 +72,6 @@ struct cgengine_face_shape {
 
 struct cgengine_material {
 	Material mat;
-};
-
-struct cgengine_framebuffer {
-	unsigned int width, height;
-	cgengine_color8 *buffer;
 };
 
 struct cgengine_context *cgengine_create_context() {
@@ -121,55 +124,42 @@ void cgengine_context_draw(
 	struct cgengine_framebuffer *fb,
 	unsigned int mode
 ) {
-	auto img = draw(ctx->triangle_figures, ctx->lights, 256, Color());
-	for (unsigned int y = 0; y < min(img.get_height(), fb->height); y++) {
-		for (unsigned int x = 0; x < min(img.get_width(), fb->width); x++) {
-			auto c = img(x, img.get_height() - 1 - y);
-			struct cgengine_color8 clr { c.b, c.g, c.r };
-			cgengine_framebuffer_set(fb, x, y, &clr);
-		}
-	}
+	Vector2D offset = { fb->img.get_width() / 2.0, fb->img.get_height() / 2.0 };
+	draw(ctx->triangle_figures, ctx->lights, fb->img.get_width(), offset, fb->img, fb->zbuf);
 }
 
-struct cgengine_framebuffer *cgengine_create_framebuffer(size_t width, size_t height) {
-	return new cgengine_framebuffer { width, height, new cgengine_color8[width * height] };
+struct cgengine_framebuffer *cgengine_create_framebuffer(unsigned int width, unsigned int height) {
+	return new cgengine_framebuffer { { width, height }, { width, height } };
 }
 
 void cgengine_destroy_framebuffer(struct cgengine_framebuffer *fb) {
-	if (fb != nullptr) {
-		delete[] fb->buffer;
-	}
 	delete fb;
+}
+
+struct cgengine_color8 cgengine_framebuffer_get(
+	const struct cgengine_framebuffer * fb,
+	unsigned int x,
+	unsigned int y
+) {
+	auto c = fb->img(x, fb->img.get_height() - 1 - y); 
+	return { c.b, c.g, c.r };
+}
+
+void cgengine_framebuffer_set(
+	struct cgengine_framebuffer *fb,
+	unsigned int x,
+	unsigned int y,
+	const struct cgengine_color8 *clr
+) {
+	fb->img(x, fb->img.get_height() - 1 - y) = { clr->r, clr->g, clr->b };
 }
 
 void cgengine_framebuffer_clear(
 	struct cgengine_framebuffer *fb,
 	const struct cgengine_color8 *bg
 ) {
-	size_t s = (size_t)fb->height * fb->width;
-	for (size_t i = 0; i < s; i++) {
-		fb->buffer[i] = *bg;
-	}
-}
-
-struct cgengine_color8 cgengine_framebuffer_get(
-	const struct cgengine_framebuffer *fb,
-	unsigned int x,
-	unsigned int y
-) {
-	return fb->buffer[y * fb->width + x];
-}
-
-/**
- * \brief Set a pixel in a framebuffer.
- */
-void cgengine_framebuffer_set(
-	const struct cgengine_framebuffer *fb,
-	unsigned int x,
-	unsigned int y,
-	const struct cgengine_color8 *clr
-) {
-	fb->buffer[y * fb->width + x] = *clr;
+	fb->img.clear({ bg->r, bg->g, bg->b });
+	fb->zbuf.clear();
 }
 
 void cgengine_destroy_material(struct cgengine_material *mat) {
