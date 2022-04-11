@@ -29,13 +29,13 @@ static Matrix4D isometry_to_matrix(const struct cgengine_isometry3d *iso) {
 	// Keep in mind we use *column*-major matrices, so the signs are mirrored diagonally.
 	Matrix4D q1 {
 		{  w,  z, -y, -x },
-		{ -z,  w,  y, -y },
+		{ -z,  w,  x, -y },
 		{  y, -x,  w, -z },
 		{  x,  y,  z,  w },
 	};
 	Matrix4D q2 {
 		{  w,  z, -y,  x },
-		{ -z,  w,  y,  y },
+		{ -z,  w,  x,  y },
 		{  y, -x,  w,  z },
 		{ -x, -y, -z,  w },
 	};
