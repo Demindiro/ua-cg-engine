@@ -220,6 +220,8 @@ class Error : public std::exception {
 
 	Error(const Error &) {}
 
+	Error &operator =(const Error &) { return *this; }
+
 public:
 	virtual ~Error() throw() {
 		cgengine_destroy_error(err);
@@ -233,6 +235,8 @@ public:
 
 class Framebuffer {
 	Framebuffer(const Framebuffer &) {}
+
+	Framebuffer &operator =(const Framebuffer &) { return *this; }
 
 	friend class Context;
 	struct cgengine_framebuffer *fb;
@@ -264,6 +268,8 @@ public:
 class Material {
 	Material(const Material &) {}
 
+	Material &operator =(const Material &) { return *this; }
+
 	friend class Context;
 	friend class FaceShape;
 	struct cgengine_material *mat;
@@ -274,12 +280,20 @@ public:
 	~Material() {
 		cgengine_destroy_material(mat);
 	}
+
+	void move(Material &m) {
+		cgengine_destroy_material(mat);
+		mat = m.mat;
+		m.mat = NULL;
+	}
 };
 
 class FaceShape {
 	FaceShape(struct cgengine_face_shape *shape) : shape(shape) {}
 
 	FaceShape(const FaceShape &) {}
+
+	FaceShape &operator =(const FaceShape &) { return *this; }
 
 	friend class Context;
 	struct cgengine_face_shape *shape;
@@ -298,12 +312,20 @@ public:
 		}
 		shape = res.shape;
 	}
+
+	void move(FaceShape &f) {
+		cgengine_destroy_face_shape(shape);
+		shape = f.shape;
+		f.shape = NULL;
+	}
 };
 
 class Context {
 	struct cgengine_context *ctx;
 
 	Context(const Context &) {}
+
+	Context &operator =(const Context &) { return *this; }
 
 public:
 	Context() : ctx(cgengine_create_context()) {}
