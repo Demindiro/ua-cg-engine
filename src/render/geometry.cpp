@@ -10,16 +10,28 @@ namespace render {
  */
 template<typename B, typename P>
 static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable_cull) {
-	assert((f.faces.size() == f.normals.size() && "faces & normals out of sync"));
+	assert(f.flags.separate_normals() || (f.faces.size() == f.normals.size() && "faces & normals out of sync"));
+	assert(!f.flags.separate_normals() || (f.points.size() == f.normals.size() && "faces & normals out of sync"));
 	size_t faces_count = f.faces.size();
 	size_t added = 0;
-	auto proj = [&f, &project](auto from_i, auto to_i) {
+	auto proj = [&f, &project](auto base_i, auto from_i, auto to_i) {
 		assert(from_i < f.points.size());
 		assert(to_i < f.points.size());
+		auto base = f.points[base_i];
 		auto from = f.points[from_i];
 		auto to = f.points[to_i];
 		auto p = to.interpolate(from, project(from, to));
+		auto pq = calc_pq(base, from, to, p);
+
 		f.points.push_back(p);
+
+		if (f.flags.separate_normals()) {
+			f.normals.push_back(interpolate(f.normals[base_i], f.normals[from_i], f.normals[to_i], pq).normalize());
+		}
+		if (!f.uv.empty()) {
+			f.uv.push_back(interpolate(f.uv[base_i].to_vector(), f.uv[from_i].to_vector(), f.uv[to_i].to_vector(), pq));
+		}
+
 		return (unsigned int)(f.points.size() - 1);
 	};
 	auto mark_clipped = [&]() {
@@ -32,19 +44,22 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 		// Swap, then remove. This is always O(1)
 		if (i < faces_count) {
 			f.faces[i] = f.faces[faces_count - 1];
-			if (f.normals.size() > 0)
+			if (!f.flags.separate_normals() && !f.normals.empty()) {
 				f.normals[i] = f.normals[faces_count - 1];
+			}
 		}
 		faces_count--;
 		mark_clipped();
 	};
 	auto split = [&](auto i, auto &out, auto inl, auto inr) {
-		auto p = proj(out, inl);
-		auto q = proj(out, inr);
+		auto p = proj(inr, out, inl);
+		auto q = proj(inl, out, inr);
 		out = p;
 		f.faces.push_back({ q, p, inr });
-		if (f.normals.size() > 0)
+
+		if (f.normals.size() > 0 && !f.flags.separate_normals())
 			f.normals.push_back(f.normals[i]);
+
 		added++;
 		mark_clipped();
 	};
@@ -66,18 +81,18 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 			break;
 		// Shrink triangle
 		case 0b011:
-			t.b = proj(t.b, t.a);
-			t.c = proj(t.c, t.a);
+			t.b = proj(t.c, t.b, t.a);
+			t.c = proj(t.b, t.c, t.a);
 			mark_clipped();
 			break;
 		case 0b101:
-			t.c = proj(t.c, t.b);
-			t.a = proj(t.a, t.b);
+			t.c = proj(t.a, t.c, t.b);
+			t.a = proj(t.c, t.a, t.b);
 			mark_clipped();
 			break;
 		case 0b110:
-			t.a = proj(t.a, t.c);
-			t.b = proj(t.b, t.c);
+			t.a = proj(t.b, t.a, t.c);
+			t.b = proj(t.a, t.b, t.c);
 			mark_clipped();
 			break;
 		// Remove triangle
@@ -101,7 +116,7 @@ static void frustum_apply(TriangleFigure &f, B bitfield, P project, bool disable
 			i++, j++;
 		}
 		f.faces.resize(new_size);
-		if (f.normals.size() > 0)
+		if (f.normals.size() > 0 && !f.flags.separate_normals())
 			f.normals.resize(new_size);
 	}
 }

@@ -125,55 +125,7 @@ static ALWAYS_INLINE optional<Color> point_light(const TriangleFigure &f, const 
  * a triangle ABC.
  */
 static ALWAYS_INLINE Vector2D calc_pq(const TriangleFigure &f, Face t, Point3D point) {
-	auto a = f.points[t.a];
-	auto ba = f.points[t.b] - a;
-	auto ca = f.points[t.c] - a;
-	auto pa = point - a;
-
-	Matrix2D m_xy {{ ba.x, ca.x }, { ba.y, ca.y }};
-	Matrix2D m_yz {{ ba.y, ca.y }, { ba.z, ca.z }};
-	Matrix2D m_xz {{ ba.x, ca.x }, { ba.z, ca.z }};
-
-	Vector2D p_xy { pa.x, pa.y };
-	Vector2D p_yz { pa.y, pa.z };
-	Vector2D p_xz { pa.x, pa.z };
-
-	// Find out which matrix will result in the least precision loss
-	// i.e. find the matrix with the highest determinant.
-	auto d_xy = abs(m_xy.determinant());
-	auto d_yz = abs(m_yz.determinant());
-	auto d_xz = abs(m_xz.determinant());
-
-	Matrix2D m;
-	Vector2D p;
-
-	if (d_xy > d_yz) {
-		if (d_xy > d_xz) {
-			m = m_xy;
-			p = p_xy;
-		} else {
-			m = m_xz;
-			p = p_xz;
-		}
-	} else {
-		if (d_xy > d_yz) {
-			m = m_xy;
-			p = p_xy;
-		} else {
-			m = m_yz;
-			p = p_yz;
-		}
-	}
-
-	return p * m.inv();
-}
-
-/**
- * \brief Interpolate between 3 points
- */
-template<typename T>
-static ALWAYS_INLINE T interpolate(T a, T b, T c, Vector2D pq) {
-	return (1 - pq.x - pq.y) * a + pq.x * b + pq.y * c;
+	return calc_pq(f.points[t.a], f.points[t.b], f.points[t.c], point);
 }
 
 /**
@@ -420,6 +372,13 @@ void draw(const std::vector<TriangleFigure> &figures, const Lights &lights, doub
 				if (f.texture.has_value()) {
 					color *= texture_color(f, f.faces[pair.triangle_id], pq);
 				}
+
+#if GRAPHICS_DEBUG_FACES == 2
+				auto cg = (color.r + color.g + color.b) / 3;
+				color = (f.normals[pair.triangle_id].dot(cam_dir) > 0 ? Color(cg, 0, 0) : Color(0, cg, 0));
+#elif GRAPHICS_DEBUG_FACES > 0
+				color = Color(colors_pool[pair.triangle_id % color_pool_size]);
+#endif
 			} else if (lights.cubemap.has_value()) {
 				// Draw cubemap background (skybox)
 				point = Point3D() * lights.eye;
@@ -440,12 +399,6 @@ void draw(const std::vector<TriangleFigure> &figures, const Lights &lights, doub
 			assert(color.b >= 0 && "Colors can't be negative");
 			img(x, y) = color.to_img_color();
 
-#if GRAPHICS_DEBUG_FACES == 2
-			auto cg = (color.r + color.g + color.b) / 3;
-			img(x, y) = (f.normals[pair.triangle_id].dot(cam_dir) > 0 ? Color(cg, 0, 0) : Color(0, cg, 0)).to_img_color();
-#elif GRAPHICS_DEBUG_FACES > 0
-			img(x, y) = colors_pool[pair.triangle_id % color_pool_size];
-#endif
 		}
 	}
 

@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <ostream>
+#include "math/point2d.h"
 #include "math/vector2d.h"
 
 struct Matrix2D {
