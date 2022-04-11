@@ -9,6 +9,8 @@
 #include "math/vector2d.h"
 #include "math/vector3d.h"
 #include "shapes.h"
+#include "shapes/cylinder.h"
+#include "shapes/sphere.h"
 #include "shapes/wavefront.h"
 #include "render/fragment.h"
 #include "render/geometry.h"
@@ -162,6 +164,22 @@ void cgengine_framebuffer_clear(
 	fb->zbuf.clear();
 }
 
+struct cgengine_material *cgengine_create_material(
+	const struct cgengine_texture *,
+	const struct cgengine_color *ambient,
+	const struct cgengine_color *diffuse,
+	const struct cgengine_color *specular,
+	double reflection
+) {
+	return new cgengine_material {{
+		{},
+		{ ambient->r, ambient->g, ambient->b },
+		{ diffuse->r, diffuse->g, diffuse->b },
+		{ specular->r, specular->g, specular->b },
+		reflection,
+	}};
+}
+
 void cgengine_destroy_material(struct cgengine_material *mat) {
 	delete mat;
 }
@@ -190,6 +208,18 @@ struct cgengine_load_face_shape_result cgengine_face_shape_load(
 		res.error = new cgengine_error { {e.what()} };
 	}
 	return res;
+}
+
+struct cgengine_face_shape *cgengine_face_shape_cylinder(unsigned int n, double height, int point_normals) {
+	auto f = new cgengine_face_shape;
+	cylinder(n, height, f->shape, point_normals != 0);
+	return f;
+}
+
+struct cgengine_face_shape *cgengine_face_shape_sphere(unsigned int n, int point_normals) {
+	auto f = new cgengine_face_shape;
+	sphere(n, f->shape, point_normals != 0);
+	return f;
 }
 
 void cgengine_error_to_string(struct cgengine_error *err, char *out, size_t n) {

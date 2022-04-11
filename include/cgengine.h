@@ -175,6 +175,39 @@ struct cgengine_load_face_shape_result cgengine_face_shape_load(
 );
 
 /**
+ * \brief Create a cylinder shape.
+ *
+ * The base of the cylinder is located at the origin.
+ *
+ * \param n The amount of side faces.
+ * \param height The height of the cylinder.
+ * \param point_normals Whether to use face or point normals, i.e. flat or smooth shading.
+ */
+struct cgengine_face_shape *cgengine_face_shape_cylinder(unsigned int n, double height, int point_normals);
+
+/**
+ * \brief Create a sphere shape.
+ *
+ * The sphere is created by bisecting the edges of an icosahedron, then normalizing the distance
+ * of the points to the center.
+ *
+ * \param n How many times to bisect the edges.
+ * \param point_normals Whether to use face or point normals, i.e. flat or smooth shading.
+ */
+struct cgengine_face_shape *cgengine_face_shape_sphere(unsigned int n, int point_normals);
+
+/**
+ * \brief Create a material.
+ */
+struct cgengine_material *cgengine_create_material(
+	const struct cgengine_texture *,
+	const struct cgengine_color *ambient,
+	const struct cgengine_color *diffuse,
+	const struct cgengine_color *specular,
+	double reflection
+);
+
+/**
  * \brief Destroy a material.
  */
 void cgengine_destroy_material(struct cgengine_material *mat);
@@ -209,6 +242,14 @@ typedef struct cgengine_rotation3d Rotation3D;
 typedef struct cgengine_isometry3d Isometry3D;
 typedef struct cgengine_color Color;
 typedef struct cgengine_color8 Color8;
+
+static inline Color color(double r, double g, double b) {
+	cgengine_color c;
+	c.r = r;
+	c.b = b;
+	c.g = g;
+	return c;
+}
 
 class Error : public std::exception {
 	struct cgengine_error *err;
@@ -277,6 +318,10 @@ class Material {
 public:
 	Material() : mat(NULL) {}
 
+	Material(const Color &ambient, const Color &diffuse, const Color &specular, double reflection)
+		: mat(cgengine_create_material(NULL, &ambient, &diffuse, &specular, reflection))
+	{}
+
 	~Material() {
 		cgengine_destroy_material(mat);
 	}
@@ -317,6 +362,16 @@ public:
 		cgengine_destroy_face_shape(shape);
 		shape = f.shape;
 		f.shape = NULL;
+	}
+
+	void cylinder(unsigned int n, double height, bool point_normals) {
+		cgengine_destroy_face_shape(shape);
+		shape = cgengine_face_shape_cylinder(n, height, point_normals);
+	}
+
+	void sphere(unsigned int n, bool point_normals) {
+		cgengine_destroy_face_shape(shape);
+		shape = cgengine_face_shape_sphere(n, point_normals);
 	}
 };
 
