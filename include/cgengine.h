@@ -293,6 +293,11 @@ public:
 		cgengine_destroy_framebuffer(fb);
 	}
 
+	void resize(unsigned int width, unsigned int height) {
+		cgengine_destroy_framebuffer(fb);
+		fb = cgengine_create_framebuffer(width, height);
+	}
+
 	Color8 get(unsigned int x, unsigned int y) {
 		return cgengine_framebuffer_get(fb, x, y);
 	}
@@ -387,6 +392,12 @@ public:
 
 	~Context() {
 		cgengine_destroy_context(ctx);
+	}
+
+	void move(Context &c) {
+		cgengine_destroy_context(ctx);
+		ctx = c.ctx;
+		c.ctx = NULL;
 	}
 
 	void move_camera(const Point3D &position, const Vector3D &direction) {
