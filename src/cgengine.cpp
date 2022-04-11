@@ -119,6 +119,7 @@ void cgengine_context_add_face_shape(
 	bool with_point_normals = (flags & 1) > 0;
 	bool with_cubemap = (flags & 2) > 0;
 	ctx->triangle_figures.push_back(convert(shape->shape, mat->mat, m, scale, with_cubemap, with_point_normals));
+	ctx->frustum.clip(ctx->triangle_figures.back());
 }
 
 void cgengine_context_draw(
@@ -127,7 +128,16 @@ void cgengine_context_draw(
 	unsigned int mode
 ) {
 	Vector2D offset = { fb->img.get_width() / 2.0, fb->img.get_height() / 2.0 };
-	draw(ctx->triangle_figures, ctx->lights, fb->img.get_width(), offset, fb->img, fb->zbuf);
+	draw(
+		ctx->triangle_figures,
+		ctx->lights,
+		// TODO I added the last division by 2 while debugging why clipping didn't work... and
+		// apparently it is necessary. I'm not sure why though, so investigate that.
+		fb->img.get_width() / tan(ctx->frustum.fov / 2) / 2,
+		offset,
+		fb->img,
+		fb->zbuf
+	);
 }
 
 struct cgengine_framebuffer *cgengine_create_framebuffer(unsigned int width, unsigned int height) {
