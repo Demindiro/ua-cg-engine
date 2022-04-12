@@ -200,16 +200,7 @@ static TriangleFigure convert(FaceShape &shape, Material &mat, const Configurati
 	}
 
     if (!conf.point_normals && shape.normals.empty()) { // TODO should already be done
-		for (auto &n : shape.points) {
-			cout << n << endl;
-		}
         shape.normals = calculate_face_normals(shape.points, shape.faces);
-		for (auto &n : shape.normals) {
-			cout << n << endl;
-		}
-		for (auto &n : shape.faces) {
-			cout << n.a << " " << n.b << " " << n.c << endl;
-		}
     }
 
 	auto with_cubemap = section["cubeMap"].as_bool_or_default(false);
