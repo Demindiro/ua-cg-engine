@@ -190,7 +190,7 @@ void wavefront(const std::string &path, FaceShape &shape, Material &mat, bool &p
 							}
 						}
 					}
-					// The point 'b' does not lie inside the polygon, so it is an ear.
+					// No other point lies in the triangle and it faces in the right direction.
 					shape.faces.push_back({ a.second, b.second, c.second });
 					polygon.erase(polygon.begin() + (i + 1) % polygon.size());
 				skip:
