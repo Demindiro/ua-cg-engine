@@ -375,7 +375,9 @@ void draw(const std::vector<TriangleFigure> &figures, const Lights &lights, doub
 
 #if GRAPHICS_DEBUG_FACES == 2
 				auto cg = (color.r + color.g + color.b) / 3;
-				color = (f.normals[pair.triangle_id].dot(cam_dir) > 0 ? Color(cg, 0, 0) : Color(0, cg, 0));
+				color = (f.points[t.b] - f.points[t.a]).cross(f.points[t.c] - f.points[t.a]).dot(cam_dir) > 0
+					? Color(cg, 0, 0)
+					: Color(0, cg, 0);
 #elif GRAPHICS_DEBUG_FACES > 0
 				color = Color(colors_pool[pair.triangle_id % color_pool_size]);
 #endif
@@ -437,24 +439,30 @@ void draw(const std::vector<TriangleFigure> &figures, const Lights &lights, doub
 	}
 #endif
 
-#if GRAPHICS_DEBUG > 1
+#if GRAPHICS_DEBUG_EDGES > 0
 	for (auto &f : figures) {
 		for (auto &t : f.faces) {
 			auto abc = f2p(f, t);
 			auto a = abc.a, b = abc.b, c = abc.c;
-			Point3D la(a.x / -a.z * d + offset_x, a.y / -a.z * d + offset_y, a.z);
-			Point3D lb(b.x / -b.z * d + offset_x, b.y / -b.z * d + offset_y, b.z);
-			Point3D lc(c.x / -c.z * d + offset_x, c.y / -c.z * d + offset_y, c.z);
-			auto clr = f.ambient.to_img_color();
-			clr = img::Color(255 - clr.red, 255 - clr.green, 255 - clr.blue);
-			Line3D(la, lb, clr).draw(img, zbuf);
-			Line3D(lb, lc, clr).draw(img, zbuf);
-			Line3D(lc, la, clr).draw(img, zbuf);
+			Point3D la(a.x / -a.z * d + offset.x, a.y / -a.z * d + offset.y, a.z);
+			Point3D lb(b.x / -b.z * d + offset.x, b.y / -b.z * d + offset.y, b.z);
+			Point3D lc(c.x / -c.z * d + offset.x, c.y / -c.z * d + offset.y, c.z);
+			auto f = [&](auto p, auto q) {
+				img.draw_zbuf_line(
+					zbuf,
+					round_up(p.x), round_up(p.y), p.z - 0.0000001,
+					round_up(q.x), round_up(q.y), p.z - 0.0000001,
+					{ 255, 255, 255 }
+				);
+			};
+			f(la, lb);
+			f(lb, lc);
+			f(lc, la);
 		}
 	}
 #endif
 
-#if GRAPHICS_DEBUG > 0
+#if GRAPHICS_DEBUG > 2
 	// Axes
 	{
 		Point3D o;
@@ -462,10 +470,10 @@ void draw(const std::vector<TriangleFigure> &figures, const Lights &lights, doub
 		auto ox = o + Vector3D(1000, 0, 0) * lights.eye;
 		auto oy = o + Vector3D(0, 1000, 0) * lights.eye;
 		auto oz = o + Vector3D(0, 0, 1000) * lights.eye;
-		Point3D lo(o.x / -o.z * d + offset_x, o.y / -o.z * d + offset_y, o.z);
-		Point3D lox(ox.x / -ox.z * d + offset_x, ox.y / -ox.z * d + offset_y, ox.z);
-		Point3D loy(oy.x / -oy.z * d + offset_x, oy.y / -oy.z * d + offset_y, oy.z);
-		Point3D loz(oz.x / -oz.z * d + offset_x, oz.y / -oz.z * d + offset_y, oz.z);
+		Point3D lo(o.x / -o.z * d + offset.x, o.y / -o.z * d + offset.y, o.z);
+		Point3D lox(ox.x / -ox.z * d + offset.x, ox.y / -ox.z * d + offset.y, ox.z);
+		Point3D loy(oy.x / -oy.z * d + offset.x, oy.y / -oy.z * d + offset.y, oy.z);
+		Point3D loz(oz.x / -oz.z * d + offset.x, oz.y / -oz.z * d + offset.y, oz.z);
 		Line3D(lo, lox, img::Color(255, 0, 0)).draw_clip(img, zbuf);
 		Line3D(lo, loy, img::Color(0, 255, 0)).draw_clip(img, zbuf);
 		Line3D(lo, loz, img::Color(0, 0, 255)).draw_clip(img, zbuf);

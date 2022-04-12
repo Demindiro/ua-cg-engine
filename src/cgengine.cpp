@@ -207,7 +207,8 @@ struct cgengine_load_face_shape_result cgengine_face_shape_load(
 	try {
 		FaceShape shape;
 		Material m;
-		wavefront(path, shape, m);
+		bool point_normals; // TODO
+		wavefront(path, shape, m, point_normals);
 		res.success = 1;
 		res.shape = new cgengine_face_shape { move(shape) };
 		if (mat != nullptr) {

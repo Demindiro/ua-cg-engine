@@ -9,6 +9,7 @@
 #include "ini_configuration.h"
 #include "math/point3d.h"
 #include "shapes.h"
+#include "render/geometry.h"
 #include "render/triangle.h"
 
 namespace engine {
@@ -36,7 +37,7 @@ using namespace render;
 // We're parsing it directly to avoid an excessively huge amount of allocations & avoid
 // unneccessary indirection in general.
 
-void wavefront(const std::string &path, FaceShape &shape, Material &mat) {
+void wavefront(const std::string &path, FaceShape &shape, Material &mat, bool &point_normals) {
 
 	// Find all unique point/uv/normal triples
 	struct Triple {
@@ -70,7 +71,7 @@ void wavefront(const std::string &path, FaceShape &shape, Material &mat) {
 	// reduced runtime on Lucy from 100s to 65s!
 	string line, prefix, token;
 	istringstream tok, vert;
-	int no_uv = -1, no_normals = -1;
+	vector<pair<Point3D, unsigned int>> polygon;
 
 	unsigned int line_i = 0;
 	while (getline(f, line)) {
@@ -126,10 +127,12 @@ void wavefront(const std::string &path, FaceShape &shape, Material &mat) {
 			auto z = next_double();
 			normals.push_back({ x, y, z });
 		} else if (*it == "f") {
-			auto get = [&](auto str) {
+			// Use two-ears theorem so we triangulate concave polygons properly.
+			polygon.clear();
+			while (++it != end) {
 				vert.clear();
 				vert.seekg(0, ios::beg);
-				vert.str(str);
+				vert.str(*it);
 				Triple t = { 0, 0, 0 };
 				if (!getline(vert, token, '/')) {
 					throw WavefrontParseException(line_i, "face vertex must have at least one point");
@@ -144,19 +147,60 @@ void wavefront(const std::string &path, FaceShape &shape, Material &mat) {
 				if (triples.count(t) == 0) {
 					triples[t] = (unsigned int)triples.size();
 				}
-				return triples[t];
-			};
-			// Get first three required triples.
-			auto a = get(next_string());
-			auto b = get(next_string());
-			auto c = get(next_string());
-			shape.faces.push_back({ a, b, c });
-			// Push remaining triangles to form polygon.
-			while (++it != end) {
-				b = c;
-				c = get(*it);
-				shape.faces.push_back({ a, b, c });
+				// TODO defining faces before vertices may be technically valid, in which case
+				// we'll have to defer triangulation.
+				polygon.push_back({ points.at(t.pi - 1), triples[t] });
 			}
+			if (polygon.size() < 3) {
+				throw WavefrontParseException(line_i, "face must have at least 3 points");
+			} else {
+				// A vertex is an ear if the diagonal between it's two neighbours lies entirely
+				// in the polygon, i.e. none of its points lie in another triangle.
+				
+				// Calculate the normal of the polygon.
+				// This is called Newell's method. I have no idea *why* it works and I seem to be
+				// unable to find a proper explanation.
+				// Ref: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal#Newell.27s_Method
+				Vector3D poly_norm;
+				for (size_t i = 0; i < polygon.size(); i++) {
+					auto c = polygon[i].first.to_vector();
+					auto n = polygon[(i + 1) % polygon.size()].first.to_vector();
+					auto d = c - n, s = c + n;
+					poly_norm += Vector3D(d.y * s.z, d.z * s.x, d.x * s.y);
+				}
+
+				size_t i = 0;
+				while (polygon.size() > 3) {
+					auto get = [&](auto n) {
+						return polygon[n % polygon.size()];
+					};
+					// Take any point and *ignore* its neighbours.
+					auto a = get(i);
+					auto b = get(i + 1);
+					auto c = get(i + 2);
+					if ((b.first - a.first).cross(c.first - a.first).dot(poly_norm) < 0) {
+						goto skip;
+					}
+					// Check if any other point is inside the triangle.
+					for (size_t k = 0; k < polygon.size(); k++) {
+						if (k != i && k != (i + 1) % polygon.size() && k != (i + 2) % polygon.size()) {
+							auto pq = calc_pq(a.first, b.first, c.first, get(k).first);
+							if ((0 <= pq.x && pq.x <= 1) && (0 <= pq.y && pq.y <= 1)) {
+								goto skip;
+							}
+						}
+					}
+					// The point 'b' does not lie inside the polygon, so it is an ear.
+					shape.faces.push_back({ a.second, b.second, c.second });
+					polygon.erase(polygon.begin() + (i + 1) % polygon.size());
+				skip:
+					if (++i >= polygon.size()) {
+						i = 0;
+					}
+				}
+			}
+			// Push the final triangle.
+			shape.faces.push_back({ polygon[0].second, polygon[1].second, polygon[2].second });
 		} else if (*it == "p") {
 			// We don't support points so just skip.
 			continue;
@@ -186,19 +230,27 @@ void wavefront(const std::string &path, FaceShape &shape, Material &mat) {
 	}
 
 	// Construct actual vertexes from face triples.
+	if (triples.empty()) {
+		return;
+	}
+	bool has_uv = triples.begin()->first.ti != 0, has_normals = triples.begin()->first.ni != 0;
 	shape.points.resize(triples.size());
-	shape.uvs.resize(triples.size());
-	shape.normals.resize(triples.size());
+	shape.uvs.resize(has_uv ? triples.size() : 0);
+	shape.normals.resize(has_normals ? triples.size() : 0);
 	for (auto [t, i] : triples) {
 		assert(i < triples.size());
+		assert(t.pi != 0);
 		shape.points[i] = points.at(t.pi > 0 ? t.pi - 1 : points.size() + t.pi);
-		shape.uvs[i] = t.ti != 0
-			? uvs.at(t.ti > 0 ? t.ti - 1 : uvs.size() + t.ti)
-			: Point2D();
-		shape.normals[i] = t.ni != 0
-			? normals.at(t.ni > 0 ? t.ni - 1 : normals.size() + t.ni)
-			: Vector3D();
+		if (has_uv) {
+			assert(t.ti != 0);
+			shape.uvs[i] = uvs.at(t.ti > 0 ? t.ti - 1 : uvs.size() + t.ti);
+		}
+		if (has_normals) {
+			assert(t.ni != 0);
+			shape.normals[i] = normals.at(t.ni > 0 ? t.ni - 1 : normals.size() + t.ni);
+		}
 	}
+	point_normals = has_normals;
 
 	// Parse material if any is provided
 	if (mtllib != "" && usemtl != "") {
@@ -286,8 +338,8 @@ void wavefront(const std::string &path, FaceShape &shape, Material &mat) {
 	cout << "Done parsing" << endl;
 }
 
-void wavefront(const Configuration &conf, FaceShape &shape, Material &mat) {
-	wavefront(conf.section["file"].as_string_or_die(), shape, mat);
+void wavefront(const Configuration &conf, FaceShape &shape, Material &mat, bool &point_normals) {
+	wavefront(conf.section["file"].as_string_or_die(), shape, mat, point_normals);
 }
 
 }
