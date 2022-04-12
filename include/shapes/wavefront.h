@@ -10,7 +10,7 @@ namespace shapes {
 
 class WavefrontParseException : public std::exception {
 	std::string reason;
-	friend void wavefront(const std::string &path, FaceShape &shape, Material &mat);
+	friend void wavefront(const std::string &path, FaceShape &shape, Material &mat, bool &point_normals);
 	WavefrontParseException(unsigned int line_i, std::string reason)
 		: reason(reason + " @ line " + std::to_string(line_i)) {}
 
@@ -20,9 +20,9 @@ public:
 	}
 };
 
-void wavefront(const std::string &path, FaceShape &shape, Material &mat);
+void wavefront(const std::string &path, FaceShape &shape, Material &mat, bool &point_normals);
 
-void wavefront(const Configuration &conf, FaceShape &shape, Material &mat);
+void wavefront(const Configuration &conf, FaceShape &shape, Material &mat, bool &point_normals);
 
 }
 }

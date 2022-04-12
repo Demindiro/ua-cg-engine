@@ -1,4 +1,5 @@
 #include <ostream>
+#include "math/matrix2d.h"
 #include "math/matrix4d.h"
 #include "math/point2d.h"
 #include "math/point3d.h"
@@ -26,6 +27,12 @@ ostream &operator <<(ostream &o, const Vector3D &m) {
 
 ostream &operator <<(ostream &o, const Vector4D &m) {
 	return o << '[' << m.x << ", " << m.y << ", " << m.z << ", " << m.w << ']';
+}
+
+ostream &operator <<(ostream &o, const Matrix2D &m) {
+	o << '[' << m[0] << endl;
+	o << ' ' << m[1] << ']';
+	return o;
 }
 
 ostream &operator <<(ostream &o, const Matrix4D &m) {

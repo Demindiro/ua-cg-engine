@@ -70,12 +70,12 @@ ALWAYS_INLINE Vector2D calc_pq(Point3D a, Point3D b, Point3D c, Point3D point) {
 			p = p_xz;
 		}
 	} else {
-		if (d_xy > d_yz) {
-			m = m_xy;
-			p = p_xy;
-		} else {
+		if (d_yz > d_xz) {
 			m = m_yz;
 			p = p_yz;
+		} else {
+			m = m_xz;
+			p = p_xz;
 		}
 	}
 
