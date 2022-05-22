@@ -290,13 +290,6 @@ void wavefront(const std::string &path, FaceShape &shape, Material &mat, bool &p
 			auto next_double = [&]() {
 				return stod(next_string());
 			};
-			auto maybe_next_double = [&]() {
-				++it;
-				if (it == end) {
-					return numeric_limits<double>::signaling_NaN();
-				}
-				return stod(*it);
-			};
 			auto no_next = [&]() {
 				++it;
 				if (it != end) {

@@ -118,12 +118,25 @@ _gen-%:
 	cd assets && ../build/engine $(patsubst _gen-%,%,$@)
 
 $(ARCHIVE).tar.gz: $(wildcard src/*) $(wildcard include/*) \
-	$(wildcard assets/stochastic_*.L2D) $(wildcard assets/stochastic_*.ini) \
+		$(wildcard assets/stochastic_*.L2D) \
+		$(wildcard assets/stochastic_*.ini) \
+		$(wildcard assets/cubemap*.ini) \
+		$(wildcard assets/smooth*.ini) \
+		$(wildcard assets/extreme/*.ini) \
+		$(wildcard assets/texture*.ini) \
+		$(wildcard assets/wavefront*.ini) \
+		$(wildcard assets/*.obj) \
+		assets/honk.bmp assets/ambulance.bmp assets/mountains.bmp \
+		assets/extreme_specular.ini \
+		assets/Intro2_Blocks.bmp \
 		CMakeLists.txt LICENSE README.md
-	tar czvf $@ $^
+	tar czvfh $@ $^
+
+stanford_dragon.obj.gz stanford_lucy.obj.gz: %.gz: assets/%
+	gzip -k -9 -c $< > $@
 
 clean:: clean-images clean-bench
-	rm -rf $(ARCHIVE) build/ build-debug/
+	rm -rf $(ARCHIVE) stanford_dragon.obj.gz stanford_lucy.obj.gz build/ build-debug/
 
 clean-images::
 	rm -rf assets/*.bmp assets/extreme/*.bmp

@@ -4,7 +4,7 @@ build-debug/
 perf.data
 perf.data.old
 flamegraph.svg
-*.tar.gz
+*.gz
 assets/filelist
 cachegrind.out.*
 callgrind.out.*

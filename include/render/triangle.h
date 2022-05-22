@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include "render/color.h"
 #include "render/rect.h"
 #include "render/texture.h"
