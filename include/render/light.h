@@ -36,7 +36,7 @@ struct Lights {
 	std::optional<Texture> cubemap;
 	unsigned int shadow_mask;
 	Color ambient;
-	bool shadows;
+	bool shadows = false;
 };
 
 }
