@@ -23,7 +23,7 @@ namespace render {
 
 using namespace std;
 
-img::EasyImage draw(vector<LineFigure> figures, unsigned int size, Color background, bool with_z) {
+img::EasyImage draw(const vector<LineFigure> &figures, unsigned int size, Color background, bool with_z) {
 	if (figures.empty()) {
 		return img::EasyImage(0, 0);
 	}

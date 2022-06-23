@@ -24,7 +24,7 @@ struct PointLight {
 		ZBuffer zbuf;
 		double d;
 		Vector2D offset;
-	} cached;
+	} mutable cached;
 };
 
 struct Lights {
@@ -36,7 +36,7 @@ struct Lights {
 	std::optional<Texture> cubemap;
 	unsigned int shadow_mask;
 	Color ambient;
-	bool shadows;
+	bool shadows = false;
 };
 
 }

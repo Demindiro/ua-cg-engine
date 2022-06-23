@@ -125,55 +125,7 @@ static ALWAYS_INLINE optional<Color> point_light(const TriangleFigure &f, const 
  * a triangle ABC.
  */
 static ALWAYS_INLINE Vector2D calc_pq(const TriangleFigure &f, Face t, Point3D point) {
-	auto a = f.points[t.a];
-	auto ba = f.points[t.b] - a;
-	auto ca = f.points[t.c] - a;
-	auto pa = point - a;
-
-	Matrix2D m_xy {{ ba.x, ca.x }, { ba.y, ca.y }};
-	Matrix2D m_yz {{ ba.y, ca.y }, { ba.z, ca.z }};
-	Matrix2D m_xz {{ ba.x, ca.x }, { ba.z, ca.z }};
-
-	Vector2D p_xy { pa.x, pa.y };
-	Vector2D p_yz { pa.y, pa.z };
-	Vector2D p_xz { pa.x, pa.z };
-
-	// Find out which matrix will result in the least precision loss
-	// i.e. find the matrix with the highest determinant.
-	auto d_xy = abs(m_xy.determinant());
-	auto d_yz = abs(m_yz.determinant());
-	auto d_xz = abs(m_xz.determinant());
-
-	Matrix2D m;
-	Vector2D p;
-
-	if (d_xy > d_yz) {
-		if (d_xy > d_xz) {
-			m = m_xy;
-			p = p_xy;
-		} else {
-			m = m_xz;
-			p = p_xz;
-		}
-	} else {
-		if (d_xy > d_yz) {
-			m = m_xy;
-			p = p_xy;
-		} else {
-			m = m_yz;
-			p = p_yz;
-		}
-	}
-
-	return p * m.inv();
-}
-
-/**
- * \brief Interpolate between 3 points
- */
-template<typename T>
-static ALWAYS_INLINE T interpolate(T a, T b, T c, Vector2D pq) {
-	return (1 - pq.x - pq.y) * a + pq.x * b + pq.y * c;
+	return calc_pq(f.points[t.a], f.points[t.b], f.points[t.c], point);
 }
 
 /**
@@ -239,12 +191,7 @@ static ALWAYS_INLINE Color cubemap_color(
 	return Color(lights.cubemap->get_clamped(uv + p));
 }
 
-img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int size, Color background) {
-
-	if (figures.empty()) {
-		return img::EasyImage(0, 0);
-	}
-
+void draw(const std::vector<TriangleFigure> &figures, const Lights &lights, double d, Vector2D offset, img::EasyImage &img, TaggedZBuffer &zbuf) {
 	struct Tri {
 		Point3D a, b, c;
 	};
@@ -267,12 +214,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			auto pt = p.point * inv_project;
 			p.cached.eye = inv_project * look_direction(pt, -(pt - Point3D()));
 
-			vector<ZBufferTriangleFigure> zfigs;
-			if (pi < lights.point.size() - 1) {
-				zfigs = lights.zfigures;
-			} else {
-				zfigs.swap(lights.zfigures);
-			}
+			vector<ZBufferTriangleFigure> zfigs = lights.zfigures;
 
 			Rect rect;
 			rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
@@ -298,38 +240,15 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 				assert(f.faces.size() < UINT32_MAX);
 				for (u_int32_t k = 0; k < f.faces.size(); k++) {
 					auto &t = f.faces[k];
-					auto abc = f2p(f, t);
-					auto a = abc.a, b = abc.b, c = abc.c;
+					auto a = f.points[t.a], b = f.points[t.b], c = f.points[t.c];
 					auto norm = (b - a).cross(c - a);
-					if (!f.can_cull || norm.dot(abc.a - Point3D()) <= 0) {
+					if (!f.can_cull || norm.dot(a - Point3D()) <= 0) {
 						p.cached.zbuf.triangle(a, b, c, p.cached.d, p.cached.offset, 1);
 					}
 				}
 			}
 		}
 	}
-
-	// Preprocess figures to speed up some later operations
-	for (auto &f : figures) {
-		f.ambient *= lights.ambient;
-	}
-
-	Rect dim;
-	dim.min.x = dim.min.y = +numeric_limits<double>::infinity();
-	dim.max.x = dim.max.y = -numeric_limits<double>::infinity();
-	for (auto &f : figures) {
-		dim |= f.bounds_projected();
-	}
-
-	double d;
-	Vector2D offset;
-	auto img = create_img(dim, size, background, d, offset);
-
-	assert(!isnan(d));
-	assert(!isnan(offset.x));
-	assert(!isnan(offset.y));
-
-	TaggedZBuffer zbuf(img.get_width(), img.get_height());
 
 	// Fill in ZBuffer with figure & triangle IDs
 	assert(figures.size() < UINT16_MAX);
@@ -432,7 +351,7 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 					}
 				}
 
-				color = f.ambient;
+				color = f.ambient * lights.ambient;
 #if GRAPHICS_DEBUG_Z > 0
 				color = Color();
 #endif
@@ -453,6 +372,15 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 				if (f.texture.has_value()) {
 					color *= texture_color(f, f.faces[pair.triangle_id], pq);
 				}
+
+#if GRAPHICS_DEBUG_FACES == 2
+				auto cg = (color.r + color.g + color.b) / 3;
+				color = (f.points[t.b] - f.points[t.a]).cross(f.points[t.c] - f.points[t.a]).dot(cam_dir) > 0
+					? Color(cg, 0, 0)
+					: Color(0, cg, 0);
+#elif GRAPHICS_DEBUG_FACES > 0
+				color = Color(colors_pool[pair.triangle_id % color_pool_size]);
+#endif
 			} else if (lights.cubemap.has_value()) {
 				// Draw cubemap background (skybox)
 				point = Point3D() * lights.eye;
@@ -473,12 +401,6 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 			assert(color.b >= 0 && "Colors can't be negative");
 			img(x, y) = color.to_img_color();
 
-#if GRAPHICS_DEBUG_FACES == 2
-			auto cg = (color.r + color.g + color.b) / 3;
-			img(x, y) = (f.normals[pair.triangle_id].dot(cam_dir) > 0 ? Color(cg, 0, 0) : Color(0, cg, 0)).to_img_color();
-#elif GRAPHICS_DEBUG_FACES > 0
-			img(x, y) = colors_pool[pair.triangle_id % color_pool_size];
-#endif
 		}
 	}
 
@@ -517,24 +439,30 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 	}
 #endif
 
-#if GRAPHICS_DEBUG > 1
+#if GRAPHICS_DEBUG_EDGES > 0
 	for (auto &f : figures) {
 		for (auto &t : f.faces) {
 			auto abc = f2p(f, t);
 			auto a = abc.a, b = abc.b, c = abc.c;
-			Point3D la(a.x / -a.z * d + offset_x, a.y / -a.z * d + offset_y, a.z);
-			Point3D lb(b.x / -b.z * d + offset_x, b.y / -b.z * d + offset_y, b.z);
-			Point3D lc(c.x / -c.z * d + offset_x, c.y / -c.z * d + offset_y, c.z);
-			auto clr = f.ambient.to_img_color();
-			clr = img::Color(255 - clr.red, 255 - clr.green, 255 - clr.blue);
-			Line3D(la, lb, clr).draw(img, zbuf);
-			Line3D(lb, lc, clr).draw(img, zbuf);
-			Line3D(lc, la, clr).draw(img, zbuf);
+			Point3D la(a.x / -a.z * d + offset.x, a.y / -a.z * d + offset.y, a.z);
+			Point3D lb(b.x / -b.z * d + offset.x, b.y / -b.z * d + offset.y, b.z);
+			Point3D lc(c.x / -c.z * d + offset.x, c.y / -c.z * d + offset.y, c.z);
+			auto f = [&](auto p, auto q) {
+				img.draw_zbuf_line(
+					zbuf,
+					round_up(p.x), round_up(p.y), p.z - 0.0000001,
+					round_up(q.x), round_up(q.y), p.z - 0.0000001,
+					{ 255, 255, 255 }
+				);
+			};
+			f(la, lb);
+			f(lb, lc);
+			f(lc, la);
 		}
 	}
 #endif
 
-#if GRAPHICS_DEBUG > 0
+#if GRAPHICS_DEBUG > 2
 	// Axes
 	{
 		Point3D o;
@@ -542,15 +470,40 @@ img::EasyImage draw(vector<TriangleFigure> figures, Lights lights, unsigned int 
 		auto ox = o + Vector3D(1000, 0, 0) * lights.eye;
 		auto oy = o + Vector3D(0, 1000, 0) * lights.eye;
 		auto oz = o + Vector3D(0, 0, 1000) * lights.eye;
-		Point3D lo(o.x / -o.z * d + offset_x, o.y / -o.z * d + offset_y, o.z);
-		Point3D lox(ox.x / -ox.z * d + offset_x, ox.y / -ox.z * d + offset_y, ox.z);
-		Point3D loy(oy.x / -oy.z * d + offset_x, oy.y / -oy.z * d + offset_y, oy.z);
-		Point3D loz(oz.x / -oz.z * d + offset_x, oz.y / -oz.z * d + offset_y, oz.z);
+		Point3D lo(o.x / -o.z * d + offset.x, o.y / -o.z * d + offset.y, o.z);
+		Point3D lox(ox.x / -ox.z * d + offset.x, ox.y / -ox.z * d + offset.y, ox.z);
+		Point3D loy(oy.x / -oy.z * d + offset.x, oy.y / -oy.z * d + offset.y, oy.z);
+		Point3D loz(oz.x / -oz.z * d + offset.x, oz.y / -oz.z * d + offset.y, oz.z);
 		Line3D(lo, lox, img::Color(255, 0, 0)).draw_clip(img, zbuf);
 		Line3D(lo, loy, img::Color(0, 255, 0)).draw_clip(img, zbuf);
 		Line3D(lo, loz, img::Color(0, 0, 255)).draw_clip(img, zbuf);
 	}
 #endif
+}
+
+img::EasyImage draw(const vector<TriangleFigure> &figures, const Lights &lights, unsigned int size, Color background) {
+	if (figures.empty()) {
+		return img::EasyImage(0, 0);
+	}
+
+	Rect dim;
+	dim.min.x = dim.min.y = +numeric_limits<double>::infinity();
+	dim.max.x = dim.max.y = -numeric_limits<double>::infinity();
+	for (auto &f : figures) {
+		dim |= f.bounds_projected();
+	}
+
+	double d;
+	Vector2D offset;
+	auto img = create_img(dim, size, background, d, offset);
+
+	assert(!isnan(d));
+	assert(!isnan(offset.x));
+	assert(!isnan(offset.y));
+
+	TaggedZBuffer zbuf(img.get_width(), img.get_height());
+
+	draw(figures, lights, d, offset, img, zbuf);
 
 	return img;
 }

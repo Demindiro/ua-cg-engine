@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <ostream>
 #include "math/point2d.h"
 #include "math/vector2d.h"
 
@@ -33,6 +34,8 @@ struct Rect {
 		return max.to_vector() - min.to_vector();
 	}
 };
+
+std::ostream &operator <<(std::ostream &out, const Rect &rect);
 
 }
 }

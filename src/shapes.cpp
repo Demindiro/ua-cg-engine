@@ -36,19 +36,17 @@ namespace shapes {
 using namespace std;
 using namespace render;
 
-static Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection, Matrix4D &mat_scale) {
+static Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection, double &scale) {
 	auto rot_x = conf["rotateX"].as_double_or_die() * M_PI / 180;
 	auto rot_y = conf["rotateY"].as_double_or_die() * M_PI / 180;
 	auto rot_z = conf["rotateZ"].as_double_or_die() * M_PI / 180;
 	auto center = tup_to_point3d(conf["center"].as_double_tuple_or_die());
-	auto scale = conf["scale"].as_double_or_die();
+	scale = conf["scale"].as_double_or_die();
 
 	// Create transformation matrix
 	// Order of operations: scale > rot_x > rot_y > rot_z > translate > project
 	// NB the default constructor creates identity matrices (diagonal is 1)
 	Matrix4D mat_rot_x, mat_rot_y, mat_rot_z, mat_translate;
-
-	mat_scale(1, 1) = mat_scale(2, 2) = mat_scale(3, 3) = scale;
 
 	mat_rot_x = Rotation(rot_x).x();
 	mat_rot_y = Rotation(rot_y).y();
@@ -63,7 +61,8 @@ static Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &pr
 
 Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projection) {
 	Matrix4D mat_scale, mat;
-	mat = transform_from_conf(conf, projection, mat_scale);
+	mat = transform_from_conf(conf, projection, mat_scale(3, 3));
+	mat_scale(1, 1) = mat_scale(2, 2) = mat_scale(3, 3);
 	return mat_scale * mat;
 }
 
@@ -111,27 +110,65 @@ vector<Vector3D> calculate_face_normals(const vector<Point3D> &points, const vec
 	return normals;
 }
 
-TriangleFigure convert(FaceShape shape, Material mat, const Configuration &conf, bool with_lighting, const Matrix4D &eye) {
-
-	const auto &section = conf.section;
+TriangleFigure convert(
+	const FaceShape &shape,
+	const Material &mat,
+	const Matrix4D &transform,
+	double scale,
+	bool with_cubemap,
+	bool with_point_normals
+) {
 	TriangleFigure fig;
 	fig.points = shape.points;
 	fig.faces = shape.faces;
-	if (with_lighting) {
-		fig.ambient = try_color_from_conf(section["ambientReflection"], mat.ambient);
-		fig.diffuse = try_color_from_conf(section["diffuseReflection"], mat.diffuse);
-		fig.specular = try_color_from_conf(section["specularReflection"], mat.specular);
-		fig.reflection = section["reflectionCoefficient"].as_double_or_default(mat.reflection);
-		// integer powers are faster, so try to use that.
-		fig.reflection_int = fig.reflection;
-		if (fig.reflection_int != fig.reflection) {
-			fig.reflection_int = numeric_limits<unsigned int>::max();
-		}
-	} else {
-		fig.ambient = color_from_conf(section);
+	fig.ambient = mat.ambient;
+	fig.diffuse = mat.diffuse;
+	fig.specular = mat.specular;
+	fig.reflection = mat.reflection;
+	// integer powers are faster, so try to use that.
+	fig.reflection_int = fig.reflection;
+	if (fig.reflection_int != fig.reflection) {
+		fig.reflection_int = numeric_limits<unsigned int>::max();
 	}
 	fig.flags.can_cull(true); // All platonics are solid (& other generated meshes are too)
 	fig.flags.clipped(false);
+
+	if (mat.texture.has_value()) {
+		fig.texture = mat.texture;
+		fig.uv = shape.uvs;
+		assert(!fig.uv.empty() && "shape has texture but no UVs");
+	}
+
+	fig.flags.cubemap(with_cubemap);
+	fig.flags.separate_normals(with_point_normals);
+	fig.normals = shape.normals;
+	assert(!fig.normals.empty() && "shape has no normals");
+
+	for (auto &p : fig.normals) {
+		p *= transform;
+	}
+
+	Matrix4D mat_scale, m;
+	mat_scale(1, 1) = mat_scale(2, 2) = mat_scale(3, 3) = scale;
+	m = mat_scale * transform;
+
+	for (auto &p : fig.points) {
+		p *= m;
+	}
+
+	return fig;
+}
+
+static TriangleFigure convert(FaceShape &shape, Material &mat, const Configuration &conf, bool with_lighting, const Matrix4D &eye) {
+	const auto &section = conf.section;
+	if (with_lighting) {
+		mat.ambient = try_color_from_conf(section["ambientReflection"], mat.ambient);
+		mat.diffuse = try_color_from_conf(section["diffuseReflection"], mat.diffuse);
+		mat.specular = try_color_from_conf(section["specularReflection"], mat.specular);
+		mat.reflection = section["reflectionCoefficient"].as_double_or_default(mat.reflection);
+	} else {
+		mat.ambient = color_from_conf(section);
+	}
 
 	// Load texture, if any
 	string tex_path;
@@ -141,58 +178,37 @@ TriangleFigure convert(FaceShape shape, Material mat, const Configuration &conf,
 			img::EasyImage img;
 			f >> img;
 			Texture tex(std::move(img));
-			fig.texture.emplace(std::move(tex));
+			mat.texture.emplace(std::move(tex));
 		}
 
 		// Generate UVs (flat mapping by default)
-		fig.uv = shape.uvs;
-		if (fig.uv.empty()) {
-			assert(!"wtf");
+		if (shape.uvs.empty()) {
 			Rect rect;
 			rect.min.x = rect.min.y = +numeric_limits<double>::infinity();
 			rect.max.x = rect.max.y = -numeric_limits<double>::infinity();
-			fig.uv.reserve(fig.points.size());
-			for (auto &p : fig.points) {
+			shape.uvs.reserve(shape.points.size());
+			for (auto &p : shape.points) {
 				Point2D uv(p.x, p.z);
 				rect |= uv;
-				fig.uv.push_back(uv);
+				shape.uvs.push_back(uv);
 			}
-			for (auto &uv : fig.uv) {
+			for (auto &uv : shape.uvs) {
 				uv.x = (uv.x - rect.min.x) / rect.size().x;
 				uv.y = (uv.y - rect.min.y) / rect.size().y;
 			}
 		}
-	} else if (mat.texture.has_value()) {
-		fig.texture = mat.texture;
-		fig.uv = shape.uvs;
-		assert(!fig.uv.empty());
 	}
 
-	fig.flags.cubemap(section["cubeMap"].as_bool_or_default(false));
+    if (!conf.point_normals && shape.normals.empty()) { // TODO should already be done
+        shape.normals = calculate_face_normals(shape.points, shape.faces);
+    }
 
-	fig.flags.separate_normals(conf.point_normals);
-	fig.normals = shape.normals;
+	auto with_cubemap = section["cubeMap"].as_bool_or_default(false);
 
-	Matrix4D mat_scale;
-	auto m = transform_from_conf(section, eye, mat_scale);
+	double scale;
+	auto m = transform_from_conf(section, eye, scale);
 
-	for (auto &p : fig.normals) {
-		p *= m;
-	}
-
-	m = mat_scale * m;
-
-	for (auto &p : fig.points) {
-		p *= m;
-	}
-
-	if (!fig.flags.separate_normals() && shape.normals.empty()) { // TODO should already be done
-		fig.normals = calculate_face_normals(fig.points, fig.faces);
-	}
-
-	assert(!fig.normals.empty());
-
-	return fig;
+	return convert(shape, mat, m, scale, with_cubemap, conf.point_normals);
 }
 
 static void common_conf(
@@ -521,8 +537,7 @@ img::EasyImage triangles(const ini::Configuration &conf, bool with_lighting) {
 
 		if (type == "Object") {
 			assert(nogen);
-			wavefront({ section, smooth }, shape, mat);
-			smooth = true; // TODO technically not accurate and perhaps confusing...
+			wavefront({ section, smooth }, shape, mat, smooth);
 			nogen = false;
 		}
 

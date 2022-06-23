@@ -161,6 +161,15 @@ Matrix4D transform_from_conf(const ini::Section &conf, const Matrix4D &projectio
 
 render::Color color_from_conf(const ini::Section &conf);
 
+render::TriangleFigure convert(
+	const FaceShape &shape,
+	const Material &mat,
+	const Matrix4D &transform,
+	double scale,
+	bool with_cubemap,
+	bool with_point_normals
+);
+
 /**
  * \brief Generic face normal calculator.
  */

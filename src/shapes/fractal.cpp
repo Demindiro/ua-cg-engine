@@ -105,8 +105,8 @@ void fractal(const Configuration &conf, const ShapeTemplateAny &shape, FaceShape
 	f.points = { shape.points, shape.points + shape.points_size };
 	f.faces = { shape.faces, shape.faces + shape.faces_size };
 	f.normals = conf.point_normals
-		? vector(shape.point_normals, shape.point_normals + shape.point_normals_size)
-		: vector(shape.face_normals, shape.face_normals + shape.face_normals_size);
+		? vector<Vector3D>(shape.point_normals, shape.point_normals + shape.point_normals_size)
+		: vector<Vector3D>(shape.face_normals, shape.face_normals + shape.face_normals_size);
 	fractal(scale, iterations, f);
 }
 

@@ -23,9 +23,11 @@ class TypeException : public std::exception {
 	std::string type;
 	
 public:
-	TypeException(const std::string type) throw();
+	TypeException(const std::string type) throw() : std::exception(), type(type) {}
 
-	virtual const char *what() const throw();
+	virtual const char *what() const throw() {
+		return type.c_str();
+	}
 };
 
 // Returns -1 if lower than 0, otherwise 1.
