@@ -1,9 +1,9 @@
 ## Gequoteerde functionaliteit
 
-V: Werkend  
--: Deels werkend met gekende problemen (onderaan beschreven)  
-X: Niet werkend of niet geïmplementeerd  
-(blanco): TODO  
+V: Werkend
+-: Deels werkend met gekende problemen (onderaan beschreven)
+X: Niet werkend of niet geïmplementeerd
+(blanco): TODO
 
 
 |   | Functionaliteit      | Status |
@@ -24,7 +24,7 @@ X: Niet werkend of niet geïmplementeerd
 |   | Z-buffering (driehoeken)  | V |
 | 6 | 3D fractalen              | V |
 |   | BuckyBall                 | V |
-|   | Mengerspons               |   |
+|   | Mengerspons               | V |
 |   | View Frustum              | V |
 | 7 | Ambient licht             | V |
 |   | Diffuus licht (oneindig)  | V |
@@ -39,9 +39,6 @@ X: Niet werkend of niet geïmplementeerd
 Geïmplementeerde vorm van texture mapping: N/A
 
 ## Gekende problemen 
-
-- De OBJ parser neemt aan dat alle polygons convex zijn. Niet-convexe
-  polygons worden mogelijk verkeerd opgesplits in driehoeken.
 
 ## Niet-gequoteerde functionaliteit
 
